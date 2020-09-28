@@ -38,7 +38,7 @@ namespace Crosscorrelator
 		[DllImport("ahp_xc")]
 		public extern static void xc_select_input(int index);
 		[DllImport("ahp_xc")]
-		public extern static void xc_set_rate(baud_rate rate);
+		public extern static void xc_set_baudrate(baud_rate rate, int setterm);
 		[DllImport("ahp_xc")]
 		public extern static void xc_set_power(int index, bool lv, bool hv);
 		[DllImport("ahp_xc")]
@@ -48,16 +48,16 @@ namespace Crosscorrelator
 		[DllImport("ahp_xc")]
 		public extern static void xc_set_frequency_divider(byte value);
 		[DllImport("ahp_xc")]
-		public extern static void xc_scan_spectrum(ulong[] spectrum, ref double percent);
+		public extern static void xc_scan_autocorrelations(ulong[] spectrum, ref double percent, ref int interrupt);
 		[DllImport("ahp_xc")]
-		public extern static void xc_scan_crosscorrelations(ulong[] crosscorrelations, ref double percent);
+		public extern static void xc_scan_crosscorrelations(ulong[] crosscorrelations, ref double percent, ref int interrupt);
 		[DllImport("ahp_xc")]
 		public extern static void xc_get_packet(ulong[] counts, ulong[] autocorrelations, ulong[] correlations);
 		[DllImport("ahp_xc")]
 		public extern static int xc_send_command(it_cmd c, byte value);
 	};
 
-	public enum baud_rate{
+	public enum baud_rate : int {
 		R_57600 = 0,
 		R_115200 = 1,
 		R_230400 = 2,
@@ -137,7 +137,8 @@ namespace Crosscorrelator
 		Timer _timer;
 		bool ThreadsRunning;
 		bool _connected;
-		bool Reading;
+		bool Reading { get { return (_Reading == 0); } set { _Reading = (value ? 0 : 1); } } 
+		int _Reading = 1;
 		public double Percent { get { return percent / (NumLines + NumBaselines); } }
 		double percent;
 		public OperatingMode OperatingMode = OperatingMode.Counter;
@@ -201,7 +202,7 @@ namespace Crosscorrelator
 					}
 				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
 					for (int i = 0; i < NumBaselines; i++) {
-						ulong[] crosscorrelations = new ulong[DelaySize*2+1];
+						ulong[] crosscorrelations = new ulong[DelaySize * 2 + 1];
 						Array.Copy (Crosscorrelations, i * (DelaySize * 2 + 1), crosscorrelations, 0, DelaySize * 2 + 1);
 						SweepUpdate (this, new SweepUpdateEventArgs (i, crosscorrelations.ToList (), OperatingMode));
 					}
@@ -213,33 +214,19 @@ namespace Crosscorrelator
 		{
 			ThreadsRunning = true;
 			ulong[] counts = new ulong[NumLines];
-			ulong[] autocorrelations = new ulong[NumLines];
-			ulong[] crosscorrelations = new ulong[NumBaselines];
 			while(ThreadsRunning) {
 				percent = 0;
-				if (!Reading)
-					continue;
 				if (OperatingMode == OperatingMode.Counter) {
-					libxc.xc_get_packet (counts, autocorrelations, crosscorrelations);
+					libxc.xc_get_packet (counts, null, null);
 					for (int l = 0; l < NumLines; l++) {
 						Counts [l].Add (counts [l]);
 					}
 				} else if (OperatingMode == OperatingMode.Autocorrelator) {
-					SpectrumSweep ();
+					libxc.xc_scan_autocorrelations (Autocorrelations, ref percent, ref _Reading);
 				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
-					CrossCorrelationSweep ();
+					libxc.xc_scan_crosscorrelations (Crosscorrelations, ref percent, ref _Reading);
 				}
 			}
-		}
-
-		void SpectrumSweep()
-		{
-			libxc.xc_scan_spectrum (Autocorrelations, ref percent);
-		}
-
-		void CrossCorrelationSweep()
-		{
-			libxc.xc_scan_crosscorrelations (Crosscorrelations, ref percent);
 		}
 
 		public void EnableCapture()
@@ -256,9 +243,9 @@ namespace Crosscorrelator
 			Reading = false;
 		}
 
-		public void SetBaudRate(baud_rate rate)
+		public void SetBaudRate(baud_rate rate, bool setterm = true)
 		{
-			libxc.xc_set_rate (rate);
+			libxc.xc_set_baudrate (rate, setterm ? 1 : 0);
 		}
 
 		public void SetLine(int line, bool lv, bool hv)

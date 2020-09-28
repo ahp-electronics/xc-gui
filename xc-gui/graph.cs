@@ -17,6 +17,7 @@
 
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -24,7 +25,7 @@ using System.Collections.Generic;
 
 namespace Crosscorrelator
 {
-	public class Graph : PictureBox
+	public class Graph : UserControl
 	{
 		double independent = 1.0;
 		double dependent = 1.0;
@@ -85,6 +86,8 @@ namespace Crosscorrelator
 			}
 		}
 
+		public bool ShowScale { get; set; }
+
 		public Graph()
 			: base()
 		{
@@ -96,21 +99,25 @@ namespace Crosscorrelator
 			this.Controls.Clear ();
 			try {
 				this.ClientSize = new Size (475, 265);
+				this.BackColor = Color.White;
+				DotsPen = Pens.LightBlue;
+				AveragePen = Pens.Red;
+				ShowScale = true;
+				this.Paint += Graph_Paint;
 			} catch (Exception ex) {
 				MessageBox.Show (ex.Message, this.GetType ().Name + " Plugin error");
 			}
 		}
 
-		public void display()
+		void Graph_Paint (object sender, PaintEventArgs e)
 		{
-			Bitmap uv = new Bitmap (this.Width, this.Height);
-			using (Graphics g = Graphics.FromImage (uv)) {
-				try {
-					g.FillRectangle (Brushes.White, new Rectangle (0, 0, uv.Width, uv.Height));
-					if(EndX == StartX)
-						EndX += 0.1;
-					if(EndY == StartY)
-						EndY += 0.1;
+			try {
+				Graphics g = e.Graphics;
+				if(EndX == StartX)
+					EndX += 0.1;
+				if(EndY == StartY)
+					EndY += 0.1;
+				if(ShowScale) {
 					if (EndX > StartX) {
 						double b = Math.Abs (EndX - StartX);
 						double sx = StartX;
@@ -130,16 +137,16 @@ namespace Crosscorrelator
 							}
 						}
 						int y = 0;
-						for (double x = (int)Math.Min(sx, b + sx); y < uv.Width; x++) {
-							y = (int)((x - sx) * uv.Width / b);
-							g.DrawLine (Pens.Black, new Point (y, uv.Height - 1), new Point (y, uv.Height - 3));
+						for (double x = (int)Math.Min(sx, b + sx); y < this.Width; x++) {
+							y = (int)((x - sx) * this.Width / b);
+							g.DrawLine (Pens.Black, new Point (y, this.Height - 1), new Point (y, this.Height - 3));
 							if (((int)x % 5) == 0) {
-								g.DrawLine(Pens.LightGray, new Point ( y, 0), new Point( y, uv.Height - 1));
-								g.DrawLine (Pens.Black, new Point (y, uv.Height - 1), new Point (y, uv.Height - 4));
+								g.DrawLine(Pens.LightGray, new Point ( y, 0), new Point( y, this.Height - 1));
+								g.DrawLine (Pens.Black, new Point (y, this.Height - 1), new Point (y, this.Height - 4));
 							}
 							if (((int)x % ((int)(b / 10) * 5)) == 0) {
 								string val = (x * Math.Pow (10, exp)).ToString ();
-								g.DrawString (val, Font, Brushes.Black, new Rectangle (y - val.Length * 5, uv.Height - 20, val.Length * 10, 30));
+								g.DrawString (val, Font, Brushes.Black, new Rectangle (y - val.Length * 5, this.Height - 20, val.Length * 10, 30));
 							}
 						}
 						b = Math.Abs (EndY - StartY);
@@ -160,10 +167,10 @@ namespace Crosscorrelator
 						y = 0;
 						for (double x = (int)Math.Min(sx, b + sx); y >= 0; x++) {
 							double v = (x - sx);
-							y = (int)(int)(uv.Height - 1 - v * uv.Height / b);
+							y = (int)(int)(this.Height - 1 - v * this.Height / b);
 							g.DrawLine (Pens.Black, new Point (0, y), new Point (2, y));
 							if (((int)x % 5) == 0) {
-								g.DrawLine(Pens.LightGray, new Point (0, y), new Point( uv.Width - 1, y));
+								g.DrawLine(Pens.LightGray, new Point (0, y), new Point( this.Width - 1, y));
 								g.DrawLine (Pens.Black, new Point (0, y), new Point (3, y));
 							}
 							if (((int)x % ((int)(b / 10) * 5)) == 0) {
@@ -171,59 +178,61 @@ namespace Crosscorrelator
 								g.DrawString (val, Font, Brushes.Black, new Rectangle (10, y - 5, val.Length * 10, 30));
 							}
 						}
-						if (Dots.Keys.Count > 2) {
-							Collection<Point> curve = new Collection<Point> ();
-							Collection<Point> average = new Collection<Point> ();
-							double mean = 0;
-							double minx = StartX;
-							double maxx = EndX - minx;
-							double miny = StartY;
-							double maxy = EndY - miny;
-							var sorted = Dots.Keys.ToList ();
-							sorted.Sort ();
-							for (int key = 0; key < sorted.Count; key++) {
-								
+					}
+				}
+				
+				lock(Dots) {
+					if (Dots.Keys.Count > 2) {
+						Collection<Point> curve = new Collection<Point> ();
+						Collection<Point> average = new Collection<Point> ();
+						double mean = 0;
+						double minx = StartX;
+						double maxx = EndX - minx;
+						double miny = StartY;
+						double maxy = EndY - miny;
+						var sorted = Dots.Keys.ToList ();
+						sorted.Sort ();
+						for (int key = 0; key < sorted.Count; key++) {
+							if(Dots.ContainsKey(sorted[key])){
 								double u = sorted [key];
-								u *= uv.Width / (maxx != 0 ? maxx : 1);
-								u -= minx * uv.Width / maxx;
+								u *= this.Width / (maxx != 0 ? maxx : 1);
+								u -= minx * this.Width / maxx;
 
 								double v = Dots[sorted[key]];
-								v *= uv.Height / (maxy != 0 ? maxy : 1);
-								v -= miny * uv.Height / maxy;
-								v = uv.Height - v - 1;
+								v *= this.Height / (maxy != 0 ? maxy : 1);
+								v -= miny * this.Height / maxy;
+								v = this.Height - v - 1;
 
 								curve.Add (new Point ((int)u, (int)v));
 							}
-							mean = curve[0].Y;
-							int i = 0;
-							double diff = 0;
-							for(int x = 0; x < uv.Width-Smooth; x++)
-							{
-								for(int z = 0; z < Smooth; z++)
-									diff += (double)curve[i+z].Y/((double)uv.Width/(double)curve.Count);
-								if(curve[i].X<x && i < curve.Count-Smooth)
-									i++;
-								diff /= Smooth;
-								average.Add(new Point((int)x, (int)diff));
-							}
-							foreach(Point dot in curve)
-							{
-								g.DrawEllipse(Pens.Blue, new Rectangle(dot.X - 2, dot.Y - 2, 4, 4));
-							}
-							g.DrawLines (Pens.LightBlue, curve.ToArray ());
-							g.DrawLines (Pens.Red, average.ToArray ());
 						}
-						g.DrawString (LabelX, Font, Brushes.Black, new Rectangle (uv.Width - 20 - LabelX.Length * 8, uv.Height - 35, LabelX.Length * 8 + 1, 30));
-						g.DrawString (LabelY, Font, Brushes.Black, new Rectangle (20, 5, LabelY.Length * 8 + 1, 30));
+						mean = curve[0].Y;
+						int i = 0;
+						double diff = 0;
+						for(int x = 0; x < this.Width-Smooth; x++)
+						{
+							for(int z = 0; z < Smooth; z++)
+								diff += (double)curve[i+z].Y/((double)this.Height/(double)curve.Count);
+							if(curve[i].X<x && i < curve.Count-Smooth)
+								i++;
+							diff /= Smooth;
+							average.Add(new Point((int)x, (int)diff+(int)(StartY * this.Height / (EndY - StartY))));
+						}
+						foreach(Point dot in curve)
+						{
+							g.DrawEllipse(DotsPen, new Rectangle(dot.X - 2, dot.Y - 2, 4, 4));
+						}
+						g.DrawLines (DotsPen, curve.ToArray ());
+						g.DrawLines (AveragePen, average.ToArray ());
 					}
-				} catch (Exception ex) {
-					Console.WriteLine (ex.Message + Environment.NewLine + ex.StackTrace);
 				}
+				g.DrawString (LabelX, Font, Brushes.Black, new Rectangle (this.Width - 20 - LabelX.Length * 8, this.Height - 35, LabelX.Length * 8 + 1, 30));
+				g.DrawString (LabelY, Font, Brushes.Black, new Rectangle (20, 5, LabelY.Length * 8 + 1, 30));
+			} catch (Exception ex) {
+				Console.WriteLine (ex.Message + Environment.NewLine + ex.StackTrace);
 			}
-			this.Invoke ((MethodInvoker)delegate {
-				this.Image = uv;
-				Invalidate (true);
-			});
 		}
+		public Pen DotsPen { get; set; }
+		public Pen AveragePen { get; set; }
 	}
 }
