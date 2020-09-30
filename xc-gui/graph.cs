@@ -180,7 +180,8 @@ namespace Crosscorrelator
 						}
 					}
 				}
-				
+
+
 				lock(Dots) {
 					if (Dots.Keys.Count > 2) {
 						Collection<Point> curve = new Collection<Point> ();
@@ -196,14 +197,17 @@ namespace Crosscorrelator
 							if(Dots.ContainsKey(sorted[key])){
 								double u = sorted [key];
 								u *= this.Width / (maxx != 0 ? maxx : 1);
-								u -= minx * this.Width / maxx;
+								u -= minx / (maxx != 0 ? maxx : 1) * this.Width;
 
-								double v = Dots[sorted[key]];
-								v *= this.Height / (maxy != 0 ? maxy : 1);
-								v -= miny * this.Height / maxy;
+								double v = Dots[sorted[key]] / (maxy != 0 ? maxy : 1) * this.Height;
+								v -= miny / (maxy != 0 ? maxy : 1) * this.Height;
 								v = this.Height - v - 1;
 
-								curve.Add (new Point ((int)u, (int)v));
+								try {
+									curve.Add (new Point ((int)u, (int)v));
+								} catch (Exception ex) {
+									Console.WriteLine (ex.Message + Environment.NewLine + ex.StackTrace);
+								}
 							}
 						}
 						mean = curve[0].Y;

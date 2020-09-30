@@ -48,9 +48,9 @@ namespace Crosscorrelator
 		[DllImport("ahp_xc")]
 		public extern static void xc_set_frequency_divider(byte value);
 		[DllImport("ahp_xc")]
-		public extern static void xc_scan_autocorrelations(ulong[] spectrum, ref double percent, ref int interrupt);
+		public extern static void xc_scan_autocorrelations(correlation[] autocorrelations, ref double percent, ref int interrupt);
 		[DllImport("ahp_xc")]
-		public extern static void xc_scan_crosscorrelations(ulong[] crosscorrelations, ref double percent, ref int interrupt);
+		public extern static void xc_scan_crosscorrelations(correlation[] crosscorrelations, ref double percent, ref int interrupt);
 		[DllImport("ahp_xc")]
 		public extern static void xc_get_packet(ulong[] counts, ulong[] autocorrelations, ulong[] correlations);
 		[DllImport("ahp_xc")]
@@ -77,6 +77,13 @@ namespace Crosscorrelator
 		ENABLE_CAPTURE = 13
 	};
 
+	[StructLayout(LayoutKind.Sequential)]
+	public struct correlation {
+		public ulong correlations;
+		public ulong counts;
+		public double coherence;
+	};
+
 	public enum OperatingMode {
 		Counter = 0,
 		Autocorrelator = 1,
@@ -85,10 +92,10 @@ namespace Crosscorrelator
 
 	public class PacketReceivedEventArgs : EventArgs
 	{
-		public ulong[] Counts;
-		public ulong[] Lines;
-		public ulong[] Correlations;
-		public PacketReceivedEventArgs(ulong [] counts, ulong [] lines,ulong [] correlations)
+		public uint[] Counts;
+		public uint[] Lines;
+		public uint[] Correlations;
+		public PacketReceivedEventArgs(uint [] counts, uint [] lines,uint [] correlations)
 		{
 			Counts = counts;
 			Lines = lines;
@@ -98,10 +105,10 @@ namespace Crosscorrelator
 
 	public class SweepUpdateEventArgs : EventArgs
 	{
-		public List<ulong> Counts;
+		public List<double> Counts;
 		public int Index;
 		public OperatingMode Mode;
-		public SweepUpdateEventArgs(int index, List<ulong> counts, OperatingMode mode)
+		public SweepUpdateEventArgs(int index, List<double> counts, OperatingMode mode)
 		{
 			Mode = mode;
 			Index = index;
@@ -128,10 +135,11 @@ namespace Crosscorrelator
 		public int BitsPerSample { get { return libxc.xc_get_bps(); } }
 		public int DelaySize { get { return libxc.xc_get_delaysize(); } }
 		public int BaudRate { get { return libxc.xc_get_baudrate(); } }
+		public int FrameNumber { get; set; }
 
-		public List<ulong>[] Counts;
-		ulong[] Autocorrelations;
-		ulong[] Crosscorrelations;
+		public List<double>[] Counts;
+		correlation[] Autocorrelations;
+		correlation[] Crosscorrelations;
 
 		Thread _readThread;
 		Timer _timer;
@@ -162,11 +170,11 @@ namespace Crosscorrelator
 			if (0 != libxc.xc_connect (comport))
 				return;
 			if (0 == libxc.xc_get_properties ()) {
-				Counts = new List<ulong>[NumLines];
-				Autocorrelations = new ulong[NumLines * DelaySize];
-				Crosscorrelations = new ulong[NumBaselines * (1+DelaySize*2)];
+				Counts = new List<double>[NumLines];
+				Autocorrelations = new correlation[NumLines * DelaySize];
+				Crosscorrelations = new correlation[NumBaselines * (1+DelaySize*2)];
 				for (int l = 0; l < NumLines; l++) {
-					Counts [l] = new List<ulong> ();
+					Counts [l] = new List<double> ();
 				}
 				_connected = true;
 				_readThread.Start ();
@@ -191,20 +199,38 @@ namespace Crosscorrelator
 					return;
 				if (OperatingMode == OperatingMode.Counter) {
 					for (int l = 0; l < NumLines; l++) {
+						double[] counts = new double[Counts [l].Count];
+						Array.Copy (Counts [l].ToArray (), counts, Counts [l].Count);
+						for (int x = 0; x < counts.Length; x++) {
+							try {
+								counts [x] /= PacketTime;
+							} catch {
+							}
+						}
 						if (Counts [l] != null)
-							SweepUpdate (this, new SweepUpdateEventArgs (l, Counts [l], OperatingMode));
+							SweepUpdate (this, new SweepUpdateEventArgs (l, counts.ToList (), OperatingMode));
 					}
 				} else if (OperatingMode == OperatingMode.Autocorrelator) {
-					for (int l = 0; l < NumLines; l++) {
-						ulong[] autocorrelations = new ulong[DelaySize];
-						Array.Copy (Autocorrelations, l * DelaySize, autocorrelations, 0, DelaySize);
-						SweepUpdate (this, new SweepUpdateEventArgs (l, autocorrelations.ToList (), OperatingMode));
+					for (int i = 0; i < NumLines; i++) {
+						double[] correlations = new double[DelaySize];
+						for (int x = 1, y = i * DelaySize + 1; x < DelaySize; x++, y++) {
+							try {
+								correlations [x] = (double)Autocorrelations [y].coherence;
+							} catch {
+							}
+						}
+						SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode));
 					}
 				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
 					for (int i = 0; i < NumBaselines; i++) {
-						ulong[] crosscorrelations = new ulong[DelaySize * 2 + 1];
-						Array.Copy (Crosscorrelations, i * (DelaySize * 2 + 1), crosscorrelations, 0, DelaySize * 2 + 1);
-						SweepUpdate (this, new SweepUpdateEventArgs (i, crosscorrelations.ToList (), OperatingMode));
+						double[] correlations = new double[DelaySize * 2 + 1];
+						for (int x = 1, y = i * (DelaySize * 2 + 1) + 1; x < DelaySize * 2 + 1; x++, y++) {
+							try {
+								correlations [x] = (double)Crosscorrelations [y].coherence;
+							} catch {
+							}
+						}
+						SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode));
 					}
 				}
 			}
@@ -213,10 +239,10 @@ namespace Crosscorrelator
 		void ReadThread()
 		{
 			ThreadsRunning = true;
-			ulong[] counts = new ulong[NumLines];
 			while(ThreadsRunning) {
 				percent = 0;
 				if (OperatingMode == OperatingMode.Counter) {
+					ulong[] counts = new ulong[NumLines];
 					libxc.xc_get_packet (counts, null, null);
 					for (int l = 0; l < NumLines; l++) {
 						Counts [l].Add (counts [l]);
@@ -226,6 +252,7 @@ namespace Crosscorrelator
 				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
 					libxc.xc_scan_crosscorrelations (Crosscorrelations, ref percent, ref _Reading);
 				}
+				FrameNumber++;
 			}
 		}
 
@@ -235,6 +262,7 @@ namespace Crosscorrelator
 				return;
 			libxc.xc_enable_capture (1);
 			Reading = true;
+			FrameNumber = 1;
 		}
 
 		public void DisableCapture()
