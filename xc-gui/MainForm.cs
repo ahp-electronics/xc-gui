@@ -139,7 +139,7 @@ namespace Crosscorrelator
 							chart[x].DotsPen = pen;
 							chart [x].StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
 							chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
-							chart [x].EndY = 1.2;
+							chart [x].EndY = 2.2;
 							chart [x].StartY = -0.2;
 						}
 						chart [0].LabelX = "Lag (ns)";
@@ -353,23 +353,20 @@ namespace Crosscorrelator
 				return;
 			}
 			int index2 = e.Index;
-			if (e.Mode == OperatingMode.Crosscorrelator) {
-				int index1 = correlator.NumLines;
-				while (index2 >= index1) {
-					index2 -= index1;
-					index1--;
-				}
-				index1 = correlator.NumLines - index1;
-				if (line [index1].SelectedIndex > 2 || line [index1].SelectedIndex < 1) {
-					correlator.SweepUpdate += Correlator_SweepUpdate;
-					return;
-				}
+			int index1 = correlator.NumLines;
+			while (index2 >= index1) {
+				index2 -= index1--;
 			}
+			index1 = correlator.NumLines - index1;
 			if (line [index2].SelectedIndex > 2 || line [index2].SelectedIndex < 1) {
 				correlator.SweepUpdate += Correlator_SweepUpdate;
 				return;
 			}
 			if (e.Mode == OperatingMode.Crosscorrelator) {
+				if (line [index1].SelectedIndex > 2 || line [index1].SelectedIndex < 1) {
+					correlator.SweepUpdate += Correlator_SweepUpdate;
+					return;
+				}
 				int idx = e.Index;
 				try {
 					var values = e.Counts;
@@ -418,6 +415,8 @@ namespace Crosscorrelator
 						}
 					});
 					for (idx = 0; idx < correlator.NumLines; idx++) {
+						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
+							continue;
 						double diff = (chart [idx].Dots.Values.Max () - chart [idx].Dots.Values.Min ()) * 0.2;
 						diff = (diff == 0 ? 1 : diff);
 						chart [idx].EndY = chart [idx].Dots.Values.Max () + diff;
@@ -426,13 +425,17 @@ namespace Crosscorrelator
 					double ysdiff = chart [0].StartY;
 					double yediff = chart [0].EndY;
 
-					for (int x = 0; x < correlator.NumLines; x++) {
-						ysdiff = Math.Min (ysdiff, chart [x].StartY);
-						yediff = Math.Max (yediff, chart [x].EndY);
+					for (idx = 0; idx < correlator.NumLines; idx++) {
+						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
+							continue;
+						ysdiff = Math.Min (ysdiff, chart [idx].StartY);
+						yediff = Math.Max (yediff, chart [idx].EndY);
 					}
-					for (int x = 0; x < correlator.NumLines; x++) {
-						chart [x].StartY = ysdiff;
-						chart [x].EndY = yediff;
+					for (idx = 0; idx < correlator.NumLines; idx++) {
+						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
+							continue;
+						chart [idx].StartY = ysdiff;
+						chart [idx].EndY = yediff;
 					}
 				} catch {
 				}

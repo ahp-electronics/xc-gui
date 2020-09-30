@@ -213,9 +213,9 @@ namespace Crosscorrelator
 				} else if (OperatingMode == OperatingMode.Autocorrelator) {
 					for (int i = 0; i < NumLines; i++) {
 						double[] correlations = new double[DelaySize];
-						for (int x = 1, y = i * DelaySize + 1; x < DelaySize; x++, y++) {
+						for (int x = 0, y = i * DelaySize; x < DelaySize; x++, y++) {
 							try {
-								correlations [x] = (double)Autocorrelations [y].coherence;
+								correlations [x] = Autocorrelations [y].coherence;
 							} catch {
 							}
 						}
@@ -224,9 +224,9 @@ namespace Crosscorrelator
 				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
 					for (int i = 0; i < NumBaselines; i++) {
 						double[] correlations = new double[DelaySize * 2 + 1];
-						for (int x = 1, y = i * (DelaySize * 2 + 1) + 1; x < DelaySize * 2 + 1; x++, y++) {
+						for (int x = 0, y = i * (DelaySize * 2 + 1); x < DelaySize * 2 + 1; x++, y++) {
 							try {
-								correlations [x] = (double)Crosscorrelations [y].coherence;
+								correlations [x] = Crosscorrelations [y].coherence * 2.0;
 							} catch {
 							}
 						}
