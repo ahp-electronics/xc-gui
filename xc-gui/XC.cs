@@ -9,6 +9,11 @@ using System.Linq;
 
 namespace Crosscorrelator
 {
+	[StructLayout(LayoutKind.Sequential)]
+	public struct complex {
+		public double real;
+		public double imaginary;
+	};
 
 	class libxc {
 		[DllImport("ahp_xc")]
@@ -55,7 +60,17 @@ namespace Crosscorrelator
 		public extern static void xc_get_packet(ulong[] counts, ulong[] autocorrelations, ulong[] correlations);
 		[DllImport("ahp_xc")]
 		public extern static int xc_send_command(it_cmd c, byte value);
-	};
+		[DllImport("fftw3")]
+		public extern static IntPtr fftw_plan_dft_r2c(int rank, int[] n, double[] input, complex[] output, uint flags);
+		[DllImport("fftw3")]
+		public extern static IntPtr fftw_plan_dft_c2r(int rank, int[] n, complex[] input, double[] output, uint flags);
+		[DllImport("fftw3")]
+		public extern static void fftw_execute(IntPtr plan);
+		[DllImport("fftw3")]
+		public extern static void fftw_destroy_plan(IntPtr plan);
+		[DllImport("fftw3")]
+		public extern static void fftw_cleanup();
+		};
 
 	public enum baud_rate : int {
 		R_57600 = 0,
@@ -88,6 +103,8 @@ namespace Crosscorrelator
 		Counter = 0,
 		Autocorrelator = 1,
 		Crosscorrelator = 2,
+		InverseAutocorrelator = 3,
+		InverseCrosscorrelator = 4,
 	};
 
 	public class PacketReceivedEventArgs : EventArgs
@@ -141,8 +158,8 @@ namespace Crosscorrelator
 		correlation[] Autocorrelations;
 		correlation[] Crosscorrelations;
 
-		Thread _readThread;
 		Timer _timer;
+		Thread _readthread;
 		bool ThreadsRunning;
 		bool _connected;
 		bool Reading { get { return (_Reading == 0); } set { _Reading = (value ? 0 : 1); } } 
@@ -155,7 +172,7 @@ namespace Crosscorrelator
 
 		public XC ()
 		{
-			_readThread = new Thread (ReadThread);
+			_readthread = new Thread (ReadThread);
 			_timer = new Timer (TimerHit);
 		}
 
@@ -167,9 +184,11 @@ namespace Crosscorrelator
 		public void Connect(string comport)
 		{
 			_connected = false;
-			if (0 != libxc.xc_connect (comport))
+			int err = libxc.xc_connect (comport);
+			if (0 != err)
 				return;
-			if (0 == libxc.xc_get_properties ()) {
+			err = libxc.xc_get_properties ();
+			if (0 == err) {
 				Counts = new List<double>[NumLines];
 				Autocorrelations = new correlation[NumLines * DelaySize];
 				Crosscorrelations = new correlation[NumBaselines * (1+DelaySize*2)];
@@ -177,7 +196,8 @@ namespace Crosscorrelator
 					Counts [l] = new List<double> ();
 				}
 				_connected = true;
-				_readThread.Start ();
+				ThreadsRunning = true;
+				_readthread.Start();
 				_timer.Change (0, 1000);
 			}
 			if (Connected != null)
@@ -186,10 +206,11 @@ namespace Crosscorrelator
 
 		public void Disconnect()
 		{
-			libxc.xc_disconnect ();
 			ThreadsRunning = false;
-			if(((int)_readThread.ThreadState &((int)(ThreadState.Aborted|ThreadState.Stopped|ThreadState.Suspended|ThreadState.Unstarted))) == 0)
-				_readThread.Join ();
+			_readthread.Join ();
+			_timer.Change (0, Timeout.Infinite);
+			_timer.Dispose ();
+			libxc.xc_disconnect ();
 		}
 
 		void TimerHit(object state)
@@ -199,38 +220,11 @@ namespace Crosscorrelator
 					return;
 				if (OperatingMode == OperatingMode.Counter) {
 					for (int l = 0; l < NumLines; l++) {
-						double[] counts = new double[Counts [l].Count];
-						Array.Copy (Counts [l].ToArray (), counts, Counts [l].Count);
-						for (int x = 0; x < counts.Length; x++) {
-							try {
-								counts [x] /= PacketTime;
-							} catch {
-							}
+						if (Counts [l].Count > 0) {
+							double[] counts = Counts [l].ToArray();
+							if (SweepUpdate != null)
+								SweepUpdate (this, new SweepUpdateEventArgs (l, counts.ToList (), OperatingMode.Counter));
 						}
-						if (Counts [l] != null)
-							SweepUpdate (this, new SweepUpdateEventArgs (l, counts.ToList (), OperatingMode));
-					}
-				} else if (OperatingMode == OperatingMode.Autocorrelator) {
-					for (int i = 0; i < NumLines; i++) {
-						double[] correlations = new double[DelaySize];
-						for (int x = 0, y = i * DelaySize; x < DelaySize; x++, y++) {
-							try {
-								correlations [x] = Autocorrelations [y].coherence;
-							} catch {
-							}
-						}
-						SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode));
-					}
-				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
-					for (int i = 0; i < NumBaselines; i++) {
-						double[] correlations = new double[DelaySize * 2 + 1];
-						for (int x = 0, y = i * (DelaySize * 2 + 1); x < DelaySize * 2 + 1; x++, y++) {
-							try {
-								correlations [x] = Crosscorrelations [y].coherence * 2.0;
-							} catch {
-							}
-						}
-						SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode));
 					}
 				}
 			}
@@ -239,7 +233,7 @@ namespace Crosscorrelator
 		void ReadThread()
 		{
 			ThreadsRunning = true;
-			while(ThreadsRunning) {
+			while (ThreadsRunning) {
 				percent = 0;
 				if (OperatingMode == OperatingMode.Counter) {
 					ulong[] counts = new ulong[NumLines];
@@ -249,8 +243,56 @@ namespace Crosscorrelator
 					}
 				} else if (OperatingMode == OperatingMode.Autocorrelator) {
 					libxc.xc_scan_autocorrelations (Autocorrelations, ref percent, ref _Reading);
+					double[] correlations = new double[DelaySize];
+					complex[] spectrum = new complex[DelaySize];
+					for (int i = 0; i < NumLines; i++) {
+						for (int x = 0, y = i * DelaySize; x < DelaySize; x++, y++) {
+							try {
+								correlations [x] = Autocorrelations [y].coherence;
+								spectrum [x].real = Autocorrelations [y].coherence;
+								spectrum [x].imaginary = Autocorrelations [y].coherence;
+							} catch {
+							}
+						}
+						if (SweepUpdate != null)
+							SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.Autocorrelator));
+						IntPtr plan = libxc.fftw_plan_dft_c2r (1, new int[] { DelaySize }, spectrum, correlations, 0);
+						libxc.fftw_execute (plan);
+						libxc.fftw_destroy_plan (plan);
+						for (int x = 0; x < DelaySize / 2; x++) {
+							double tmp = correlations [x];
+							correlations [x] = correlations [x + DelaySize / 2];
+							correlations [x + DelaySize / 2] = tmp;
+						}
+						if (SweepUpdate != null)
+							SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.InverseAutocorrelator));
+					}
 				} else if (OperatingMode == OperatingMode.Crosscorrelator) {
 					libxc.xc_scan_crosscorrelations (Crosscorrelations, ref percent, ref _Reading);
+					for (int i = 0; i < NumBaselines; i++) {
+						double[] correlations = new double[DelaySize * 2 + 1];
+						complex[] spectrum = new complex[DelaySize * 2 + 1];
+						for (int x = 0, y = i * (DelaySize * 2 + 1); x < DelaySize * 2 + 1; x++, y++) {
+							try {
+								correlations[x] = Crosscorrelations [y].coherence;
+								spectrum[x].real = Crosscorrelations [y].coherence;
+								spectrum[x].imaginary = Crosscorrelations [y].coherence;
+							} catch {
+							}
+						}
+						if (SweepUpdate != null)
+							SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.Crosscorrelator));
+						IntPtr plan = libxc.fftw_plan_dft_c2r(1, new int[] {DelaySize * 2 + 1}, spectrum, correlations, 0);
+						libxc.fftw_execute (plan);
+						libxc.fftw_destroy_plan (plan);
+						for (int x = 0; x < DelaySize; x++) {
+							double tmp = correlations [x];
+							correlations [x] = correlations [x + DelaySize + 1];
+							correlations [x + DelaySize + 1] = tmp;
+						}
+						if (SweepUpdate != null)
+							SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.InverseCrosscorrelator));
+					}
 				}
 				FrameNumber++;
 			}
@@ -283,7 +325,10 @@ namespace Crosscorrelator
 
 		public void SetFrequencyDivider(byte divider)
 		{
+			bool tmp = Reading;
+			Reading = false;
 			libxc.xc_set_frequency_divider (divider);
+			Reading = Reading;
 		}
 	}
 }

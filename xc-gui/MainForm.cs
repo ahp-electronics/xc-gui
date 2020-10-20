@@ -18,6 +18,7 @@ namespace Crosscorrelator
 		Button start = new Button ();
 		Button stop = new Button ();
 		Graph[] chart;
+		Graph charts;
 		ComboBox[] line;
 		XC correlator;
 		double TimeScale = 10.0;
@@ -63,8 +64,18 @@ namespace Crosscorrelator
 					counts [x] = new double[60];
 					lines [x] = new double[correlator.DelaySize];
 				}
+				charts = new Graph ();
+				charts.Size = new Size (panel.Width-30, panel.Height);;
+				charts.Location = new Point (0, 0);
+				charts.StartX = 1;
+				charts.StartY = 0;
+				charts.EndX = TimeScale;
+				charts.EndY = 1.0;
 				for (int x = 0; x < correlator.NumBaselines; x++) {
 					chart [x] = new Graph ();
+					chart [x].BackColor = Color.Transparent;
+					chart [x].ShowScale = false;
+					chart [x].DrawAverage = true;
 					chart [x].Size = new Size (panel.Width-30, panel.Height);;
 					chart [x].Location = new Point (0, 0);
 					chart [x].StartX = 1;
@@ -72,15 +83,13 @@ namespace Crosscorrelator
 					chart [x].EndX = TimeScale;
 					chart [x].EndY = 1.0;
 					if (x == 0) {
-						panel.Controls.Add (chart [x]);
+						charts.Controls.Add (chart [x]);
 					} else {
-						chart [x].BackColor = Color.Transparent;
-						chart [x].ShowScale = false;
 						chart [x - 1].Controls.Add (chart [x]);
 					}
 				}
 				this.Invoke ((MethodInvoker)delegate {
-					panel.Invalidate(true);
+					charts.Invalidate(true);
 				});
 				start = new Button ();
 				start.Size = new Size (80, 23);
@@ -116,8 +125,12 @@ namespace Crosscorrelator
 							chart [x].EndY = 1.2;
 							chart [x].StartY = -0.2;
 						}
-						chart [0].LabelX = "Time (s)";
-						chart [0].LabelY = "Counts";
+						charts.StartX = 0;
+						charts.EndX = 10;
+						charts.EndY = 1.2;
+						charts.StartY = -0.2;
+						charts.LabelX = "Time (s)";
+						charts.LabelY = "Counts";
 						break;
 					case OperatingMode.Autocorrelator:
 						for (int x = 0; x < correlator.NumLines; x++) {
@@ -129,8 +142,12 @@ namespace Crosscorrelator
 							chart [x].EndY = 1.2;
 							chart [x].StartY = -0.2;
 						}
-						chart [0].LabelX = "Delay (ns)";
-						chart [0].LabelY = "Coherence ratio 0/n";
+						charts.StartX = 0;
+						charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+						charts.EndY = 1.2;
+						charts.StartY = -0.2;
+						charts.LabelX = "Delay (ns)";
+						charts.LabelY = "Coherence ratio 0/n";
 						break;
 					case OperatingMode.Crosscorrelator:
 						for (int x = 0; x < correlator.NumBaselines; x++) {
@@ -142,15 +159,20 @@ namespace Crosscorrelator
 							chart [x].EndY = 2.2;
 							chart [x].StartY = -0.2;
 						}
-						chart [0].LabelX = "Lag (ns)";
-						chart [0].LabelY = "Coherence ratio n1/n2";
+						charts.StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+						charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+						charts.EndY = 2.2;
+						charts.StartY = -0.2;
+						charts.LabelX = "Lag (ns)";
+						charts.LabelY = "Coherence ratio n1/n2";
 						break;
 					}
 					for(int x = 0; x < chart.Length; x++) {
 						chart[x].Dots.Clear();
 					}
-					panel.Invalidate(true);
+					charts.Invalidate(true);
 				};
+				panel.Controls.Add (charts);
 				mode.SelectedIndex = 0;
 				Controls.Add (mode);
 				label = new Label ();
@@ -222,7 +244,7 @@ namespace Crosscorrelator
 					correlator.DisableCapture ();
 					start.Text = "Run";
 				}
-				panel.Invalidate(true);
+				charts.Invalidate(true);
 				start.Invalidate (true);
 			});
 			start.Click += button_Click;
@@ -238,8 +260,8 @@ namespace Crosscorrelator
 				case OperatingMode.Counter:
 				case OperatingMode.Autocorrelator:
 					for (int x = 0; x < correlator.NumLines; x++) {
-						chart [x].EndX = TimeScale / (double)updown.Value;
-						chart [x + correlator.NumLines * 2].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency) / (double)updown.Value;
+						chart [x].StartX = 0;
+						chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency) / (double)updown.Value;
 					}
 					break;
 				case OperatingMode.Crosscorrelator:
@@ -269,8 +291,9 @@ namespace Crosscorrelator
 			for (int x = 0; x < chart.Length; x++) {
 				chart [x].Size = new Size (panel.Width-30, panel.Height);
 			}
+			charts.Size = new Size (panel.Width-30, panel.Height);
 			this.Invoke ((MethodInvoker)delegate {
-				panel.Invalidate(true);
+				charts.Invalidate(true);
 			});
 
 			this.Resize += MainForm_Resize;
@@ -304,16 +327,21 @@ namespace Crosscorrelator
 					chart [x].StartX = 0;
 					chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
 				}
+
+				charts.StartX = 0;
+				charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
 				break;
 			case OperatingMode.Crosscorrelator:
 				for (int x = 0; x < correlator.NumBaselines; x++) {
 					chart [x].StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
 					chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
 				}
+				charts.StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+				charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
 				break;
 			}
 			this.Invoke ((MethodInvoker)delegate {
-				panel.Invalidate (true);
+				charts.Invalidate (true);
 			});
 			updown.ValueChanged += Freqdiv_ValueChanged;
 		}
@@ -331,6 +359,7 @@ namespace Crosscorrelator
 			port.Location = new Point (80, 3);
 			port.Items.AddRange (SerialPort.GetPortNames ());
 			port.SelectedIndex = 0;
+			port.Click += Port_Click;
 			port.SelectedIndexChanged += Port_SelectedIndexChanged;
 			Controls.Add (port);
 		}
@@ -338,9 +367,17 @@ namespace Crosscorrelator
 		void Port_SelectedIndexChanged (object sender, EventArgs e)
 		{
 			ComboBox combo = (ComboBox)sender;
-			combo.SelectedIndexChanged -= Line_SelectedIndexChanged;
+			combo.SelectedIndexChanged -= Port_SelectedIndexChanged;
 			correlator.Connect (combo.SelectedItem.ToString ());
-			combo.SelectedIndexChanged += Line_SelectedIndexChanged;
+			combo.SelectedIndexChanged += Port_SelectedIndexChanged;
+		}
+
+		void Port_Click (object sender, EventArgs e)
+		{
+			ComboBox combo = (ComboBox)sender;
+			combo.Click -= Port_Click;
+			combo.Items.AddRange (SerialPort.GetPortNames ());
+			combo.Click += Port_Click;
 		}
 
 		double[][]counts, lines;
@@ -397,6 +434,31 @@ namespace Crosscorrelator
 						} catch {
 						}
 					});
+					for (idx = 0; idx < correlator.NumLines; idx++) {
+						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
+							continue;
+						double diff = (chart [idx].Dots.Values.Max () - chart [idx].Dots.Values.Min ()) * 0.2;
+						diff = (diff == 0 ? 1 : diff);
+						chart [idx].EndY = chart [idx].Dots.Values.Max () + diff;
+						chart [idx].StartY = chart [idx].Dots.Values.Min () - diff;
+					}
+					double ysdiff = double.MaxValue;
+					double yediff = 0;
+
+					for (idx = 0; idx < correlator.NumLines; idx++) {
+						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
+							continue;
+						ysdiff = Math.Min (ysdiff, chart [idx].StartY);
+						yediff = Math.Max (yediff, chart [idx].EndY);
+					}
+					for (idx = 0; idx < correlator.NumLines; idx++) {
+						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
+							continue;
+						chart [idx].StartY = ysdiff;
+						chart [idx].EndY = yediff;
+					}
+					charts.StartY = ysdiff;
+					charts.EndY = yediff;
 				} catch {
 				}
 			} else if (e.Mode == OperatingMode.Counter) {
@@ -422,8 +484,8 @@ namespace Crosscorrelator
 						chart [idx].EndY = chart [idx].Dots.Values.Max () + diff;
 						chart [idx].StartY = chart [idx].Dots.Values.Min () - diff;
 					}
-					double ysdiff = chart [0].StartY;
-					double yediff = chart [0].EndY;
+					double ysdiff = double.MaxValue;
+					double yediff = 0;
 
 					for (idx = 0; idx < correlator.NumLines; idx++) {
 						if (line [idx].SelectedIndex > 2 || line [idx].SelectedIndex < 1)
@@ -437,11 +499,14 @@ namespace Crosscorrelator
 						chart [idx].StartY = ysdiff;
 						chart [idx].EndY = yediff;
 					}
-				} catch {
+					charts.StartY = ysdiff;
+					charts.EndY = yediff;
+				} catch (Exception ex) {
+					Console.WriteLine (ex.Message + Environment.NewLine + ex.StackTrace);
 				}
 			}
 			this.Invoke ((MethodInvoker)delegate {
-				panel.Invalidate (true);
+				charts.Invalidate (true);
 			});
 			correlator.SweepUpdate += Correlator_SweepUpdate;
 		}
