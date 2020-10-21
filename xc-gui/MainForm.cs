@@ -22,6 +22,7 @@ namespace Crosscorrelator
 		ComboBox[] line;
 		XC correlator;
 		double TimeScale = 10.0;
+		ProgressBar progress = new ProgressBar();
 
 		public MainForm ()
 		{
@@ -29,6 +30,8 @@ namespace Crosscorrelator
 			correlator.Connected += Correlator_Connected;
 			this.ClientSize = new Size (720, 480);
 			this.Shown += MainForm_Shown;
+			System.Threading.Timer timer = new System.Threading.Timer (TimerHit);
+			timer.Change (0, 1000);
 		}
 
 		void Correlator_Connected (object sender, ConnectionEventArgs e)
@@ -45,12 +48,23 @@ namespace Crosscorrelator
 				counts = new double[correlator.NumLines][];
 				lines = new double[correlator.NumLines][];
 				line = new ComboBox[correlator.NumLines];
+				Dark = new double[correlator.NumLines];
+				AutoDark = new Dictionary<double, double>[correlator.NumLines];
+				CrossDark = new Dictionary<double, double>[correlator.NumBaselines];
 				for (int x = 0; x < correlator.NumLines; x++) {
+					AutoDark [x] = new Dictionary<double, double> ();
 					label = new Label ();
 					label.Text = "Line " + (x + 1);
-					label.Size = new Size (50, 18);
+					label.Size = new Size (40, 18);
 					label.Location = new Point (20 + 160 * (x % 4), 35 + (30 * (x / 4)));
 					Controls.Add (label);
+					Button b = new Button ();
+					b.Size = new Size (20, 20);
+					b.Location = new Point (60 + 160 * (x % 4), 35 + (30 * (x / 4)));
+					b.Name = "D" + x.ToString ("D2");
+					b.BackColor = Color.Green;
+					b.Click += button_Click;
+					Controls.Add (b);
 					line[x] = new ComboBox ();
 					line[x].DropDownStyle = ComboBoxStyle.DropDownList;
 					line[x].Size = new Size (75, 23);
@@ -72,10 +86,11 @@ namespace Crosscorrelator
 				charts.EndX = TimeScale;
 				charts.EndY = 1.0;
 				for (int x = 0; x < correlator.NumBaselines; x++) {
+					CrossDark [x] = new Dictionary<double, double> ();
 					chart [x] = new Graph ();
 					chart [x].BackColor = Color.Transparent;
 					chart [x].ShowScale = false;
-					chart [x].DrawAverage = true;
+					chart [x].DrawAverage = false;
 					chart [x].Size = new Size (panel.Width-30, panel.Height);;
 					chart [x].Location = new Point (0, 0);
 					chart [x].StartX = 1;
@@ -177,8 +192,8 @@ namespace Crosscorrelator
 				Controls.Add (mode);
 				label = new Label ();
 				label.Size = new Size (75, 23);
-				label.Location = new Point (485, 5);
-				label.Text = "Sampling div.";
+				label.Location = new Point (485, 3);
+				label.Text = "Timescale";
 				Controls.Add (label);
 				NumericUpDown freqdiv;
 				freqdiv = new NumericUpDown ();
@@ -208,6 +223,12 @@ namespace Crosscorrelator
 				label.Location = new Point (165, 3);
 				label.Text = "Baudrate";
 				Controls.Add (label);
+				progress.Style = ProgressBarStyle.Continuous;
+				progress.Size = new Size (630, 5);
+				progress.Location = new Point (5, 27);
+				progress.Minimum = 0;
+				progress.Maximum = 100;
+				Controls.Add (progress);
 				ComboBox baudrate;
 				baudrate = new ComboBox ();
 				baudrate.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -234,6 +255,7 @@ namespace Crosscorrelator
 					}
 					correlator.EnableCapture ();
 					btn.Text = "Pause";
+					nframe = 1;
 				} else if (btn.Text == "Pause") {
 					correlator.DisableCapture ();
 					btn.Text = "Continue";
@@ -243,8 +265,41 @@ namespace Crosscorrelator
 				} else if (btn.Text == "Stop") {
 					correlator.DisableCapture ();
 					start.Text = "Run";
+				} else if (btn.Name.Substring (0, 1) == "D") {
+					if (btn.BackColor == Color.Red) {
+						int idx = Int32.Parse (btn.Name.Substring (1, 2));
+						switch (correlator.OperatingMode) {
+						case OperatingMode.Autocorrelator:
+							AutoDark [idx].Clear ();
+							break;
+						case OperatingMode.Counter:
+							Dark [idx] = 0;
+							break;
+						default:
+							break;
+						}
+						btn.BackColor = Color.Green;
+					} else {
+						int idx = Int32.Parse (btn.Name.Substring (1, 2));
+						if(chart [idx].Dots.Count > 0) {
+							switch (correlator.OperatingMode) {
+							case OperatingMode.Autocorrelator:
+								AutoDark [idx].Clear ();
+								foreach (KeyValuePair<double, double> pair in chart [idx].Dots) {
+									AutoDark [idx].Add(pair.Key, pair.Value);
+								}
+								break;
+							case OperatingMode.Counter:
+								Dark [idx] = chart [idx].Dots.Values.Average ();
+								break;
+							default:
+								break;
+							}
+							btn.BackColor = Color.Red;
+						}
+					}
 				}
-				charts.Invalidate(true);
+				charts.Invalidate (true);
 				start.Invalidate (true);
 			});
 			start.Click += button_Click;
@@ -295,7 +350,6 @@ namespace Crosscorrelator
 			this.Invoke ((MethodInvoker)delegate {
 				charts.Invalidate(true);
 			});
-
 			this.Resize += MainForm_Resize;
 		}
 
@@ -363,6 +417,15 @@ namespace Crosscorrelator
 			port.SelectedIndexChanged += Port_SelectedIndexChanged;
 			Controls.Add (port);
 		}
+		void TimerHit(object state)
+		{
+			if (this.IsHandleCreated) {
+				this.Invoke ((MethodInvoker)delegate {
+					progress.Value = (int)correlator.Percent;
+					progress.Invalidate(true);
+				});
+			}
+		}
 
 		void Port_SelectedIndexChanged (object sender, EventArgs e)
 		{
@@ -380,8 +443,10 @@ namespace Crosscorrelator
 			combo.Click += Port_Click;
 		}
 
+		double nframe;
 		double[][]counts, lines;
-
+		public Dictionary<double, double>[] AutoDark, CrossDark;
+		double[] Dark;
 		void Correlator_SweepUpdate(object sender, SweepUpdateEventArgs e)
 		{
 			correlator.SweepUpdate -= Correlator_SweepUpdate;
@@ -410,9 +475,12 @@ namespace Crosscorrelator
 					Parallel.For (0, correlator.DelaySize * 2, delegate(int y) {
 						try {
 							double time = (double)(y - correlator.DelaySize) * 1000000000.0 / correlator.ClockFrequency;
-							if (chart [idx].Dots.ContainsKey (time))
-								chart [idx].Dots [time] = values [y];
-							else
+							if (chart [idx].Dots.ContainsKey (time)) {
+								if(CrossDark[idx].ContainsKey(time))
+									values [y] -= CrossDark[idx][time];
+								chart [idx].Dots [time] *= nframe / (nframe++ + 1);
+								chart [idx].Dots [time] += values [y]/nframe;
+							} else
 								chart [idx].Dots.Add (time, values [y]);
 						} catch {
 						}
@@ -427,10 +495,13 @@ namespace Crosscorrelator
 					Parallel.For (0, values.Count, delegate(int y) {
 						try {
 							double time = (double)y * 1000000000.0 / correlator.ClockFrequency;
-							if (chart [idx].Dots.ContainsKey (time))
-								chart [idx].Dots [time] = values [y];
-							else
-								chart [idx].Dots.Add (time, values [y]);
+							if (chart [idx].Dots.ContainsKey (time)) {
+								if(AutoDark[idx].ContainsKey(time))
+									values [y] -= AutoDark[idx][time];
+								chart [idx].Dots [time] *= nframe / (nframe++ + 1);
+								chart [idx].Dots [time] += values [y]/nframe;
+							} else
+								chart [idx].Dots.Add (time, values [y]/nframe);
 						} catch {
 						}
 					});
@@ -469,9 +540,9 @@ namespace Crosscorrelator
 					Parallel.For (0, (int)(TimeScale / correlator.PacketTime), delegate(int y) {
 						try {
 							double time = (double)y * correlator.PacketTime;
-							if (chart [idx].Dots.ContainsKey (time))
-								chart [idx].Dots [time] = values [values.Count - 1 - y];
-							else
+							if (chart [idx].Dots.ContainsKey (time)) {
+								chart [idx].Dots [time] = values [values.Count - 1 - y] - Dark[idx];
+							} else
 								chart [idx].Dots.Add (time, values [values.Count - 1 - y]);
 						} catch {
 						}

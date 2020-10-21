@@ -205,11 +205,14 @@ namespace Crosscorrelator
 									u *= this.Width / maxx;
 									u -= minx / maxx * this.Width;
 
-									double v = Dots [sorted [key]] / maxy * this.Height;
-									v -= miny / maxy * this.Height;
-									v = this.Height - v - 1;
+									double v = Dots [sorted [key]] * this.Height;
+									if(v != 0) {
+										v /=  maxy;
+										v -= miny / maxy * this.Height;
+										v = this.Height - v - 1;
 
-									curve.Add (new Point ((int)u, (int)v));
+										curve.Add (new Point ((int)u, (int)v));
+									}
 								} catch (Exception ex) {
 									Console.WriteLine (ex.Message + Environment.NewLine + ex.StackTrace);
 								}
