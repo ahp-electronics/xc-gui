@@ -20,6 +20,7 @@ namespace Crosscorrelator
 		Graph[] chart;
 		Graph charts;
 		ComboBox[] line;
+		NumericUpDown freqdiv;
 		XC correlator;
 		double TimeScale = 10.0;
 		ProgressBar progress = new ProgressBar();
@@ -153,12 +154,12 @@ namespace Crosscorrelator
 							Pen pen = new Pen (Color.FromArgb ((ix >= 0 && ix < 128) ? ix + 128 : 0, (ix >= 64 && ix < 192) ? ix + 64 : 0, (ix >= 128 && ix < 256) ? ix : 0));
 							chart[x].DotsPen = pen;
 							chart [x].StartX = 0;
-							chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+							chart [x].EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 							chart [x].EndY = 1.2;
 							chart [x].StartY = -0.2;
 						}
 						charts.StartX = 0;
-						charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+						charts.EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 						charts.EndY = 1.2;
 						charts.StartY = -0.2;
 						charts.LabelX = "Delay (ns)";
@@ -169,13 +170,13 @@ namespace Crosscorrelator
 							int ix = x * 256 / correlator.NumBaselines;
 							Pen pen = new Pen (Color.FromArgb ((ix >= 0 && ix < 128) ? ix + 128 : 0, (ix >= 64 && ix < 192) ? ix + 64 : 0, (ix >= 128 && ix < 256) ? ix : 0));
 							chart[x].DotsPen = pen;
-							chart [x].StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
-							chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+							chart [x].StartX = -(correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
+							chart [x].EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 							chart [x].EndY = 2.2;
 							chart [x].StartY = -0.2;
 						}
-						charts.StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
-						charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+						charts.StartX = -(correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
+						charts.EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 						charts.EndY = 2.2;
 						charts.StartY = -0.2;
 						charts.LabelX = "Lag (ns)";
@@ -195,14 +196,13 @@ namespace Crosscorrelator
 				label.Location = new Point (485, 3);
 				label.Text = "Timescale";
 				Controls.Add (label);
-				NumericUpDown freqdiv;
 				freqdiv = new NumericUpDown ();
 				freqdiv.Size = new Size (75, 23);
 				freqdiv.Location = new Point (560, 3);
 				freqdiv.Minimum = 0;
 				freqdiv.Maximum = 63;
-				freqdiv.Value = 0;
 				freqdiv.ValueChanged += Freqdiv_ValueChanged;
+				freqdiv.Value = 0;
 				Controls.Add (freqdiv);
 				label = new Label ();
 				label.Size = new Size (75, 23);
@@ -253,8 +253,18 @@ namespace Crosscorrelator
 					for (int x = 0; x < chart.Length; x++) {
 						chart [x].Dots.Clear ();
 					}
+					switch (correlator.OperatingMode) {
+					case OperatingMode.Autocorrelator:
+					case OperatingMode.Crosscorrelator:
+						start.Enabled = false;
+						break;
+					case OperatingMode.Counter:
+						start.Text = "Pause";
+						break;
+					default:break;
+					}
+					freqdiv.Enabled = false;
 					correlator.EnableCapture ();
-					btn.Text = "Pause";
 					nframe = 1;
 				} else if (btn.Text == "Pause") {
 					correlator.DisableCapture ();
@@ -264,7 +274,17 @@ namespace Crosscorrelator
 					btn.Text = "Pause";
 				} else if (btn.Text == "Stop") {
 					correlator.DisableCapture ();
-					start.Text = "Run";
+					freqdiv.Enabled = true;
+					switch (correlator.OperatingMode) {
+					case OperatingMode.Autocorrelator:
+					case OperatingMode.Crosscorrelator:
+						start.Enabled = true;
+						break;
+					case OperatingMode.Counter:
+						start.Text = "Run";
+						break;
+					default:break;
+					}
 				} else if (btn.Name.Substring (0, 1) == "D") {
 					if (btn.BackColor == Color.Red) {
 						int idx = Int32.Parse (btn.Name.Substring (1, 2));
@@ -316,13 +336,13 @@ namespace Crosscorrelator
 				case OperatingMode.Autocorrelator:
 					for (int x = 0; x < correlator.NumLines; x++) {
 						chart [x].StartX = 0;
-						chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency) / (double)updown.Value;
+						chart [x].EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency) / (double)updown.Value;
 					}
 					break;
 				case OperatingMode.Crosscorrelator:
 					for (int x = 0; x < correlator.NumBaselines; x++) {
-						chart [x].StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency) / (double)updown.Value;
-						chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency) / (double)updown.Value;
+						chart [x].StartX = -(correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency) / (double)updown.Value;
+						chart [x].EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency) / (double)updown.Value;
 					}
 					break;
 				}
@@ -374,24 +394,23 @@ namespace Crosscorrelator
 		{
 			NumericUpDown updown = (NumericUpDown)sender;
 			updown.ValueChanged -= Freqdiv_ValueChanged;
-			correlator.SetFrequencyDivider ((byte)updown.Value);
+			correlator.TimeScale = (byte)updown.Value;
 			switch (correlator.OperatingMode) {
 			case OperatingMode.Autocorrelator:
 				for (int x = 0; x < correlator.NumLines; x++) {
 					chart [x].StartX = 0;
-					chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+					chart [x].EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 				}
-
 				charts.StartX = 0;
-				charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+				charts.EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 				break;
 			case OperatingMode.Crosscorrelator:
 				for (int x = 0; x < correlator.NumBaselines; x++) {
-					chart [x].StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
-					chart [x].EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+					chart [x].StartX = -(correlator.DelaySize * 1000000000.0 * Math.Pow(2,(double)correlator.TimeScale) / correlator.ClockFrequency);
+					chart [x].EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 				}
-				charts.StartX = -(correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
-				charts.EndX = (correlator.DelaySize * 1000000000.0 / correlator.ClockFrequency);
+				charts.StartX = -(correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
+				charts.EndX = (correlator.DelaySize * 1000000000.0 * Math.Pow(2, (double)correlator.TimeScale) / correlator.ClockFrequency);
 				break;
 			}
 			this.Invoke ((MethodInvoker)delegate {
@@ -421,7 +440,7 @@ namespace Crosscorrelator
 		{
 			if (this.IsHandleCreated) {
 				this.Invoke ((MethodInvoker)delegate {
-					progress.Value = (int)correlator.Percent;
+					progress.Value = Math.Max(progress.Minimum, Math.Min(progress.Maximum, (int)correlator.Percent));
 					progress.Invalidate(true);
 				});
 			}
@@ -478,8 +497,8 @@ namespace Crosscorrelator
 							if (chart [idx].Dots.ContainsKey (time)) {
 								if(CrossDark[idx].ContainsKey(time))
 									values [y] -= CrossDark[idx][time];
-								chart [idx].Dots [time] *= nframe / (nframe++ + 1);
-								chart [idx].Dots [time] += values [y]/nframe;
+								chart [idx].Dots [time] *= nframe / ++nframe;
+								chart [idx].Dots [time] += values [y] / nframe;
 							} else
 								chart [idx].Dots.Add (time, values [y]);
 						} catch {
@@ -494,14 +513,20 @@ namespace Crosscorrelator
 					var values = e.Counts;
 					Parallel.For (0, values.Count, delegate(int y) {
 						try {
-							double time = (double)y * 1000000000.0 / correlator.ClockFrequency;
+							double time = 1000000000.0 / correlator.ClockFrequency;
+							int x = y;
+							while(x > correlator.DelaySize) {
+								x -= correlator.DelaySize / 2;
+								time *= 2;
+							}
+							time *= (double)x;
 							if (chart [idx].Dots.ContainsKey (time)) {
 								if(AutoDark[idx].ContainsKey(time))
 									values [y] -= AutoDark[idx][time];
-								chart [idx].Dots [time] *= nframe / (nframe++ + 1);
-								chart [idx].Dots [time] += values [y]/nframe;
+								chart [idx].Dots [time] *= nframe / ++nframe;
+								chart [idx].Dots [time] = values [y] / nframe;
 							} else
-								chart [idx].Dots.Add (time, values [y]/nframe);
+								chart [idx].Dots.Add (time, values [y]);
 						} catch {
 						}
 					});

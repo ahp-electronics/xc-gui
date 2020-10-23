@@ -15,51 +15,57 @@ namespace Crosscorrelator
 		public double imaginary;
 	};
 
-	class libxc {
+	class Native {
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_baudrate();
+		public extern static int ahp_xc_get_baudrate();
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_bps();
+		public extern static int ahp_xc_get_bps();
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_nlines();
+		public extern static int ahp_xc_get_nlines();
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_nbaselines();
+		public extern static int ahp_xc_get_nbaselines();
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_delaysize();
+		public extern static int ahp_xc_get_delaysize();
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_frequency();
+		public extern static int ahp_xc_get_frequency();
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_packetsize();
+		public extern static int ahp_xc_get_packetsize();
 		[DllImport("ahp_xc")]
-		public extern static uint xc_get_packettime();
+		public extern static uint ahp_xc_get_packettime();
 		[DllImport("ahp_xc")]
-		public extern static int xc_connect(string port);
+		public extern static int ahp_xc_open(int fd);
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_properties();
+		public extern static void ahp_xc_close();
 		[DllImport("ahp_xc")]
-		public extern static void xc_disconnect();
+		public extern static int ahp_xc_connect(string port);
 		[DllImport("ahp_xc")]
-		public extern static void xc_enable_capture(int enable);
+		public extern static void ahp_xc_disconnect();
 		[DllImport("ahp_xc")]
-		public extern static void xc_select_input(int index);
+		public extern static int ahp_xc_get_properties();
 		[DllImport("ahp_xc")]
-		public extern static void xc_set_baudrate(baud_rate rate, int setterm);
+		public extern static void ahp_xc_enable_capture(int enable);
 		[DllImport("ahp_xc")]
-		public extern static void xc_set_power(int index, bool lv, bool hv);
+		public extern static void ahp_xc_select_input(int index);
 		[DllImport("ahp_xc")]
-		public extern static void xc_set_delay(int index, byte value);
+		public extern static void ahp_xc_set_baudrate(baud_rate rate, int setterm);
 		[DllImport("ahp_xc")]
-		public extern static void xc_set_line(int index, byte value);
+		public extern static void ahp_xc_set_power(int index, bool lv, bool hv);
 		[DllImport("ahp_xc")]
-		public extern static void xc_set_frequency_divider(byte value);
+		public extern static void ahp_xc_set_delay(int index, byte value);
 		[DllImport("ahp_xc")]
-		public extern static void xc_scan_autocorrelations(correlation[] autocorrelations, ref double percent, ref int interrupt);
+		public extern static void ahp_xc_set_line(int index, byte value);
 		[DllImport("ahp_xc")]
-		public extern static void xc_scan_crosscorrelations(correlation[] crosscorrelations, ref double percent, ref int interrupt);
+		public extern static void ahp_xc_set_frequency_divider(byte value);
 		[DllImport("ahp_xc")]
-		public extern static int xc_get_packet(ulong[] counts, ulong[] autocorrelations, ulong[] correlations);
+		public extern static int ahp_xc_get_frequency_divider();
 		[DllImport("ahp_xc")]
-		public extern static int xc_send_command(it_cmd c, byte value);
+		public extern static void ahp_xc_scan_autocorrelations(correlation[] autocorrelations, ref double percent, ref int interrupt);
+		[DllImport("ahp_xc")]
+		public extern static void ahp_xc_scan_crosscorrelations(correlation[] crosscorrelations, ref double percent, ref int interrupt);
+		[DllImport("ahp_xc")]
+		public extern static int ahp_xc_get_packet(ulong[] counts, ulong[] autocorrelations, ulong[] correlations);
+		[DllImport("ahp_xc")]
+		public extern static int ahp_xc_send_command(it_cmd c, byte value);
 		[DllImport("fftw3")]
 		public extern static IntPtr fftw_plan_dft_r2c(int rank, int[] n, double[] input, complex[] output, uint flags);
 		[DllImport("fftw3")]
@@ -144,14 +150,22 @@ namespace Crosscorrelator
 
 	public class XC
 	{
-		public int PacketSize  { get { return libxc.xc_get_packetsize(); } }
-		public double PacketTime  { get { return (double)libxc.xc_get_packettime() / 2000000.0; } }
-		public int NumLines { get { return libxc.xc_get_nlines(); } }
-		public int NumBaselines { get { return libxc.xc_get_nbaselines(); } }
-		public int ClockFrequency { get { return libxc.xc_get_frequency(); } }
-		public int BitsPerSample { get { return libxc.xc_get_bps(); } }
-		public int DelaySize { get { return libxc.xc_get_delaysize(); } }
-		public int BaudRate { get { return libxc.xc_get_baudrate(); } }
+		public int PacketSize  { get { return  Native.ahp_xc_get_packetsize(); } }
+		public int TimeScale  { get { return  Native.ahp_xc_get_frequency_divider(); } set { 
+				bool tmp = Reading;
+				Reading = false;
+				 Native.ahp_xc_set_frequency_divider ((byte)value);
+				Array.Resize (ref Autocorrelations, NumLines * DelaySize * (value + 2) / 2);
+				Reading = Reading;
+			}
+		}
+		public double PacketTime  { get { return (double) Native.ahp_xc_get_packettime() / 2000000.0; } }
+		public int NumLines { get { return  Native.ahp_xc_get_nlines(); } }
+		public int NumBaselines { get { return  Native.ahp_xc_get_nbaselines(); } }
+		public int ClockFrequency { get { return  Native.ahp_xc_get_frequency(); } }
+		public int BitsPerSample { get { return  Native.ahp_xc_get_bps(); } }
+		public int DelaySize { get { return  Native.ahp_xc_get_delaysize(); } }
+		public int BaudRate { get { return  Native.ahp_xc_get_baudrate(); } }
 		public int FrameNumber { get; set; }
 
 		public List<double>[] Counts;
@@ -184,13 +198,13 @@ namespace Crosscorrelator
 		public void Connect(string comport)
 		{
 			_connected = false;
-			int err = libxc.xc_connect (comport);
+			int err =  Native.ahp_xc_connect (comport);
 			if (0 != err)
 				return;
-			err = libxc.xc_get_properties ();
+			err =  Native.ahp_xc_get_properties ();
 			if (0 == err) {
 				Counts = new List<double>[NumLines];
-				Autocorrelations = new correlation[NumLines * DelaySize];
+				Autocorrelations = new correlation[NumLines * DelaySize * (TimeScale + 2) / 2];
 				Crosscorrelations = new correlation[NumBaselines * (1+DelaySize*2)];
 				for (int l = 0; l < NumLines; l++) {
 					Counts [l] = new List<double> ();
@@ -211,7 +225,7 @@ namespace Crosscorrelator
 			ThreadsRunning = false;
 			_timer.Change (0, Timeout.Infinite);
 			_timer.Dispose ();
-			libxc.xc_disconnect ();
+			 Native.ahp_xc_disconnect ();
 		}
 
 		void TimerHit(object state)
@@ -239,7 +253,7 @@ namespace Crosscorrelator
 					percent = 0;
 					if (OperatingMode == OperatingMode.Counter) {
 						ulong[] counts = new ulong[NumLines];
-						if (0 == libxc.xc_get_packet (counts, null, null)) {
+						if (0 ==  Native.ahp_xc_get_packet (counts, null, null)) {
 							for (int l = 0; l < NumLines; l++) {
 								Counts [l].Add (counts [l]);
 							}
@@ -249,13 +263,13 @@ namespace Crosscorrelator
 							}
 						}
 					} else if (OperatingMode == OperatingMode.Autocorrelator) {
-						libxc.xc_scan_autocorrelations (Autocorrelations, ref percent, ref _Reading);
-						double[] correlations = new double[DelaySize];
-						complex[] spectrum = new complex[DelaySize];
+						Native.ahp_xc_scan_autocorrelations (Autocorrelations, ref percent, ref _Reading);
+						double[] correlations = new double[Autocorrelations.Length / NumLines];
+						complex[] spectrum = new complex[correlations.Length];
 						for (int i = 0; i < NumLines; i++) {
-							for (int x = 1, y = i * DelaySize + 1; x < DelaySize; x++, y++) {
+							for (int x = 0, y = i * correlations.Length + 2; x < correlations.Length - 1; x++, y++) {
 								try {
-									correlations [x] = Autocorrelations [y].coherence;
+									correlations [x] = Math.Pow(Autocorrelations [y].coherence, 0.1);
 									spectrum [x].real = Autocorrelations [y].coherence;
 									spectrum [x].imaginary = Autocorrelations [y].coherence;
 								} catch {
@@ -263,19 +277,19 @@ namespace Crosscorrelator
 							}
 							if (SweepUpdate != null)
 								SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.Autocorrelator));
-							IntPtr plan = libxc.fftw_plan_dft_c2r (1, new int[] { DelaySize }, spectrum, correlations, 0);
-							libxc.fftw_execute (plan);
-							libxc.fftw_destroy_plan (plan);
-							for (int x = 0; x < DelaySize / 2; x++) {
+							IntPtr plan =  Native.fftw_plan_dft_c2r (1, new int[] { correlations.Length }, spectrum, correlations, 0);
+							Native.fftw_execute (plan);
+							Native.fftw_destroy_plan (plan);
+							for (int x = 0; x < correlations.Length / 2; x++) {
 								double tmp = correlations [x];
-								correlations [x] = correlations [x + DelaySize / 2];
-								correlations [x + DelaySize / 2] = tmp;
+								correlations [x] = correlations [x + correlations.Length / 2];
+								correlations [x + correlations.Length / 2] = tmp;
 							}
 							if (SweepUpdate != null)
 								SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.InverseAutocorrelator));
 						}
 					} else if (OperatingMode == OperatingMode.Crosscorrelator) {
-						libxc.xc_scan_crosscorrelations (Crosscorrelations, ref percent, ref _Reading);
+						Native.ahp_xc_scan_crosscorrelations (Crosscorrelations, ref percent, ref _Reading);
 						for (int i = 0; i < NumBaselines; i++) {
 							double[] correlations = new double[DelaySize * 2 + 1];
 							complex[] spectrum = new complex[DelaySize * 2 + 1];
@@ -289,9 +303,9 @@ namespace Crosscorrelator
 							}
 							if (SweepUpdate != null)
 								SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.Crosscorrelator));
-							IntPtr plan = libxc.fftw_plan_dft_c2r (1, new int[] { DelaySize * 2 + 1 }, spectrum, correlations, 0);
-							libxc.fftw_execute (plan);
-							libxc.fftw_destroy_plan (plan);
+							IntPtr plan =  Native.fftw_plan_dft_c2r (1, new int[] { DelaySize * 2 + 1 }, spectrum, correlations, 0);
+							 Native.fftw_execute (plan);
+							 Native.fftw_destroy_plan (plan);
 							for (int x = 0; x < DelaySize; x++) {
 								double tmp = correlations [x];
 								correlations [x] = correlations [x + DelaySize + 1];
@@ -311,33 +325,25 @@ namespace Crosscorrelator
 		{
 			if (Reading)
 				return;
-			libxc.xc_enable_capture (1);
+			 Native.ahp_xc_enable_capture (1);
 			Reading = true;
 			FrameNumber = 1;
 		}
 
 		public void DisableCapture()
 		{
-			libxc.xc_enable_capture (0);
+			 Native.ahp_xc_enable_capture (0);
 			Reading = false;
 		}
 
 		public void SetBaudRate(baud_rate rate, bool setterm = true)
 		{
-			libxc.xc_set_baudrate (rate, setterm ? 1 : 0);
+			 Native.ahp_xc_set_baudrate (rate, setterm ? 1 : 0);
 		}
 
 		public void SetLine(int line, bool lv, bool hv)
 		{
-			libxc.xc_set_power (line, lv, hv);
-		}
-
-		public void SetFrequencyDivider(byte divider)
-		{
-			bool tmp = Reading;
-			Reading = false;
-			libxc.xc_set_frequency_divider (divider);
-			Reading = Reading;
+			 Native.ahp_xc_set_power (line, lv, hv);
 		}
 	}
 }
