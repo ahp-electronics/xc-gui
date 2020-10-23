@@ -493,7 +493,13 @@ namespace Crosscorrelator
 					var values = e.Counts;
 					Parallel.For (0, correlator.DelaySize * 2, delegate(int y) {
 						try {
-							double time = (double)(y - correlator.DelaySize) * 1000000000.0 / correlator.ClockFrequency;
+							double time = 1000000000.0 / correlator.ClockFrequency;
+							int x = y - (correlator.DelaySize * (correlator.TimeScale + 2) / 2);
+							while(x > correlator.DelaySize) {
+								x -= correlator.DelaySize / 2;
+								time *= 2;
+							}
+							time *= (double)x;
 							if (chart [idx].Dots.ContainsKey (time)) {
 								if(CrossDark[idx].ContainsKey(time))
 									values [y] -= CrossDark[idx][time];

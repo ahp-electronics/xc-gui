@@ -151,11 +151,13 @@ namespace Crosscorrelator
 	public class XC
 	{
 		public int PacketSize  { get { return  Native.ahp_xc_get_packetsize(); } }
-		public int TimeScale  { get { return  Native.ahp_xc_get_frequency_divider(); } set { 
+		public int TimeScale  { get { return  Native.ahp_xc_get_frequency_divider(); }
+			set { 
 				bool tmp = Reading;
 				Reading = false;
-				 Native.ahp_xc_set_frequency_divider ((byte)value);
+				Native.ahp_xc_set_frequency_divider ((byte)value);
 				Array.Resize (ref Autocorrelations, NumLines * DelaySize * (value + 2) / 2);
+				Array.Resize (ref Crosscorrelations, NumBaselines * (DelaySize * (value + 2) + 1));
 				Reading = Reading;
 			}
 		}
@@ -205,7 +207,7 @@ namespace Crosscorrelator
 			if (0 == err) {
 				Counts = new List<double>[NumLines];
 				Autocorrelations = new correlation[NumLines * DelaySize * (TimeScale + 2) / 2];
-				Crosscorrelations = new correlation[NumBaselines * (1+DelaySize*2)];
+				Crosscorrelations = new correlation[NumBaselines * (1+DelaySize*2) * (TimeScale + 2) / 2];
 				for (int l = 0; l < NumLines; l++) {
 					Counts [l] = new List<double> ();
 				}
@@ -291,9 +293,9 @@ namespace Crosscorrelator
 					} else if (OperatingMode == OperatingMode.Crosscorrelator) {
 						Native.ahp_xc_scan_crosscorrelations (Crosscorrelations, ref percent, ref _Reading);
 						for (int i = 0; i < NumBaselines; i++) {
-							double[] correlations = new double[DelaySize * 2 + 1];
-							complex[] spectrum = new complex[DelaySize * 2 + 1];
-							for (int x = 0, y = i * (DelaySize * 2 + 1); x < DelaySize * 2 + 1; x++, y++) {
+							double[] correlations = new double[Crosscorrelations.Length / NumBaselines];
+							complex[] spectrum = new complex[correlations.Length];
+							for (int x = 0, y = i * correlations.Length; x < correlations.Length; x++, y++) {
 								try {
 									correlations [x] = Crosscorrelations [y].coherence;
 									spectrum [x].real = Crosscorrelations [y].coherence;
@@ -303,13 +305,13 @@ namespace Crosscorrelator
 							}
 							if (SweepUpdate != null)
 								SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.Crosscorrelator));
-							IntPtr plan =  Native.fftw_plan_dft_c2r (1, new int[] { DelaySize * 2 + 1 }, spectrum, correlations, 0);
+							IntPtr plan =  Native.fftw_plan_dft_c2r (1, new int[] { correlations.Length }, spectrum, correlations, 0);
 							 Native.fftw_execute (plan);
 							 Native.fftw_destroy_plan (plan);
-							for (int x = 0; x < DelaySize; x++) {
+							for (int x = 0; x < correlations.Length / 2; x++) {
 								double tmp = correlations [x];
-								correlations [x] = correlations [x + DelaySize + 1];
-								correlations [x + DelaySize + 1] = tmp;
+								correlations [x] = correlations [x + correlations.Length / 2];
+								correlations [x + correlations.Length / 2] = tmp;
 							}
 							if (SweepUpdate != null)
 								SweepUpdate (this, new SweepUpdateEventArgs (i, correlations.ToList (), OperatingMode.InverseCrosscorrelator));
