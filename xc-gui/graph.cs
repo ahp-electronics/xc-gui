@@ -22,6 +22,8 @@ using System.Windows.Forms;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading;
+using System.Linq;
 
 namespace Crosscorrelator
 {
@@ -117,12 +119,13 @@ namespace Crosscorrelator
 				if (ShowScale) {
 					try {
 						if (EndX == StartX)
-							EndX += 1;
+							EndX += 0.1;
 						if (EndY == StartY)
-							EndY += 1;
+							EndY += 0.1;
 						if (EndX > StartX) {
 							double b = Math.Abs (EndX - StartX);
 							double sx = StartX;
+							double dx = Math.Abs (EndX-StartX);
 							double exp = 0;
 							if (b < 10) {
 								for (exp = 0; b < 10; exp--) {
@@ -145,7 +148,7 @@ namespace Crosscorrelator
 									g.DrawLine (Pens.Black, new Point (y, this.Height - 1), new Point (y, this.Height - 4));
 								}
 								if (((int)x % ((int)(b / 10) * 5)) == 0) {
-									string val = (x * Math.Pow (10, exp)).ToString ();
+									string val = (x * Math.Pow (10, exp)).ToString ("E2");
 									g.DrawString (val, Font, Brushes.Black, new Rectangle (y - val.Length * 5, this.Height - 20, val.Length * 10, 30));
 								}
 							}
@@ -174,7 +177,7 @@ namespace Crosscorrelator
 									g.DrawLine (Pens.Black, new Point (0, y), new Point (3, y));
 								}
 								if (((int)x % ((int)(b / 10) * 5)) == 0) {
-									string val = (x * Math.Pow (10, exp)).ToString ();
+									string val = (x * Math.Pow (10, exp)).ToString ("E2");
 									g.DrawString (val, Font, Brushes.Black, new Rectangle (10, y - 5, val.Length * 10, 30));
 								}
 							}
@@ -190,7 +193,7 @@ namespace Crosscorrelator
 				lock (Dots) {
 					try {
 						if (Dots.Count > 2) {
-							Collection<Point> curve = new Collection<Point> ();
+							Collection<Point> points = new Collection<Point> ();
 							Collection<Point> average = new Collection<Point> ();
 							double mean = 0;
 							double minx = StartX;
@@ -199,7 +202,9 @@ namespace Crosscorrelator
 							double maxy = EndY - miny;
 							if(minx == maxx) maxx += 0.1;
 							if(miny == maxy) maxy += 0.1;
-							var sorted = Dots.Keys.ToArray ();
+							int len = Dots.Count;
+							double[] sorted = new double[len];
+							sorted = Dots.Keys.ToArray();
 							Array.Sort(sorted);
 							for (int key = 0; key < sorted.Length; key++) {
 								if (Dots.ContainsKey (sorted [key])) {
@@ -213,29 +218,36 @@ namespace Crosscorrelator
 											v /=  maxy;
 											v -= miny / maxy * this.Height;
 											v = this.Height - v - 1;
-											curve.Add (new Point ((int)u, (int)v));
+											points.Add (new Point ((int)u, (int)v));
 										}
 									} catch (Exception ex) {
 										Console.WriteLine (ex.Message + Environment.NewLine + ex.StackTrace);
 									}
 								}
 							}
-							foreach (Point dot in curve) {
+							foreach (Point dot in points) {
 								g.DrawEllipse (DotsPen, new Rectangle (dot.X - 2, dot.Y - 2, 4, 4));
 							}
-							g.DrawLines (DotsPen, curve.ToArray ());
-							if (DrawAverage) {
-								mean = curve [0].Y;
-								int i = Smooth;
-								double diff = curve [0].Y;
-								for (int x = Smooth; x < this.Width - Smooth; x++) {
-									for (int z = -Smooth; z < Smooth; z++)
-										diff += (double)curve [i + z].Y * (double)Smooth/Math.Abs(Smooth - z);
-									if (curve [i].X < x && i < curve.Count - Smooth)
-										i++;
-									average.Add (new Point ((int)x, (int)diff));
+							len = points.Count;
+							Point[] lines = new Point[len];
+							lines = points.ToArray();
+							if(lines != null) {
+								if(lines.Length > 0) {
+									g.DrawLines (DotsPen, lines);
+									if (DrawAverage) {
+										mean = points [0].Y;
+										int i = Smooth;
+										double diff = points [0].Y;
+										for (int x = Smooth; x < this.Width - Smooth; x++) {
+											for (int z = -Smooth; z < Smooth; z++)
+												diff += (double)points [i + z].Y * (double)Smooth/Math.Abs(Smooth - z);
+											if (points [i].X < x && i < points.Count - Smooth)
+												i++;
+											average.Add (new Point ((int)x, (int)diff));
+										}
+										g.DrawLines (AveragePen, average.ToArray ());
+									}
 								}
-								g.DrawLines (AveragePen, average.ToArray ());
 							}
 						}
 					} catch (Exception ex) {
