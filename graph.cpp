@@ -21,7 +21,7 @@ Graph::~Graph()
     view->~QChartView();
 }
 
-void Graph::addSeries(QLineSeries *series)
+void Graph::addSeries(QAbstractSeries *series)
 {
     chart->addSeries(series);
     chart->createDefaultAxes();
@@ -30,7 +30,7 @@ void Graph::addSeries(QLineSeries *series)
 void Graph::clearSeries()
 {
     for(int x = 0; x < chart->series().length(); x++)
-        ((QLineSeries*)chart->series()[x])->~QLineSeries();
+        delete chart->series()[x];
     chart->series().clear();
     update();
 }

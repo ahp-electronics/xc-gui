@@ -38,11 +38,14 @@ if(ANDROID)
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    baseline.cpp
+    baseline.h
     line.cpp
     line.h
     line.ui
     graph.cpp
     graph.h
+    types.h
   )
 else()
   add_executable(xc-gui
@@ -50,12 +53,15 @@ else()
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    baseline.cpp
+    baseline.h
     line.cpp
     line.h
     line.ui
     graph.cpp
     graph.h
     resource.qrc
+    types.h
   )
 endif()
 

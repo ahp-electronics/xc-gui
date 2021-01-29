@@ -7,6 +7,8 @@
 #include <ahp_xc.h>
 #include "graph.h"
 #include "line.h"
+#include "baseline.h"
+#include "types.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -23,12 +25,16 @@ public:
     bool threadsRunning;
     void resizeEvent(QResizeEvent* event);
     QList<Line*> Lines;
+    QList<Baseline*> Baselines;
     inline double getTimeRange() { return TimeRange; }
     inline ahp_xc_packet * createPacket() { ahp_xc_packet *packet = ahp_xc_alloc_packet(); return packet; }
     inline void freePacket(ahp_xc_packet *packet) { ahp_xc_free_packet(packet); }
     inline Graph *getGraph() { return graph; }
+    inline Mode getMode() { return mode; }
+    inline void setMode(Mode m) { mode = m; }
 
 private:
+    Mode mode;
     bool connected;
     std::thread readThread;
     double TimeRange;

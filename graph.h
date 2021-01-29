@@ -18,7 +18,7 @@ public:
     explicit Graph(QWidget *parent = nullptr, QString name="");
     ~Graph();
 
-    void addSeries(QLineSeries *series);
+    void addSeries(QAbstractSeries *series);
     void clearSeries();
     void Update();
     void resizeEvent(QResizeEvent *event);
