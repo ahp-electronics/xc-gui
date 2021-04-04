@@ -171,7 +171,6 @@ MainWindow::MainWindow(QWidget *parent)
                 settings->beginGroup("Connection");
                 settings->setValue("lastconnected", ui->ComPort->currentText());
                 settings->endGroup();
-                settings->sync();
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
                     char name[150];
                     sprintf(name, "Line %d", l+1);
