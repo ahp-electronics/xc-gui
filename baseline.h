@@ -12,12 +12,13 @@
 
 using namespace QtCharts;
 
+class Line;
 class Baseline : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit Baseline(QString name, int n1, int n2, QWidget *parent = nullptr);
+    explicit Baseline(QString name, Line* n1, Line* n2, QWidget *parent = nullptr);
     ~Baseline();
 
     inline void setName(QString n) {  name = n; series->setName(n); }
@@ -32,9 +33,10 @@ public:
     inline bool isActive() { return active; }
     inline double getPercent() { return percent; }
     inline double isScanning() { return scanning; }
-    inline int getLine1() { return line1; }
-    inline int getLine2() { return line2; }
+    inline Line* getLine1() { return line1; }
+    inline Line* getLine2() { return line2; }
 
+    void setPercent();
 private:
     QString name;
     bool active;
@@ -50,8 +52,8 @@ private:
     QList<double> values;
     QLineSeries *series;
     QLineSeries *average;
-    int line1;
-    int line2;
+    Line* line1;
+    Line* line2;
 };
 
 #endif // BASELINE_H

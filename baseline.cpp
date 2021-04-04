@@ -1,6 +1,6 @@
 #include "baseline.h"
-
-Baseline::Baseline(QString n, int n1, int n2, QWidget *parent) :
+#include "line.h"
+Baseline::Baseline(QString n, Line *n1, Line *n2, QWidget *parent) :
     QWidget(parent)
 {
     name = n;
@@ -28,12 +28,25 @@ void Baseline::RunThread(Baseline *line)
 {
     line->threadRunning = true;
     while (line->threadRunning) {
-        QThread::sleep(100);
+        QThread::msleep(100);
         if(line->isActive()) {
             line->stop = 0;
+            line->setPercent();
         } else {
             line->stop = 1;
         }
+    }
+}
+
+void Baseline::setPercent()
+{
+    if(line1 != nullptr) {
+        line1->setPercent();
+        update();
+    }
+    if(line2 != nullptr) {
+        line2->setPercent();
+        update();
     }
 }
 
@@ -42,7 +55,9 @@ void Baseline::stackCorrelations(Scale scale)
     scanning = true;
     ahp_xc_sample *spectrum;
     stop = 0;
-    ahp_xc_scan_crosscorrelations(line1, line2, &spectrum, &stop, &percent);
+    ahp_xc_scan_crosscorrelations(line1->getLineIndex(), line2->getLineIndex(), &spectrum, &stop, &percent);
+    line1->setPercentAddr(&percent);
+    line2->setPercentAddr(&percent);
     if(spectrum != nullptr) {
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/ahp_xc_get_frequency();
         double value;
@@ -81,5 +96,7 @@ void Baseline::stackCorrelations(Scale scale)
 
 Baseline::~Baseline()
 {
+    setActive(false);
     threadRunning = false;
+    QThread::msleep(200);
 }

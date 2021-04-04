@@ -2,9 +2,13 @@
 #include <cmath>
 #include <ctime>
 #include <cstring>
+#include <QStandardPaths>
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDateTime>
+#include <QTcpSocket>
+#include <QDir>
+#include <fcntl.h>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
@@ -13,9 +17,8 @@ void MainWindow::ReadThread(MainWindow *wnd)
     wnd->threadsRunning = true;
     QDateTime start = QDateTime::currentDateTimeUtc();
     ahp_xc_packet* packet = wnd->createPacket();
+    wnd->setMode(Counter);
     while(wnd->threadsRunning) {
-        QThread::usleep(ahp_xc_get_packettime());
-        wnd->getGraph()->Update();
         switch (wnd->getMode()) {
             case Counter:
             if(!ahp_xc_get_packet(packet)) {
@@ -33,35 +36,33 @@ void MainWindow::ReadThread(MainWindow *wnd)
                         if(average->at(d).x()<diff-(double)wnd->getTimeRange())
                             average->remove(d);
                     if(line->isActive()) {
-                            dots->append(diff, packet->counts[x]);
-                            average->append(diff, packet->counts[x]);
+                            dots->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                            average->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
                             wnd->getGraph()->Update();
                     } else {
                         dots->clear();
                         average->clear();
                     }
                 }
-            } else {
-                ahp_xc_enable_capture(0);
-                ahp_xc_enable_capture(1);
             }
             break;
         case Autocorrelator:
             for(int x = 0; x < packet->n_lines; x++) {
                 Line * line = wnd->Lines[x];
-                if(line->isActive())
+                if(line->isActive()) {
                     line->stackCorrelations();
-                else
-                    line->clearCorrelations();
+                    wnd->getGraph()->Update();
+                }
             }
             break;
         case Crosscorrelator:
             for(int x = 0; x < packet->n_baselines; x++) {
                 Baseline * b = wnd->Baselines[x];
-                if(b->isActive())
-                    b->stackCorrelations((int)wnd->Lines[b->getLine1()]->getYScale()>(int)wnd->Lines[b->getLine2()]->getYScale() ? wnd->Lines[b->getLine1()]->getYScale() : wnd->Lines[b->getLine2()]->getYScale());
-                else
-                    b->clearCorrelations();
+                if(b->isActive()) {
+                    b->stackCorrelations((int)b->getLine1()->getYScale()>(int)b->getLine2()->getYScale() ? b->getLine1()->getYScale() : b->getLine2()->getYScale());
+                    wnd->getGraph()->Update();
+                    b->setActive(false);
+                }
             }
             break;
         default:
@@ -76,6 +77,14 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    QString homedir = QStandardPaths::standardLocations(QStandardPaths::HomeLocation).at(0);
+    QString inidir = homedir+"/.xc-gui/";
+    QString ini = homedir+"/.xc-gui/settings.ini";
+    if(!QDir(inidir).exists()){
+        QDir().mkdir(inidir);
+    }
+    settings = new QSettings(ini, QSettings::Format::IniFormat);
+
     setMode(Counter);
     connected = false;
     TimeRange = 10;
@@ -84,11 +93,17 @@ MainWindow::MainWindow(QWidget *parent)
     int starty = ui->Lines->y()+ui->Lines->height()+5;
     getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
     getGraph()->setVisible(true);
+
+    settings->beginGroup("Connection");
+    ui->ComPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
+    settings->endGroup();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (int i = 0; i < ports.length(); i++)
-        ui->ComPort->addItem(ports[i].portName());
-    if(ports.length() == 0)
-        ui->ComPort->addItem("No ports available");
+        ui->ComPort->addItem(
+#ifndef _WIN32
+"/dev/"+
+#endif
+                    ports[i].portName());
     ui->ComPort->setCurrentIndex(0);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [=](int index) {
@@ -111,25 +126,52 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Disconnect->setEnabled(false);
         ui->Scale->setEnabled(false);
         threadsRunning = false;
+        for(int l = 0; l < ahp_xc_get_nbaselines(); l++) {
+            Baselines[l]->~Baseline();
+        }
+        Baselines.clear();
         for(int l = 0; l < ahp_xc_get_nlines(); l++) {
             Lines[l]->~Line();
         }
         Lines.clear();
         getGraph()->clearSeries();
+        if(socket.isOpen())
+            socket.disconnectFromHost();
         ahp_xc_disconnect();
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
-        if(ui->ComPort->currentText() == "No ports available")
-            return;
-        char port[150] = {0};
-        #ifndef _WIN32
-            strcat(port, "/dev/");
-        #endif
-        strcat(port, ui->ComPort->currentText().toStdString().c_str());
-        if(!ahp_xc_connect(port)) {
+        int fd = -1;
+        int port = 5760;
+        QString address = "localhost";
+        QString comport = "/dev/ttyUSB0";
+        if(ui->ComPort->currentText().contains(':')) {
+            address = ui->ComPort->currentText().split(":")[0];
+            port = ui->ComPort->currentText().split(":")[1].toInt();
+            ui->Connect->setEnabled(false);
+            socket.connectToHost(address, port);
+            socket.waitForConnected();
+            ui->Connect->setEnabled(true);
+            socket.setReadBufferSize(4096);
+            if(socket.isOpen())
+                fd = socket.socketDescriptor();
+        } else {
+            file.setFileName(comport);
+            file.open(QIODevice::OpenModeFlag::ReadWrite|QIODevice::OpenModeFlag::ExistingOnly);
+            if(file.isOpen()) {
+                fd = file.handle();
+            }
+        }
+        if(fd>=0) {
+            ahp_xc_connect_fd(fd);
             if(!ahp_xc_get_properties()) {
+                if(socket.isOpen())
+                    socket.setReadBufferSize(ahp_xc_get_packetsize()*4);
+                settings->beginGroup("Connection");
+                settings->setValue("lastconnected", ui->ComPort->currentText());
+                settings->endGroup();
+                settings->sync();
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
                     char name[150];
                     sprintf(name, "Line %d", l+1);
@@ -142,7 +184,7 @@ MainWindow::MainWindow(QWidget *parent)
                     for(int i = l+1; i < ahp_xc_get_nlines(); i++) {
                         char name[150];
                         sprintf(name, "%d*%d", l+1, i+1);
-                        Baseline* b = new Baseline(name, l, i, this);
+                        Baseline* b = new Baseline(name, Lines[l], Lines[i], this);
                         Baselines.append(b);
                         Lines[l]->addBaseline(b);
                         Lines[i]->addBaseline(b);

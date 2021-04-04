@@ -4,6 +4,8 @@
 #include <thread>
 #include <QThread>
 #include <QMainWindow>
+#include <QTcpSocket>
+#include <QSettings>
 #include <ahp_xc.h>
 #include "graph.h"
 #include "line.h"
@@ -31,9 +33,12 @@ public:
     inline void freePacket(ahp_xc_packet *packet) { ahp_xc_free_packet(packet); }
     inline Graph *getGraph() { return graph; }
     inline Mode getMode() { return mode; }
-    inline void setMode(Mode m) { mode = m; }
+    inline void setMode(Mode m) { mode = m; if(mode == Counter) ahp_xc_enable_capture(true); else ahp_xc_enable_capture(false); }
+    QSettings *settings;
 
 private:
+    QTcpSocket socket;
+    QFile file;
     Mode mode;
     bool connected;
     std::thread readThread;

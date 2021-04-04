@@ -8,6 +8,7 @@ Graph::Graph(QWidget *parent, QString name) :
     chart = new QChart();
     chart->setTitle(name);
     chart->setVisible(true);
+    chart->legend()->hide();
     view = new QChartView(chart, this);
     view->setRubberBand(QChartView::RectangleRubberBand);
     view->setRenderHint(QPainter::Antialiasing);

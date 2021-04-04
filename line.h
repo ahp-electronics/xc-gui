@@ -26,6 +26,7 @@ public:
     ~Line();
 
     inline bool isActive() { return (flags&1)==1; }
+    void setActive(bool a);
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
@@ -35,18 +36,21 @@ public:
     Scale getYScale();
     void stackCorrelations();
     inline void clearCorrelations() { stack = 0.0; }
-    inline double getPercent() { return percent; }
+    inline double getPercent() { return *percent; }
     inline double isScanning() { return scanning; }
     void setPercent();
+    inline void setPercentAddr(double *addr) { percent = addr; }
     inline void addBaseline(Baseline* b) { nodes.append(b); }
+    inline int getLineIndex() { return line; }
 
 private:
+    ahp_xc_sample *spectrum;
     QList<Line*> *parents;
     QList<Baseline*> nodes;
     bool scanning;
     bool threadRunning;
     int stop;
-    double percent;
+    double *percent;
     std::thread runThread;
     static void RunThread(Line *wnd);
     double stack;

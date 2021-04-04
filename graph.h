@@ -1,6 +1,7 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include <QThread>
 #include <QWidget>
 #include <QChart>
 #include <QDateTime>
@@ -22,8 +23,12 @@ public:
     void clearSeries();
     void Update();
     void resizeEvent(QResizeEvent *event);
-
+    static void RunThread(Graph *wnd);
+    bool threadRunning;
 private:
+    std::thread runThread;
+    QValueAxis *axisX;
+    QValueAxis *axisY;
     QChart *chart;
     QChartView *view;
 };
