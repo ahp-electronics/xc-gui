@@ -1,11 +1,11 @@
 #include "baseline.h"
 #include "line.h"
-Baseline::Baseline(QString n, Line *n1, Line *n2, QWidget *parent) :
+Baseline::Baseline(QString n, Line *n1, Line *n2, QSettings *s, QWidget *parent) :
     QWidget(parent)
 {
+    setAccessibleName("Baseline");
+    settings = s;
     name = n;
-    runThread = std::thread(Baseline::RunThread, this);
-    runThread.detach();
     series = new QLineSeries();
     series->setName(name);
     average = new QLineSeries();
@@ -21,32 +21,6 @@ void Baseline::setMode(Mode m)
     average->clear();
     if(mode == Crosscorrelator) {
         stack = 0.0;
-    }
-}
-
-void Baseline::RunThread(Baseline *line)
-{
-    line->threadRunning = true;
-    while (line->threadRunning) {
-        QThread::msleep(100);
-        if(line->isActive()) {
-            line->stop = 0;
-            line->setPercent();
-        } else {
-            line->stop = 1;
-        }
-    }
-}
-
-void Baseline::setPercent()
-{
-    if(line1 != nullptr) {
-        line1->setPercent();
-        update();
-    }
-    if(line2 != nullptr) {
-        line2->setPercent();
-        update();
     }
 }
 
@@ -98,5 +72,4 @@ Baseline::~Baseline()
 {
     setActive(false);
     threadRunning = false;
-    QThread::msleep(200);
 }

@@ -8,29 +8,34 @@
 #include <QChartView>
 #include <QLineSeries>
 #include <QValueAxis>
+#include "threads.h"
 
 using namespace QtCharts;
+
+namespace Ui {
+class Graph;
+}
 
 class Graph : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit Graph(QWidget *parent = nullptr, QString name="");
+    Graph(QWidget *parent = nullptr, QString name="");
     ~Graph();
 
     void addSeries(QAbstractSeries *series);
     void clearSeries();
-    void Update();
     void resizeEvent(QResizeEvent *event);
-    static void RunThread(Graph *wnd);
     bool threadRunning;
+    void Update();
+
 private:
-    std::thread runThread;
     QValueAxis *axisX;
     QValueAxis *axisY;
     QChart *chart;
     QChartView *view;
+
 };
 
 #endif // GRAPH_H

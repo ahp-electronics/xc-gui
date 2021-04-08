@@ -46,6 +46,7 @@ if(ANDROID)
     graph.cpp
     graph.h
     types.h
+    threads.h
   )
 else()
   add_executable(xc-gui
@@ -62,6 +63,7 @@ else()
     graph.h
     resource.qrc
     types.h
+    threads.h
   )
 endif()
 

@@ -12,83 +12,89 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
-void MainWindow::ReadThread(MainWindow *wnd)
+void MainWindow::UiThread(QWidget *sender)
 {
-    wnd->threadsRunning = true;
-    QDateTime start = QDateTime::currentDateTimeUtc();
-    ahp_xc_packet* packet = wnd->createPacket();
-    wnd->setMode(Counter);
-    while(wnd->threadsRunning) {
-        switch (wnd->getMode()) {
-            case Counter:
-            if(!ahp_xc_get_packet(packet)) {
-                QDateTime now = QDateTime::currentDateTimeUtc();
-                double diff = (double)start.msecsTo(now)/1000.0;
-                for(int x = 0; x < packet->n_lines; x++) {
-                    Line * line = wnd->Lines[x];
-                    QLineSeries *dots = line->getDots();
-                    QLineSeries *average = line->getAverage();
-                    if(diff > (double)wnd->getTimeRange())
-                        for(int d = 0; d < dots->count(); d++)
-                            if(dots->at(d).x()<diff-(double)wnd->getTimeRange())
-                                dots->remove(d);
-                    for(int d = 0; d < average->count(); d++)
-                        if(average->at(d).x()<diff-(double)wnd->getTimeRange())
-                            average->remove(d);
-                    if(line->isActive()) {
-                            dots->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
-                            average->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
-                            wnd->getGraph()->Update();
-                    } else {
-                        dots->clear();
-                        average->clear();
-                    }
-                }
-            }
-            break;
-        case Autocorrelator:
-            for(int x = 0; x < packet->n_lines; x++) {
+    MainWindow* wnd = qobject_cast<MainWindow*>(sender);
+    if(!wnd)
+        return;
+    for(int i = 0; i < wnd->Lines.count(); i++)
+        wnd->Lines[i]->setPercent();
+    wnd->getGraph()->Update();
+}
+
+void MainWindow::ReadThread(QWidget *sender)
+{
+    MainWindow* wnd = qobject_cast<MainWindow*>(sender);
+    if(!wnd)
+        return;
+    ahp_xc_packet* packet = wnd->getPacket();
+    switch (wnd->getMode()) {
+        case Counter:
+        if(!ahp_xc_get_packet(packet)) {
+            QDateTime now = QDateTime::currentDateTimeUtc();
+            double diff = (double)wnd->start.msecsTo(now)/1000.0;
+            for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
+                QLineSeries *dots = line->getDots();
+                QLineSeries *average = line->getAverage();
+                if(diff > (double)wnd->getTimeRange())
+                    for(int d = 0; d < dots->count(); d++)
+                        if(dots->at(d).x()<diff-(double)wnd->getTimeRange())
+                            dots->remove(d);
+                for(int d = 0; d < average->count(); d++)
+                    if(average->at(d).x()<diff-(double)wnd->getTimeRange())
+                        average->remove(d);
                 if(line->isActive()) {
-                    line->stackCorrelations();
-                    wnd->getGraph()->Update();
+                        dots->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                        average->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                } else {
+                    dots->clear();
+                    average->clear();
                 }
             }
-            break;
-        case Crosscorrelator:
-            for(int x = 0; x < packet->n_baselines; x++) {
-                Baseline * b = wnd->Baselines[x];
-                if(b->isActive()) {
-                    b->stackCorrelations((int)b->getLine1()->getYScale()>(int)b->getLine2()->getYScale() ? b->getLine1()->getYScale() : b->getLine2()->getYScale());
-                    wnd->getGraph()->Update();
-                    b->setActive(false);
-                }
-            }
-            break;
-        default:
-            break;
         }
+        break;
+    case Autocorrelator:
+        for(int x = 0; x < wnd->Lines.count(); x++) {
+            Line * line = wnd->Lines[x];
+            if(line->isActive()) {
+                line->stackCorrelations();
+            }
+        }
+        break;
+    case Crosscorrelator:
+        for(int x = 0; x < packet->n_baselines; x++) {
+            Baseline * b = wnd->Baselines[x];
+            if(b->isActive()) {
+                b->stackCorrelations((int)b->getLine1()->getYScale()>(int)b->getLine2()->getYScale() ? b->getLine1()->getYScale() : b->getLine2()->getYScale());
+                b->setActive(false);
+            }
+        }
+        break;
+    default:
+        break;
     }
-    wnd->freePacket(packet);
-    ahp_xc_enable_capture(0);
 }
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    setAccessibleName("MainWindow");
     QString homedir = QStandardPaths::standardLocations(QStandardPaths::HomeLocation).at(0);
     QString inidir = homedir+"/.xc-gui/";
     QString ini = homedir+"/.xc-gui/settings.ini";
     if(!QDir(inidir).exists()){
         QDir().mkdir(inidir);
     }
-    settings = new QSettings(ini, QSettings::Format::IniFormat);
+    settings = new QSettings(ini, QSettings::Format::NativeFormat);
 
     setMode(Counter);
     connected = false;
     TimeRange = 10;
     ui->setupUi(this);
+    uiThread = new progressThread(this);
+    readThread = new progressThread(this);
     graph = new Graph(this);
     int starty = ui->Lines->y()+ui->Lines->height()+5;
     getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
@@ -96,7 +102,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     settings->beginGroup("Connection");
     ui->ComPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
+    QStringList devices = settings->value("devices", "").toString().split(",");
     settings->endGroup();
+    for (int i = 0; i < devices.length(); i++) {
+        settings->beginGroup(devices[i]);
+        QString connection = settings->value("connection", "").toString();
+        if(!connection.isEmpty())
+            ui->ComPort->addItem(connection);
+        settings->endGroup();
+    }
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (int i = 0; i < ports.length(); i++)
         ui->ComPort->addItem(
@@ -109,23 +123,21 @@ MainWindow::MainWindow(QWidget *parent)
             [=](int index) {
         setMode((Mode)index);
         for(int x = 0; x < Lines.count(); x++) {
-            bool state = Lines[x]->getFlag(0);
-            Lines[x]->setFlag(0, false);
-            Lines[x]->setFlag(0, state);
             Lines[x]->setMode((Mode)index);
         }
     });
 
     connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [=](int value) {
-        ahp_xc_set_frequency_divider(value);
+        settings->setValue("Timescale", value);
+        ahp_xc_set_frequency_divider((char)value);
     });
     connect(ui->Disconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
         ui->Scale->setEnabled(false);
-        threadsRunning = false;
+        freePacket();
         for(int l = 0; l < ahp_xc_get_nbaselines(); l++) {
             Baselines[l]->~Baseline();
         }
@@ -135,9 +147,11 @@ MainWindow::MainWindow(QWidget *parent)
         }
         Lines.clear();
         getGraph()->clearSeries();
-        if(socket.isOpen())
+        if(socket.isOpen()) {
             socket.disconnectFromHost();
+        }
         ahp_xc_disconnect();
+        settings->endGroup();
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
@@ -150,12 +164,16 @@ MainWindow::MainWindow(QWidget *parent)
             address = ui->ComPort->currentText().split(":")[0];
             port = ui->ComPort->currentText().split(":")[1].toInt();
             ui->Connect->setEnabled(false);
+            update();
             socket.connectToHost(address, port);
             socket.waitForConnected();
-            ui->Connect->setEnabled(true);
-            socket.setReadBufferSize(4096);
-            if(socket.isOpen())
+            if(socket.isValid()) {
+                socket.setReadBufferSize(4096);
                 fd = socket.socketDescriptor();
+            } else {
+                ui->Connect->setEnabled(true);
+                update();
+            }
         } else {
             file.setFileName(comport);
             file.open(QIODevice::OpenModeFlag::ReadWrite|QIODevice::OpenModeFlag::ExistingOnly);
@@ -166,15 +184,23 @@ MainWindow::MainWindow(QWidget *parent)
         if(fd>=0) {
             ahp_xc_connect_fd(fd);
             if(!ahp_xc_get_properties()) {
-                if(socket.isOpen())
-                    socket.setReadBufferSize(ahp_xc_get_packetsize()*4);
                 settings->beginGroup("Connection");
                 settings->setValue("lastconnected", ui->ComPort->currentText());
+                QString header = ahp_xc_get_header();
+                settings->setValue("lastdevice", header);
+                QString devices = settings->value("devices", "").toString();
+                if(!devices.contains(header)) {
+                    if(!devices.isEmpty())
+                        devices.append(",");
+                    devices.append(header);
+                    settings->setValue("devices", devices);
+                }
                 settings->endGroup();
+                settings->beginGroup(header);
+                settings->setValue("connection", ui->ComPort->currentText());
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
-                    char name[150];
-                    sprintf(name, "Line %d", l+1);
-                    Lines.append(new Line(name, l, ui->Lines, &Lines));
+                    QString name = "Line "+QString::number(l+1);
+                    Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                     ui->Lines->addTab(Lines[l], name);
                     getGraph()->addSeries(Lines[l]->getDots());
                     ahp_xc_set_voltage(l, 0);
@@ -183,15 +209,19 @@ MainWindow::MainWindow(QWidget *parent)
                     for(int i = l+1; i < ahp_xc_get_nlines(); i++) {
                         char name[150];
                         sprintf(name, "%d*%d", l+1, i+1);
-                        Baseline* b = new Baseline(name, Lines[l], Lines[i], this);
+                        Baseline* b = new Baseline(name, Lines[l], Lines[i], settings, this);
                         Baselines.append(b);
                         Lines[l]->addBaseline(b);
                         Lines[i]->addBaseline(b);
                         getGraph()->addSeries(b->getDots());
                     }
                 }
-                readThread = std::thread(MainWindow::ReadThread, this);
-                readThread.detach();
+                setMode(Counter);
+                createPacket();
+                connect(readThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::ReadThread);
+                readThread->start();
+                connect(uiThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::UiThread);
+                uiThread->start();
                 connected = true;
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
@@ -201,6 +231,7 @@ MainWindow::MainWindow(QWidget *parent)
         } else
             ahp_xc_disconnect();
     });
+    ui->Scale->setValue(settings->value("Timescale", 0).toInt());
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
@@ -214,7 +245,12 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 
 MainWindow::~MainWindow()
 {
-    threadsRunning = false;
+    uiThread->requestInterruption();
+    uiThread->wait();
+    uiThread->~progressThread();
+    readThread->requestInterruption();
+    readThread->wait();
+    readThread->~progressThread();
     for(int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }
