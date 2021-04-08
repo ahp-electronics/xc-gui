@@ -28,7 +28,7 @@ public:
     inline QLineSeries* getDots() { return series; }
     inline QLineSeries* getAverage() { return average; }
     void setMode(Mode m);
-    void stackCorrelations(Scale scale);
+    void stackCorrelations();
     inline void clearCorrelations() { stack = 0.0; }
     inline void setActive(bool a) { active = a; stop = !active; }
     inline bool isActive() { return active; }

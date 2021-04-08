@@ -51,6 +51,7 @@ public:
     inline double readDouble(QString setting, double defaultValue) { return readSetting(setting, defaultValue).toDouble(); }
     inline int readInt(QString setting, int defaultValue) { return readSetting(setting, defaultValue).toInt(); }
     inline bool readBool(QString setting, bool defaultValue) { return readSetting(setting, defaultValue).toBool(); }
+    inline bool isRunning() { return running; }
     double *percent;
 
     void setPercent();

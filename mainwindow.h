@@ -38,7 +38,17 @@ public:
     inline void freePacket() { ahp_xc_free_packet(packet); }
     inline Graph *getGraph() { return graph; }
     inline Mode getMode() { return mode; }
-    inline void setMode(Mode m) { mode = m; if(socket.isOpen()||file.isOpen()){ if(mode == Counter) { start = QDateTime::currentDateTimeUtc(); ahp_xc_enable_capture(true); } else ahp_xc_enable_capture(false); } }
+    inline void setMode(Mode m) {
+        mode = m;
+        if(connected){
+            if(mode == Counter) {
+                start = QDateTime::currentDateTimeUtc();
+                ahp_xc_enable_capture(true);
+            } else {
+                ahp_xc_enable_capture(false);
+            }
+        }
+    }
     QDateTime start;
     progressThread *readThread;
     progressThread *uiThread;

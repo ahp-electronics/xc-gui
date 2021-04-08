@@ -27,13 +27,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->flag1, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [=](int state) {
         flags &= ~(1 << 1);
-        flags |= ui->flag0->isChecked() << 1;
+        flags |= ui->flag1->isChecked() << 1;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag1->text(), ui->flag1->isChecked());
     });
     connect(ui->flag2, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [=](int state) {
         flags &= ~(1 << 2);
-        flags |= ui->flag0->isChecked() << 2;
+        flags |= ui->flag2->isChecked() << 2;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag2->text(), ui->flag2->isChecked());
     });
@@ -56,9 +56,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             ui->Run->setText("Run");
         }
         if(mode == Autocorrelator||mode == Crosscorrelator)
-            ui->Correlator->setEnabled(!isActive());
-        else
-            ui->Correlator->setEnabled(false);
+            ui->Autocorrelator->setEnabled(!isActive());
+        else if(mode == Crosscorrelator)
+            ui->Crosscorrelator->setEnabled(!isActive());
+        else {
+            ui->Autocorrelator->setEnabled(false);
+            ui->Crosscorrelator->setEnabled(false);
+        }
         for(int x = 0; x < nodes.count(); x++)
             nodes[x]->setActive(nodes[x]->getLine1()->isActive()&&nodes[x]->getLine2()->isActive()&&mode==Crosscorrelator);
 
@@ -204,13 +208,10 @@ void Line::setMode(Mode m)
     if(mode == Autocorrelator) {
         stack = 0.0;
     }
-    if(!isActive())
-        ui->Correlator->setEnabled(mode == Autocorrelator||mode == Crosscorrelator);
-}
-
-Scale Line::getYScale()
-{
-    return (Scale)ui->YScale->currentIndex();
+    if(!isActive()) {
+        ui->Autocorrelator->setEnabled(mode == Autocorrelator);
+        ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
+    }
 }
 
 void Line::setPercent()
@@ -241,18 +242,7 @@ void Line::stackCorrelations()
         values.clear();
         stack += 1.0;
         for (int x = start; x < end; x++) {
-            if(spectrum[x].correlations[0].counts >= spectrum[x].correlations[0].correlations && spectrum[x].correlations[0].counts > 0)
-                value = spectrum[x].correlations[0].coherence;
-            switch(ui->YScale->currentIndex()) {
-            case 1:
-                value = sqrt(value);
-                break;
-            case 2:
-                value = log10(value);
-                break;
-            default:
-                break;
-            }
+            value = spectrum[x].correlations[0].coherence;
             value /= stack;
             if(average->count() > x)
                 value += average->at(x).y()*(stack-1)/stack;

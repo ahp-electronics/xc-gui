@@ -24,12 +24,12 @@ void Baseline::setMode(Mode m)
     }
 }
 
-void Baseline::stackCorrelations(Scale scale)
+void Baseline::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum;
     stop = 0;
-    ahp_xc_scan_crosscorrelations(line1->getLineIndex(), line2->getLineIndex(), &spectrum, &stop, &percent);
+    //ahp_xc_scan_crosscorrelations(line1->getLineIndex(), line2->getLineIndex(), &spectrum, &stop, &percent);
     line1->setPercentAddr(&percent);
     line2->setPercentAddr(&percent);
     if(spectrum != nullptr) {
@@ -40,16 +40,6 @@ void Baseline::stackCorrelations(Scale scale)
         for (int x = 0; x < ahp_xc_get_delaysize()*2-1; x++) {
             if(spectrum[x].correlations[0].counts >= spectrum[x].correlations[0].correlations && spectrum[x].correlations[0].counts > 0)
                 value = spectrum[x].correlations[0].coherence;
-            switch(scale) {
-            case 1:
-                value = sqrt(value);
-                break;
-            case 2:
-                value = pow(value, 0.1);
-                break;
-            default:
-                break;
-            }
             value /= stack;
             if(average->count() > x)
                 value += average->at(x).y()*(stack-1)/stack;

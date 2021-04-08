@@ -17,9 +17,12 @@ void MainWindow::UiThread(QWidget *sender)
     MainWindow* wnd = qobject_cast<MainWindow*>(sender);
     if(!wnd)
         return;
-    for(int i = 0; i < wnd->Lines.count(); i++)
+    for(int i = 0; i < wnd->Lines.count(); i++) {
         wnd->Lines[i]->setPercent();
-    wnd->getGraph()->Update();
+        if(wnd->getMode() == Counter || wnd->Lines[i]->isRunning())
+            wnd->getGraph()->Update();
+        QThread::msleep(100);
+    }
 }
 
 void MainWindow::ReadThread(QWidget *sender)
@@ -28,6 +31,7 @@ void MainWindow::ReadThread(QWidget *sender)
     if(!wnd)
         return;
     ahp_xc_packet* packet = wnd->getPacket();
+
     switch (wnd->getMode()) {
         case Counter:
         if(!ahp_xc_get_packet(packet)) {
@@ -66,7 +70,7 @@ void MainWindow::ReadThread(QWidget *sender)
         for(int x = 0; x < packet->n_baselines; x++) {
             Baseline * b = wnd->Baselines[x];
             if(b->isActive()) {
-                b->stackCorrelations((int)b->getLine1()->getYScale()>(int)b->getLine2()->getYScale() ? b->getLine1()->getYScale() : b->getLine2()->getYScale());
+                b->stackCorrelations();
                 b->setActive(false);
             }
         }
@@ -170,20 +174,18 @@ MainWindow::MainWindow(QWidget *parent)
             if(socket.isValid()) {
                 socket.setReadBufferSize(4096);
                 fd = socket.socketDescriptor();
+                if(fd > -1)
+                    ahp_xc_connect_fd(fd);
             } else {
                 ui->Connect->setEnabled(true);
                 update();
             }
         } else {
-            file.setFileName(comport);
-            file.open(QIODevice::OpenModeFlag::ReadWrite|QIODevice::OpenModeFlag::ExistingOnly);
-            if(file.isOpen()) {
-                fd = file.handle();
-            }
+            ahp_xc_connect(comport.toUtf8());
         }
-        if(fd>=0) {
-            ahp_xc_connect_fd(fd);
+        if(ahp_xc_is_connected()) {
             if(!ahp_xc_get_properties()) {
+                connected = true;
                 settings->beginGroup("Connection");
                 settings->setValue("lastconnected", ui->ComPort->currentText());
                 QString header = ahp_xc_get_header();
@@ -216,13 +218,12 @@ MainWindow::MainWindow(QWidget *parent)
                         getGraph()->addSeries(b->getDots());
                     }
                 }
-                setMode(Counter);
                 createPacket();
+                setMode(Counter);
                 connect(readThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::ReadThread);
                 readThread->start();
                 connect(uiThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::UiThread);
                 uiThread->start();
-                connected = true;
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Scale->setEnabled(true);
