@@ -43,9 +43,9 @@ public:
         if(connected){
             if(mode == Counter) {
                 start = QDateTime::currentDateTimeUtc();
-                ahp_xc_enable_capture(true);
+                ahp_xc_set_capture_flag(CAP_ENABLE);
             } else {
-                ahp_xc_enable_capture(false);
+                ahp_xc_clear_capture_flag(CAP_ENABLE);
             }
         }
     }

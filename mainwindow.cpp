@@ -19,9 +19,8 @@ void MainWindow::UiThread(QWidget *sender)
         return;
     for(int i = 0; i < wnd->Lines.count(); i++) {
         wnd->Lines[i]->setPercent();
-        if(wnd->getMode() == Counter || wnd->Lines[i]->isRunning())
-            wnd->getGraph()->Update();
-        QThread::msleep(100);
+        wnd->getGraph()->Update();
+        QThread::msleep(100/(wnd->Lines.count()|1));
     }
 }
 
@@ -255,8 +254,10 @@ MainWindow::~MainWindow()
     for(int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }
-    if(connected)
+    if(connected) {
+        ahp_xc_clear_capture_flag(CAP_ENABLE);
         ui->Disconnect->clicked(false);
+    }
     getGraph()->~Graph();
     delete ui;
 }
