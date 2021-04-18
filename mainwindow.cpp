@@ -19,9 +19,10 @@ void MainWindow::UiThread(QWidget *sender)
         return;
     for(int i = 0; i < wnd->Lines.count(); i++) {
         wnd->Lines[i]->setPercent();
-        wnd->getGraph()->Update();
-        QThread::msleep(100/(wnd->Lines.count()|1));
+        if(wnd->Lines[i]->isActive())
+            wnd->getGraph()->Update();
     }
+    QThread::msleep(200);
 }
 
 void MainWindow::ReadThread(QWidget *sender)
@@ -225,13 +226,13 @@ MainWindow::MainWindow(QWidget *parent)
                 uiThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
+                ui->Scale->setValue(settings->value("Timescale", 0).toInt());
                 ui->Scale->setEnabled(true);
             } else
                 ahp_xc_disconnect();
         } else
             ahp_xc_disconnect();
     });
-    ui->Scale->setValue(settings->value("Timescale", 0).toInt());
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)

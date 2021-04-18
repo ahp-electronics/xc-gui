@@ -32,8 +32,8 @@ public:
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
-    inline QLineSeries* getDots() { return series; }
-    inline QLineSeries* getAverage() { return average; }
+    inline QLineSeries* getDots() { return &series; }
+    inline QLineSeries* getAverage() { return &average; }
     void setMode(Mode m);
     Scale getYScale();
     void stackCorrelations();
@@ -69,8 +69,8 @@ private:
     Mode mode;
     QMap<int, double> dark;
     QList<double> values;
-    QLineSeries *series;
-    QLineSeries *average;
+    QLineSeries series;
+    QLineSeries average;
     int line;
     int flags;
     Ui::Line *ui;

@@ -49,7 +49,7 @@ void Graph::Update()
             mx = (mx > series->at(y).x()) ? mx : series->at(y).x();
         }
     }
-    if(DBL_MIN == mx || DBL_MAX == mn) {
+    if(DBL_MIN == mx && DBL_MAX == mn) {
         mx = 1;
         mn = 0;
     }
@@ -68,7 +68,7 @@ void Graph::Update()
             mx = (mx > series->at(y).y()) ? mx : series->at(y).y();
         }
     }
-    if(DBL_MIN == mx || DBL_MAX == mn) {
+    if(DBL_MIN == mx && DBL_MAX == mn) {
         mx = 1;
         mn = 0;
     }

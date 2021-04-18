@@ -1,6 +1,9 @@
 #include "line.h"
 #include "ui_line.h"
 #include <QMapNode>
+#include <QFile>
+#include <QFileDialog>
+#include <QTextStream>
 
 Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     QWidget(parent),
@@ -12,10 +15,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     percent = new double(0);
     parents = p;
     name = ln;
-    series = new QLineSeries();
-    series->setName(name);
-    average = new QLineSeries();
-    average->setName(name);
+    series.setName(name);
+    average.setName(name);
     line = n;
     flags = 0;
     ui->setupUi(this);
@@ -67,36 +68,51 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             nodes[x]->setActive(nodes[x]->getLine1()->isActive()&&nodes[x]->getLine2()->isActive()&&mode==Crosscorrelator);
 
     });
+    connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
+        QString filename = QFileDialog::getSaveFileName(this, "DialogTitle", "filename.csv", "CSV files (.csv);;Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)
+        QFile data(filename);
+        if(data.open(QFile::WriteOnly |QFile::Truncate))
+        {
+            QTextStream output(&data);
+            double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
+            output << "lag (ns);coherence degree\n";
+            for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
+                output << ""+QString::number(series.at(y).x())+";"+QString::number(series.at(y).y())+"\n";
+            }
+        }
+        data.close();
+    });
     connect(ui->TakeDark, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
         if(ui->TakeDark->text() == "Apply Dark") {
             if(mode == Autocorrelator) {
                 dark.clear();
+                double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
                 for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
-                    dark.insert(x, series->at(y).y());
-                    saveSetting("Dark"+QString::number(x), series->at(y).y());
+                    dark.insert(series.at(y).x(), series.at(y).y());
+                    QString darkstring = readString("Dark", "");
+                    if(!darkstring.isEmpty())
+                        saveSetting("Dark", darkstring+";");
+                    saveSetting("Dark", darkstring+QString::number(x*timespan)+","+QString::number(series.at(y).y()));
                 }
                 ui->TakeDark->setText("Clear Dark");
-                series->setName("(residuals)");
+                series.setName("(residuals)");
             } else {
                 for(int x = 0; x < nodes.count(); x++)
                 {
                     for(int x = 0; x < nodes[x]->getDots()->count(); x++) {
                         nodes[x]->getDark()->clear();
                         nodes[x]->getDots()->setName(nodes[x]->getName()+" (residuals)");
-                        nodes[x]->getDark()->append(nodes[x]->getDots()->at(x).y());
+                        nodes[x]->getDark()->append(nodes[x]->getAverage()->at(x).y());
                     }
                     ui->TakeDark->setText("Clear Dark");
                 }
             }
         } else {
             if(mode == Autocorrelator) {
-                int x = 0;
-                while(x < ui->EndLine->maximum()) {
-                    removeSetting("Dark"+QString::number(x++));
-                }
+                removeSetting("Dark");
                 dark.clear();
                 ui->TakeDark->setText("Apply Dark");
-                series->setName(name);
+                series.setName(name);
             } else {
                 for(int x = 0; x < nodes[x]->getDots()->count(); x++) {
                     nodes[x]->getDark()->clear();
@@ -119,8 +135,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
          clearCorrelations();
-         series->clear();
-         average->clear();
+         series.clear();
+         average.clear();
          for(int x = 0; x < nodes.count(); x++)
          {
              nodes[x]->getDots()->clear();
@@ -138,8 +154,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
     dark.clear();
     int x = 0;
-    while(haveSetting("Dark"+QString::number(x++))) {
-        dark.insert(x, readSetting("Dark"+QString::number(x), 0.0).toDouble());
+    while(haveSetting("Dark")) {
+        QStringList darkstring = readString("Dark", "").split(";");
+        for(int x = 0; x < darkstring.length(); x++) {
+            QStringList lag_value = darkstring[x].split(",");
+            dark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+        }
     }
     if(dark.count() > 0) {
         ui->TakeDark->setText("Clear Dark");
@@ -203,8 +223,8 @@ bool Line::getFlag(int flag)
 void Line::setMode(Mode m)
 {
     mode = m;
-    series->clear();
-    average->clear();
+    series.clear();
+    average.clear();
     if(mode == Autocorrelator) {
         stack = 0.0;
     }
@@ -237,22 +257,22 @@ void Line::stackCorrelations()
     if(nread != len)
         return;
     if(spectrum != nullptr) {
-        double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/ahp_xc_get_frequency();
+        double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         double value;
         values.clear();
         stack += 1.0;
         for (int x = start; x < end; x++) {
-            value = spectrum[x].correlations[0].coherence;
+            value = pow(spectrum[x-start].correlations[0].coherence, 0.1);
             value /= stack;
-            if(average->count() > x)
-                value += average->at(x).y()*(stack-1)/stack;
-            values.insert(x, value);
+            if(average.count() > x)
+                value += average.at(x-start).y()*(stack-1)/stack;
+            values.append(value);
         }
-        series->clear();
-        average->clear();
+        series.clear();
+        average.clear();
         for (int x = start; x < end; x++) {
-            series->append(x*timespan, values.at(x-start) - dark.value(x, 0));
-            average->append(x*timespan, values.at(x-start));
+            series.append(x*timespan, values.at(x-start) - dark.value(x*timespan, 0));
+            average.append(x*timespan, values.at(x-start));
         }
     };
 }
@@ -260,7 +280,5 @@ void Line::stackCorrelations()
 Line::~Line()
 {
     setActive(false);
-    delete series;
-    delete average;
     delete ui;
 }
