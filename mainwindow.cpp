@@ -67,11 +67,10 @@ void MainWindow::ReadThread(QWidget *sender)
         }
         break;
     case Crosscorrelator:
-        for(int x = 0; x < packet->n_baselines; x++) {
-            Baseline * b = wnd->Baselines[x];
-            if(b->isActive()) {
-                b->stackCorrelations();
-                b->setActive(false);
+        for(int x = 0; x < wnd->Lines.count(); x++) {
+            Line * line = wnd->Lines[x];
+            if(line->isActive()) {
+                line->stackCorrelations(line->getLine2());
             }
         }
         break;

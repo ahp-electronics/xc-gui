@@ -30,8 +30,6 @@ void Baseline::stackCorrelations()
     ahp_xc_sample *spectrum;
     stop = 0;
     //ahp_xc_scan_crosscorrelations(line1->getLineIndex(), line2->getLineIndex(), &spectrum, &stop, &percent);
-    line1->setPercentAddr(&percent);
-    line2->setPercentAddr(&percent);
     if(spectrum != nullptr) {
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/ahp_xc_get_frequency();
         double value;

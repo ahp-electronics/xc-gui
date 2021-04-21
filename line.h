@@ -37,12 +37,13 @@ public:
     void setMode(Mode m);
     Scale getYScale();
     void stackCorrelations();
+    void stackCorrelations(unsigned int line2);
     inline void clearCorrelations() { stack = 0.0; }
-    inline double getPercent() { return *percent; }
+    inline double getPercent() { return percent; }
     inline double isScanning() { return !stop; }
-    inline void setPercentAddr(double *addr) { percent = addr; }
     inline void addBaseline(Baseline* b) { nodes.append(b); }
-    inline int getLineIndex() { return line; }
+    inline unsigned int getLineIndex() { return line; }
+    unsigned int getLine2();
     bool haveSetting(QString setting);
     void removeSetting(QString setting);
     void saveSetting(QString name, QVariant value);
@@ -52,7 +53,7 @@ public:
     inline int readInt(QString setting, int defaultValue) { return readSetting(setting, defaultValue).toInt(); }
     inline bool readBool(QString setting, bool defaultValue) { return readSetting(setting, defaultValue).toBool(); }
     inline bool isRunning() { return running; }
-    double *percent;
+    double percent;
 
     void setPercent();
 
@@ -71,9 +72,10 @@ private:
     QList<double> values;
     QLineSeries series;
     QLineSeries average;
-    int line;
+    unsigned int line;
     int flags;
     Ui::Line *ui;
+    int old_index2;
 };
 
 #endif // LINE_H
