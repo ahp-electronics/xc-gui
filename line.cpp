@@ -17,10 +17,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     name = ln;
     series.setName(name);
     average.setName(name);
+    counts.setName(name);
+    autocorrelations.setName(name);
+    crosscorrelations.setName(name);
     line = n;
     flags = 0;
-    old_index2 = (line == 0 ? 2 : (line == ahp_xc_get_nlines()-1 ? ahp_xc_get_nlines()-1 : line ));
     ui->setupUi(this);
+    old_index2 = readInt("Index2", (line == 0 ? 2 : (line == ahp_xc_get_nlines()-1 ? ahp_xc_get_nlines()-1 : line )));
+    ui->Index2->setRange(1, ahp_xc_get_nlines());
+    ui->Index2->setValue(old_index2);
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [=](int state) {
         flags &= ~(1 << 0);
         flags |= ui->flag0->isChecked() << 0;
@@ -76,9 +81,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         {
             QTextStream output(&data);
             double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
-            output << "lag (ns);coherence degree\n";
-            for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
-                output << ""+QString::number(series.at(y).x())+";"+QString::number(series.at(y).y())+"\n";
+            if(mode == Autocorrelator || mode == Crosscorrelator) {
+                output << "lag (ns);coherence degree\n";
+                for(int x = 0, y = 0; x < series.count(); y++, x++) {
+                    output << ""+QString::number(series.at(y).x())+";"+QString::number(series.at(y).y())+"\n";
+                }
+            } else {
+                output << "time (s);counts;autocorrelations;crosscorrelations\n";
+                for(int x = 0, y = 0; x < series.count(); y++, x++) {
+                    output << ""+QString::number(counts.at(y).x())+";"+QString::number(counts.at(y).y())+";"+QString::number(autocorrelations.at(y).y())+";"+QString::number(crosscorrelations.at(y).y())+"\n";
+                }
             }
         }
         data.close();
@@ -207,31 +219,37 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->Index2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         int idx = line+1;
-        if(ui->Index2->value()==idx) {
+        int new_value = value;
+        if(new_value==idx) {
             if(idx == ui->Index2->minimum() || idx == ui->Index2->maximum())
-                ui->Index2->setValue(old_index2);
+                new_value = old_index2;
             else {
-                if(old_index2 > ui->Index2->value())  {
-                    ui->Index2->setValue(idx-1);
-                } else if(old_index2 < ui->Index2->value())  {
-                    ui->Index2->setValue(idx+1);
+                if(old_index2 > new_value)  {
+                    new_value = idx-1;
+                } else if(old_index2 < new_value)  {
+                    new_value = idx+1;
                 }
             }
         }
-        old_index2 = ui->Index2->value();
-        saveSetting("Index2", old_index2);
+        old_index2 = new_value;
+        ui->Index2->setValue(new_value);
+        saveSetting("Index2", new_value);
     });
+    connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        ahp_xc_set_lag_auto(line, value);
+        saveSetting("SpectralLine", value);
+    });
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-2);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize()-2);
     ui->EndLine->setRange(1, ahp_xc_get_delaysize()-1);
     ui->CrossStart->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
     ui->CrossEnd->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
-    ui->Index2->setRange(1, ahp_xc_get_nlines());
-    ui->Index2->setValue(readInt("Index2", line+1));
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
     setFlag(3, readBool(ui->flag3->text(), false));
     ui->test->setChecked(readBool(ui->test->text(), false));
+    ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
     ui->CrossStart->setValue(readInt("CrossStart", ui->CrossStart->minimum()));
@@ -307,15 +325,34 @@ bool Line::getFlag(int flag)
     }
 }
 
+bool Line::showCounts()
+{
+    return ui->Counts->isChecked();
+}
+
+bool Line::showAutocorrelations()
+{
+    return ui->Autocorrelations->isChecked();
+}
+
+bool Line::showCrosscorrelations()
+{
+    return ui->Crosscorrelations->isChecked();
+}
+
 void Line::setMode(Mode m)
 {
     mode = m;
     series.clear();
     average.clear();
+    counts.clear();
+    autocorrelations.clear();
+    crosscorrelations.clear();
     if(mode == Autocorrelator  || mode == Crosscorrelator) {
         stack = 0.0;
     }
     if(!isActive()) {
+        ui->Counter->setEnabled(mode == Counter);
         ui->Autocorrelator->setEnabled(mode == Autocorrelator);
         ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
     }
@@ -402,7 +439,7 @@ void Line::stackCorrelations(unsigned int line2)
         }
         series.clear();
         average.clear();
-        for (int x = ui->CrossEnd->value()-2, z = 0; x > ui->CrossStart->value(); x--, z++) {
+        for (int x = ui->CrossEnd->value(), z = 0; x > ui->CrossStart->value() && z < size; x--, z++) {
             double y = (double)x*timespan;
             series.append(y, values.at(z) - dark.value(y, 0));
             average.append(y, values.at(z));

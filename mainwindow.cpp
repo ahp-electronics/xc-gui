@@ -39,21 +39,36 @@ void MainWindow::ReadThread(QWidget *sender)
             double diff = (double)wnd->start.msecsTo(now)/1000.0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
-                QLineSeries *dots = line->getDots();
-                QLineSeries *average = line->getAverage();
-                if(diff > (double)wnd->getTimeRange())
-                    for(int d = 0; d < dots->count(); d++)
-                        if(dots->at(d).x()<diff-(double)wnd->getTimeRange())
-                            dots->remove(d);
-                for(int d = 0; d < average->count(); d++)
-                    if(average->at(d).x()<diff-(double)wnd->getTimeRange())
-                        average->remove(d);
-                if(line->isActive()) {
-                        dots->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
-                        average->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
-                } else {
-                    dots->clear();
-                    average->clear();
+                QLineSeries *counts[3] = {
+                    wnd->Lines[x]->getCounts(),
+                    wnd->Lines[x]->getAutocorrelations(),
+                    wnd->Lines[x]->getCrosscorrelations()
+                };
+                for (int y = 0; y < 3; y++) {
+                    if(diff > (double)wnd->getTimeRange())
+                        for(int d = 0; d < counts[y]->count(); d++)
+                            if(counts[y]->at(d).x()<diff-(double)wnd->getTimeRange())
+                                counts[y]->remove(d);
+                    if(line->isActive()) {
+                        switch (y) {
+                        case 0:
+                            if(wnd->Lines[x]->showCounts())
+                                counts[y]->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                            break;
+                        case 1:
+                            if(wnd->Lines[x]->showAutocorrelations())
+                                counts[y]->append(diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
+                            break;
+                        case 2:
+                            if(wnd->Lines[x]->showCrosscorrelations())
+                                counts[y]->append(diff, packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].correlations*1000000/ahp_xc_get_packettime());
+                            break;
+                        default:
+                            break;
+                        }
+                    } else {
+                        counts[y]->clear();
+                    }
                 }
             }
         }
@@ -204,6 +219,9 @@ MainWindow::MainWindow(QWidget *parent)
                     Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                     ui->Lines->addTab(Lines[l], name);
                     getGraph()->addSeries(Lines[l]->getDots());
+                    getGraph()->addSeries(Lines[l]->getCounts());
+                    getGraph()->addSeries(Lines[l]->getAutocorrelations());
+                    getGraph()->addSeries(Lines[l]->getCrosscorrelations());
                     ahp_xc_set_voltage(l, 0);
                 }
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {

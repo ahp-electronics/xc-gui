@@ -34,6 +34,13 @@ public:
     bool getFlag(int flag);
     inline QLineSeries* getDots() { return &series; }
     inline QLineSeries* getAverage() { return &average; }
+    inline QLineSeries* getCounts() { return &counts; }
+    inline QLineSeries* getAutocorrelations() { return &autocorrelations; }
+    inline QLineSeries* getCrosscorrelations() { return &crosscorrelations; }
+    bool showCounts();
+    bool showAutocorrelations();
+    bool showCrosscorrelations();
+
     void setMode(Mode m);
     Scale getYScale();
     void stackCorrelations();
@@ -72,6 +79,9 @@ private:
     QList<double> values;
     QLineSeries series;
     QLineSeries average;
+    QLineSeries counts;
+    QLineSeries autocorrelations;
+    QLineSeries crosscorrelations;
     unsigned int line;
     int flags;
     Ui::Line *ui;
