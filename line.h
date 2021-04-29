@@ -33,7 +33,6 @@ public:
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
     inline QLineSeries* getDots() { return &series; }
-    inline QLineSeries* getAverage() { return &average; }
     inline QLineSeries* getCounts() { return &counts; }
     inline QLineSeries* getAutocorrelations() { return &autocorrelations; }
     inline QLineSeries* getCrosscorrelations() { return &crosscorrelations; }
@@ -75,10 +74,10 @@ private:
     int stop;
     double stack;
     Mode mode;
-    QMap<int, double> dark;
+    QMap<double, double> dark;
     QList<double> values;
     QLineSeries series;
-    QLineSeries average;
+    QMap<double, double>  average;
     QLineSeries counts;
     QLineSeries autocorrelations;
     QLineSeries crosscorrelations;

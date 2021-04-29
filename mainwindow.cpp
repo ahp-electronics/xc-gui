@@ -178,6 +178,7 @@ MainWindow::MainWindow(QWidget *parent)
         int port = 5760;
         QString address = "localhost";
         QString comport = "/dev/ttyUSB0";
+        bool ttyconn = false;
         if(ui->ComPort->currentText().contains(':')) {
             address = ui->ComPort->currentText().split(":")[0];
             port = ui->ComPort->currentText().split(":")[1].toInt();
