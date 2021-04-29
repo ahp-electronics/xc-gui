@@ -39,7 +39,7 @@ void MainWindow::ReadThread(QWidget *sender)
             double diff = (double)wnd->start.msecsTo(now)/1000.0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
-                QLineSeries *counts[3] = {
+                QScatterSeries *counts[3] = {
                     wnd->Lines[x]->getCounts(),
                     wnd->Lines[x]->getAutocorrelations(),
                     wnd->Lines[x]->getCrosscorrelations()
@@ -109,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setMode(Counter);
     connected = false;
-    TimeRange = 10;
+    TimeRange = 60;
     ui->setupUi(this);
     uiThread = new progressThread(this);
     readThread = new progressThread(this);
@@ -237,6 +237,7 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                 }
                 createPacket();
+                //ahp_xc_set_baudrate(R_230400);
                 setMode(Counter);
                 connect(readThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::ReadThread);
                 readThread->start();

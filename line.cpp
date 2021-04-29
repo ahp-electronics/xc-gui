@@ -19,6 +19,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     counts.setName(name);
     autocorrelations.setName(name);
     crosscorrelations.setName(name);
+    series.setMarkerSize(5);
+    counts.setMarkerSize(5);
+    autocorrelations.setMarkerSize(5);
+    crosscorrelations.setMarkerSize(5);
     line = n;
     flags = 0;
     ui->setupUi(this);
@@ -121,16 +125,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
             for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
                 dark.insert(series.at(y).x(), series.at(y).y());
-                QString darkstring = readString("Dark", "");
+                QString darkstring = readString("CrossDark", "");
                 if(!darkstring.isEmpty())
-                    saveSetting("Dark", darkstring+";");
-                darkstring = readString("Dark", "");
-                saveSetting("Dark", darkstring+QString::number(x*timespan)+","+QString::number(series.at(y).y()));
+                    saveSetting("CrossDark", darkstring+";");
+                darkstring = readString("CrossDark", "");
+                saveSetting("CrossDark", darkstring+QString::number(x*timespan)+","+QString::number(series.at(y).y()));
             }
             ui->CrossDark->setText("Clear Dark");
             series.setName("(residuals)");
         } else {
-            removeSetting("Dark");
+            removeSetting("CrossDark");
             dark.clear();
             ui->CrossDark->setText("Apply Dark");
             series.setName(name);
@@ -226,15 +230,26 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->CrossStart->setValue(readInt("CrossStart", ui->CrossStart->minimum()));
     ui->CrossEnd->setValue(readInt("CrossEnd", ui->CrossEnd->maximum()));
     dark.clear();
-    while(haveSetting("Dark")) {
+    if(haveSetting("Dark")) {
         QStringList darkstring = readString("Dark", "").split(";");
         for(int x = 0; x < darkstring.length(); x++) {
             QStringList lag_value = darkstring[x].split(",");
             dark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
         }
+        if(dark.count() > 0) {
+            ui->TakeDark->setText("Clear Dark");
+        }
     }
-    if(dark.count() > 0) {
-        ui->TakeDark->setText("Clear Dark");
+    crossdark.clear();
+    if(haveSetting("CrossDark")) {
+        QStringList darkstring = readString("CrossDark", "").split(";");
+        for(int x = 0; x < darkstring.length(); x++) {
+            QStringList lag_value = darkstring[x].split(",");
+            crossdark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+        }
+        if(crossdark.count() > 0) {
+            ui->CrossDark->setText("Clear Dark");
+        }
     }
 }
 
@@ -368,8 +383,7 @@ void Line::stackCorrelations()
         for (int x = start; x < end; x++) {
             value = spectrum[x-start].correlations[0].coherence;
             value /= stack;
-            if(average.contains(x*timespan))
-                value += average.value(x*timespan, 0)*(stack-1)/stack;
+            value += average.value(x*timespan, 0)*(stack-1)/stack;
             values.append(value);
         }
         series.clear();
@@ -400,18 +414,17 @@ void Line::stackCorrelations(unsigned int line2)
         double value;
         values.clear();
         stack += 1.0;
-        for (int x = 0; x < size; x++) {
-            value = spectrum[x].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence;
+        for (int x = ui->CrossEnd->value(), z = 1; x > ui->CrossStart->value() && z < size-1; x--, z++) {
+            value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence;
             value /= stack;
-            if(average.contains(x*timespan))
-                value += average.value(x*timespan, 0)*(stack-1)/stack;
+            value += average.value(x*timespan, 0)*(stack-1)/stack;
             values.append(value);
         }
         series.clear();
         average.clear();
         for (int x = ui->CrossEnd->value(), z = 1; x > ui->CrossStart->value() && z < size-1; x--, z++) {
             double y = (double)x*timespan;
-            series.append(y, values.at(z) - dark.value(y, 0));
+            series.append(y, values.at(z) - crossdark.value(y, 0));
             average.insert(y, values.at(z));
         }
     }
