@@ -52,6 +52,7 @@ public:
     QDateTime start;
     progressThread *readThread;
     progressThread *uiThread;
+
 private:
     ahp_xc_packet *packet;
     QSettings *settings;

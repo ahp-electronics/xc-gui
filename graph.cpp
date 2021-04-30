@@ -9,7 +9,6 @@ Graph::Graph(QWidget *parent, QString name) :
     chart = new QChart();
     chart->setTitle(name);
     chart->setVisible(true);
-    chart->legend()->hide();
     chart->createDefaultAxes();
     view = new QChartView(chart, this);
     view->setRubberBand(QChartView::HorizontalRubberBand);
@@ -24,8 +23,15 @@ Graph::~Graph()
 
 void Graph::addSeries(QAbstractSeries *series)
 {
-    chart->addSeries(series);
+    if(!chart->series().contains(series))
+        chart->addSeries(series);
     chart->createDefaultAxes();
+}
+
+void Graph::removeSeries(QAbstractSeries *series)
+{
+    if(chart->series().contains(series))
+        chart->removeSeries(series);
 }
 
 void Graph::clearSeries()
@@ -40,10 +46,14 @@ void Graph::Update()
         return;
     if(sender->chart == nullptr)
         return;
+    if(sender->chart->series().length() == 0)
+        return;
     double mn = DBL_MAX;
     double mx = DBL_MIN;
     for(int x = 0; x < sender->chart->series().length(); x++) {
         QLineSeries *series = (QLineSeries*)sender->chart->series()[x];
+        if(series->count() == 0)
+            continue;
         for(int y = 0; y < series->count(); y++) {
             mn = (mn < series->at(y).x()) ? mn : series->at(y).x();
             mx = (mx > series->at(y).x()) ? mx : series->at(y).x();

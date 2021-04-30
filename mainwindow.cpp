@@ -154,12 +154,9 @@ MainWindow::MainWindow(QWidget *parent)
             [=](bool checked) {
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
+        ui->BaudRate->setEnabled(false);
         ui->Scale->setEnabled(false);
         freePacket();
-        for(int l = 0; l < ahp_xc_get_nbaselines(); l++) {
-            Baselines[l]->~Baseline();
-        }
-        Baselines.clear();
         for(int l = 0; l < ahp_xc_get_nlines(); l++) {
             Lines[l]->~Line();
         }
@@ -171,6 +168,10 @@ MainWindow::MainWindow(QWidget *parent)
         ahp_xc_disconnect();
         settings->endGroup();
         connected = false;
+    });
+    connect(ui->BaudRate, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            [=](int currentIndex) {
+        ahp_xc_set_baudrate((baud_rate)currentIndex);
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
@@ -219,26 +220,42 @@ MainWindow::MainWindow(QWidget *parent)
                     QString name = "Line "+QString::number(l+1);
                     Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                     ui->Lines->addTab(Lines[l], name);
-                    getGraph()->addSeries(Lines[l]->getDots());
-                    getGraph()->addSeries(Lines[l]->getCounts());
-                    getGraph()->addSeries(Lines[l]->getAutocorrelations());
-                    getGraph()->addSeries(Lines[l]->getCrosscorrelations());
                     ahp_xc_set_voltage(l, 0);
-                }
-                for(int l = 0; l < ahp_xc_get_nlines(); l++) {
-                    for(int i = l+1; i < ahp_xc_get_nlines(); i++) {
-                        char name[150];
-                        sprintf(name, "%d*%d", l+1, i+1);
-                        Baseline* b = new Baseline(name, Lines[l], Lines[i], settings, this);
-                        Baselines.append(b);
-                        Lines[l]->addBaseline(b);
-                        Lines[i]->addBaseline(b);
-                        getGraph()->addSeries(b->getDots());
-                    }
+
+                    connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+                            [=](Line* line) {
+                        if(line->isActive()) {
+                            switch (mode) {
+                            case Counter:
+                                if(line->showCounts())
+                                    getGraph()->addSeries(line->getCounts());
+                                if(line->showAutocorrelations())
+                                    getGraph()->addSeries(line->getAutocorrelations());
+                                if(line->showCrosscorrelations())
+                                    getGraph()->addSeries(line->getCrosscorrelations());
+                                break;
+                            case Autocorrelator:
+                            case Crosscorrelator:
+                                if(line->getDots()->count()>0)
+                                    getGraph()->addSeries(line->getDots());
+                                else
+                                    getGraph()->removeSeries(line->getDots());
+                                break;
+                            }
+                        } else {
+                            switch (mode) {
+                            case Counter:
+                                getGraph()->removeSeries(line->getCounts());
+                                getGraph()->removeSeries(line->getAutocorrelations());
+                                getGraph()->removeSeries(line->getCrosscorrelations());
+                                break;
+                            }
+                        }
+                    });
                 }
                 createPacket();
-                //ahp_xc_set_baudrate(R_230400);
                 setMode(Counter);
+                ui->BaudRate->setEnabled(true);
                 connect(readThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::ReadThread);
                 readThread->start();
                 connect(uiThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::UiThread);

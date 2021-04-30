@@ -28,7 +28,7 @@ public:
     ~Line();
 
     inline bool isActive() { return running; }
-    void setActive(bool a) { running = a; }
+    void setActive(bool a) { running = a; emit activeStateChanged(this); }
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
@@ -63,11 +63,13 @@ public:
 
     void setPercent();
 
+signals:
+    void activeStateChanged(Line* line);
+
 private:
     bool running;
     QString name;
     QSettings *settings;
-    ahp_xc_sample *spectrum;
     QList<Line*> *parents;
     QList<Baseline*> nodes;
     bool scanning;
@@ -76,7 +78,6 @@ private:
     Mode mode;
     QMap<double, double> dark;
     QMap<double, double> crossdark;
-    QList<double> values;
     QScatterSeries series;
     QMap<double, double>  average;
     QScatterSeries counts;

@@ -24,11 +24,12 @@ public:
     Graph(QWidget *parent = nullptr, QString name="");
     ~Graph();
 
-    void addSeries(QAbstractSeries *series);
     void clearSeries();
     void resizeEvent(QResizeEvent *event);
     bool threadRunning;
     void Update();
+    void addSeries(QAbstractSeries* series);
+    void removeSeries(QAbstractSeries* series);
 
 private:
     QValueAxis *axisX;

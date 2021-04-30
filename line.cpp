@@ -15,14 +15,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     percent = 0;
     parents = p;
     name = ln;
-    series.setName(name);
-    counts.setName(name);
-    autocorrelations.setName(name);
-    crosscorrelations.setName(name);
-    series.setMarkerSize(5);
-    counts.setMarkerSize(5);
-    autocorrelations.setMarkerSize(5);
-    crosscorrelations.setMarkerSize(5);
+    series.setName(name+" coherence");
+    counts.setName(name+" (counts)");
+    autocorrelations.setName(name+" (autocorrelations)");
+    crosscorrelations.setName(name+" (crosscorrelations)");
+    series.setMarkerSize(5.5);
+    counts.setMarkerSize(6);
+    autocorrelations.setMarkerSize(6);
+    crosscorrelations.setMarkerSize(6);
     line = n;
     flags = 0;
     ui->setupUi(this);
@@ -65,13 +65,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             setActive(false);
             ui->Run->setText("Run");
         }
+        ui->Counter->setEnabled(false);
+        ui->Autocorrelator->setEnabled(false);
+        ui->Crosscorrelator->setEnabled(false);
         if(mode == Autocorrelator)
             ui->Autocorrelator->setEnabled(!isActive());
         else if(mode == Crosscorrelator)
             ui->Crosscorrelator->setEnabled(!isActive());
         else {
-            ui->Autocorrelator->setEnabled(false);
-            ui->Crosscorrelator->setEnabled(false);
+            ui->Counter->setEnabled(!isActive());
         }
         for(int x = 0; x < nodes.count(); x++)
             nodes[x]->setActive(nodes[x]->getLine1()->isActive()&&nodes[x]->getLine2()->isActive()&&mode==Crosscorrelator);
@@ -85,9 +87,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             QTextStream output(&data);
             double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
             if(mode == Autocorrelator || mode == Crosscorrelator) {
-                output << "lag (ns);coherence degree\n";
+                output << "'notes:';'" << ui->Notes->toPlainText() << "'\n";
+                output << "'lag (ns)';'coherence degree'\n";
                 for(int x = 0, y = 0; x < series.count(); y++, x++) {
-                    output << ""+QString::number(series.at(y).x())+";"+QString::number(series.at(y).y())+"\n";
+                    output << "'"+QString::number(series.at(y).x())+"';'"+QString::number(series.at(y).y())+"'\n";
                 }
             } else {
                 output << "time (s);counts;autocorrelations;crosscorrelations\n";
@@ -100,23 +103,21 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->TakeDark, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
         if(ui->TakeDark->text() == "Apply Dark") {
-            dark.clear();
-            double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
-            for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
-                dark.insert(series.at(y).x(), series.at(y).y());
+            dark.clear();for(int x = 0; x < series.count(); x++) {
+                dark.insert(series.at(x).x(), series.at(x).y());
                 QString darkstring = readString("Dark", "");
                 if(!darkstring.isEmpty())
                     saveSetting("Dark", darkstring+";");
                 darkstring = readString("Dark", "");
-                saveSetting("Dark", darkstring+QString::number(x*timespan)+","+QString::number(series.at(y).y()));
+                saveSetting("Dark", darkstring+QString::number(series.at(x).x())+","+QString::number(series.at(x).y()));
             }
             ui->TakeDark->setText("Clear Dark");
-            series.setName("(residuals)");
+            series.setName(name+" coherence (residuals)");
         } else {
             removeSetting("Dark");
             dark.clear();
             ui->TakeDark->setText("Apply Dark");
-            series.setName(name);
+            series.setName(name+" coherence");
         }
     });
     connect(ui->CrossDark, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
@@ -124,7 +125,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             dark.clear();
             double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
             for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
-                dark.insert(series.at(y).x(), series.at(y).y());
+                dark.insert(x*timespan, series.at(y).y());
                 QString darkstring = readString("CrossDark", "");
                 if(!darkstring.isEmpty())
                     saveSetting("CrossDark", darkstring+";");
@@ -132,12 +133,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
                 saveSetting("CrossDark", darkstring+QString::number(x*timespan)+","+QString::number(series.at(y).y()));
             }
             ui->CrossDark->setText("Clear Dark");
-            series.setName("(residuals)");
+            series.setName(name+" coherence (residuals)");
         } else {
             removeSetting("CrossDark");
             dark.clear();
             ui->CrossDark->setText("Apply Dark");
-            series.setName(name);
+            series.setName(name+" coherence");
         }
     });
     connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
@@ -168,11 +169,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
          clearCorrelations();
          series.clear();
          average.clear();
-         for(int x = 0; x < nodes.count(); x++)
-         {
-             nodes[x]->getDots()->clear();
-             nodes[x]->getAverage()->clear();
-         }
+         emit activeStateChanged(this);
     });
     connect(ui->ClearCross, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
          clearCorrelations();
@@ -238,6 +235,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
         if(dark.count() > 0) {
             ui->TakeDark->setText("Clear Dark");
+            series.setName(name+"(residuals)");
         }
     }
     crossdark.clear();
@@ -249,6 +247,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
         if(crossdark.count() > 0) {
             ui->CrossDark->setText("Clear Dark");
+            series.setName(name+"(residuals)");
         }
     }
 }
@@ -365,6 +364,7 @@ void Line::setPercent()
 
 void Line::stackCorrelations()
 {
+    scanning = true;
     ahp_xc_sample *spectrum = nullptr;
     int start = ui->StartLine->value();
     int end = ui->EndLine->value();
@@ -378,21 +378,20 @@ void Line::stackCorrelations()
     if(spectrum != nullptr) {
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         double value;
-        values.clear();
         stack += 1.0;
-        for (int x = start; x < end; x++) {
-            value = spectrum[x-start].correlations[0].coherence;
-            value /= stack;
-            value += average.value(x*timespan, 0)*(stack-1)/stack;
-            values.append(value);
-        }
         series.clear();
-        average.clear();
-        for (int x = start; x < end; x++) {
-            series.append(x*timespan, values.at(x-start) - dark.value(x*timespan, 0));
-            average.insert(x*timespan, values.at(x-start));
+        for (int x = start, z = 0; x < end && z < len; x++, z++) {
+            double y = (double)x*timespan;
+            value = spectrum[z].correlations[0].coherence/stack;
+            value += average.value(y, 0)*(stack-1)/stack;
+            series.append(y, value - dark.value(y, 0));
+            if(average.contains(y))
+                average.remove(y);
+            average.insert(y, value);
         }
+        emit activeStateChanged(this);
     }
+    scanning = false;
 }
 
 void Line::stackCorrelations(unsigned int line2)
@@ -410,23 +409,21 @@ void Line::stackCorrelations(unsigned int line2)
     if(nread != size)
         return;
     if(spectrum != nullptr) {
+        int size = (ui->CrossEnd->value() - ui->CrossStart->value());
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         double value;
-        values.clear();
         stack += 1.0;
-        for (int x = ui->CrossEnd->value(), z = 1; x > ui->CrossStart->value() && z < size-1; x--, z++) {
-            value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence;
-            value /= stack;
-            value += average.value(x*timespan, 0)*(stack-1)/stack;
-            values.append(value);
-        }
         series.clear();
-        average.clear();
-        for (int x = ui->CrossEnd->value(), z = 1; x > ui->CrossStart->value() && z < size-1; x--, z++) {
+        for (long x = start2, z = 1; x > start1 && z < size-1; x--, z++) {
             double y = (double)x*timespan;
-            series.append(y, values.at(z) - crossdark.value(y, 0));
-            average.insert(y, values.at(z));
+            value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence/stack;
+            value += average.value(y, 0)*(stack-1)/stack;
+            series.append(y, value - crossdark.value(y, 0));
+            if(average.contains(y))
+                average.remove(y);
+            average.insert(y, value);
         }
+        emit activeStateChanged(this);
     }
     scanning = false;
 }
