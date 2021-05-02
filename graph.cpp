@@ -10,6 +10,7 @@ Graph::Graph(QWidget *parent, QString name) :
     chart->setTitle(name);
     chart->setVisible(true);
     chart->createDefaultAxes();
+    chart->legend()->hide();
     view = new QChartView(chart, this);
     view->setRubberBand(QChartView::HorizontalRubberBand);
     view->setRenderHint(QPainter::Antialiasing);

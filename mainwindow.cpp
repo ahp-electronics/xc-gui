@@ -19,8 +19,7 @@ void MainWindow::UiThread(QWidget *sender)
         return;
     for(int i = 0; i < wnd->Lines.count(); i++) {
         wnd->Lines[i]->setPercent();
-        if(wnd->Lines[i]->isActive())
-            wnd->getGraph()->Update();
+        wnd->getGraph()->Update();
     }
     QThread::msleep(200);
 }
@@ -219,39 +218,11 @@ MainWindow::MainWindow(QWidget *parent)
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
                     QString name = "Line "+QString::number(l+1);
                     Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
+                    getGraph()->addSeries(Lines[l]->getDots());
+                    getGraph()->addSeries(Lines[l]->getCounts());
+                    getGraph()->addSeries(Lines[l]->getAutocorrelations());
+                    getGraph()->addSeries(Lines[l]->getCrosscorrelations());
                     ui->Lines->addTab(Lines[l], name);
-                    ahp_xc_set_voltage(l, 0);
-
-                    connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
-                            [=](Line* line) {
-                        if(line->isActive()) {
-                            switch (mode) {
-                            case Counter:
-                                if(line->showCounts())
-                                    getGraph()->addSeries(line->getCounts());
-                                if(line->showAutocorrelations())
-                                    getGraph()->addSeries(line->getAutocorrelations());
-                                if(line->showCrosscorrelations())
-                                    getGraph()->addSeries(line->getCrosscorrelations());
-                                break;
-                            case Autocorrelator:
-                            case Crosscorrelator:
-                                if(line->getDots()->count()>0)
-                                    getGraph()->addSeries(line->getDots());
-                                else
-                                    getGraph()->removeSeries(line->getDots());
-                                break;
-                            }
-                        } else {
-                            switch (mode) {
-                            case Counter:
-                                getGraph()->removeSeries(line->getCounts());
-                                getGraph()->removeSeries(line->getAutocorrelations());
-                                getGraph()->removeSeries(line->getCrosscorrelations());
-                                break;
-                            }
-                        }
-                    });
                 }
                 createPacket();
                 setMode(Counter);

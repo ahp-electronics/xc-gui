@@ -26,9 +26,19 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     line = n;
     flags = 0;
     ui->setupUi(this);
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-2);
+    ui->StartLine->setRange(0, ahp_xc_get_delaysize()-2);
+    ui->EndLine->setRange(1, ahp_xc_get_delaysize()-1);
+    ui->CrossStart->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
+    ui->CrossEnd->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
     old_index2 = readInt("Index2", (line == 0 ? 2 : (line == ahp_xc_get_nlines()-1 ? ahp_xc_get_nlines()-1 : line )));
     ui->Index2->setRange(1, ahp_xc_get_nlines());
     ui->Index2->setValue(old_index2);
+    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
+    ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
+    ui->CrossStart->setValue(readInt("CrossStart", ui->CrossStart->minimum()));
+    ui->CrossEnd->setValue(readInt("CrossEnd", ui->CrossEnd->maximum()));
+    ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [=](int state) {
         flags &= ~(1 << 0);
         flags |= ui->flag0->isChecked() << 0;
@@ -68,11 +78,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ui->Counter->setEnabled(false);
         ui->Autocorrelator->setEnabled(false);
         ui->Crosscorrelator->setEnabled(false);
-        if(mode == Autocorrelator)
+        if(mode == Autocorrelator) {
             ui->Autocorrelator->setEnabled(!isActive());
-        else if(mode == Crosscorrelator)
+        } else if(mode == Crosscorrelator) {
             ui->Crosscorrelator->setEnabled(!isActive());
-        else {
+        } else {
             ui->Counter->setEnabled(!isActive());
         }
         for(int x = 0; x < nodes.count(); x++)
@@ -209,11 +219,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ahp_xc_set_lag_auto(line, value);
         saveSetting("SpectralLine", value);
     });
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-2);
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize()-2);
-    ui->EndLine->setRange(1, ahp_xc_get_delaysize()-1);
-    ui->CrossStart->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
-    ui->CrossEnd->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
@@ -221,21 +226,17 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->test->setChecked(readBool(ui->test->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
-    ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
-    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
-    ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
-    ui->CrossStart->setValue(readInt("CrossStart", ui->CrossStart->minimum()));
-    ui->CrossEnd->setValue(readInt("CrossEnd", ui->CrossEnd->maximum()));
     dark.clear();
     if(haveSetting("Dark")) {
         QStringList darkstring = readString("Dark", "").split(";");
         for(int x = 0; x < darkstring.length(); x++) {
             QStringList lag_value = darkstring[x].split(",");
-            dark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+            if(lag_value.length()==2)
+                dark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
         }
         if(dark.count() > 0) {
             ui->TakeDark->setText("Clear Dark");
-            series.setName(name+"(residuals)");
+            series.setName(name+" coherence (residuals)");
         }
     }
     crossdark.clear();
@@ -243,11 +244,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         QStringList darkstring = readString("CrossDark", "").split(";");
         for(int x = 0; x < darkstring.length(); x++) {
             QStringList lag_value = darkstring[x].split(",");
-            crossdark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+            if(lag_value.length()==2)
+                crossdark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
         }
         if(crossdark.count() > 0) {
             ui->CrossDark->setText("Clear Dark");
-            series.setName(name+"(residuals)");
+            series.setName(name+" coherence (residuals)");
         }
     }
 }
@@ -348,13 +350,11 @@ void Line::setPercent()
     stop = !isActive();
     if(ui->Progress != nullptr) {
         if(mode == Autocorrelator) {
-            if(percent<ui->Progress->maximum())
-                ui->Progress2->setValue(0);
-            ui->Progress->setValue(percent);
+            if(percent>ui->Progress->minimum() && percent<ui->Progress->maximum())
+                ui->Progress->setValue(percent);
         } else if (mode == Crosscorrelator) {
-            if(percent<ui->Progress2->maximum())
-                ui->Progress->setValue(0);
-            ui->Progress2->setValue(percent);
+            if(percent>ui->Progress2->minimum() && percent<ui->Progress2->maximum())
+                ui->Progress2->setValue(percent);
         } else {
             ui->Progress->setValue(0);
             ui->Progress2->setValue(0);
@@ -382,11 +382,12 @@ void Line::stackCorrelations()
         series.clear();
         for (int x = start, z = 0; x < end && z < len; x++, z++) {
             double y = (double)x*timespan;
-            value = spectrum[z].correlations[0].coherence/stack;
+            value = spectrum[z].correlations[0].coherence / stack;
             value += average.value(y, 0)*(stack-1)/stack;
             series.append(y, value - dark.value(y, 0));
-            if(average.contains(y))
-                average.remove(y);
+            if(average.count() > z)
+                if(average.contains(y))
+                   average.remove(y);
             average.insert(y, value);
         }
         emit activeStateChanged(this);
