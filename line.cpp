@@ -19,18 +19,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     counts.setName(name+" (counts)");
     autocorrelations.setName(name+" (autocorrelations)");
     crosscorrelations.setName(name+" (crosscorrelations)");
-    series.setMarkerSize(5.5);
-    counts.setMarkerSize(6);
-    autocorrelations.setMarkerSize(6);
-    crosscorrelations.setMarkerSize(6);
     line = n;
     flags = 0;
     ui->setupUi(this);
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-2);
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize()-2);
-    ui->EndLine->setRange(1, ahp_xc_get_delaysize()-1);
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-7);
+    ui->StartLine->setRange(0, ahp_xc_get_delaysize()-7);
+    ui->EndLine->setRange(5, ahp_xc_get_delaysize()-1);
     ui->CrossStart->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
-    ui->CrossEnd->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
+    ui->CrossEnd->setRange(-ahp_xc_get_delaysize()+6, ahp_xc_get_delaysize()-1);
     old_index2 = readInt("Index2", (line == 0 ? 2 : (line == ahp_xc_get_nlines()-1 ? ahp_xc_get_nlines()-1 : line )));
     ui->Index2->setRange(1, ahp_xc_get_nlines());
     ui->Index2->setValue(old_index2);
@@ -152,25 +148,25 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
     });
     connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        if(ui->StartLine->value()>=ui->EndLine->value()-8) {
+        if(ui->StartLine->value()>=ui->EndLine->value()-5) {
             ui->EndLine->setValue(ui->StartLine->value()+1);
         }
         saveSetting("StartLine", ui->StartLine->value());
     });
     connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        if(ui->StartLine->value()>=ui->EndLine->value()-8) {
+        if(ui->StartLine->value()>=ui->EndLine->value()-5) {
             ui->StartLine->setValue(ui->EndLine->value()-1);
         }
         saveSetting("EndLine", ui->EndLine->value());
     });
     connect(ui->CrossStart, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        if(ui->CrossStart->value()>=ui->CrossEnd->value()-8) {
+        if(ui->CrossStart->value()>=ui->CrossEnd->value()-5) {
             ui->CrossEnd->setValue(ui->CrossStart->value()+1);
         }
         saveSetting("CrossStart", ui->CrossStart->value());
     });
     connect(ui->CrossEnd, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        if(ui->CrossStart->value()>=ui->CrossEnd->value()-8) {
+        if(ui->CrossStart->value()>=ui->CrossEnd->value()-5) {
             ui->CrossStart->setValue(ui->CrossEnd->value()-1);
         }
         saveSetting("CrossEnd", ui->CrossEnd->value());

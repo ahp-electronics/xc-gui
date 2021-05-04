@@ -38,7 +38,7 @@ void MainWindow::ReadThread(QWidget *sender)
             double diff = (double)wnd->start.msecsTo(now)/1000.0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
-                QScatterSeries *counts[3] = {
+                QSplineSeries *counts[3] = {
                     wnd->Lines[x]->getCounts(),
                     wnd->Lines[x]->getAutocorrelations(),
                     wnd->Lines[x]->getCrosscorrelations()

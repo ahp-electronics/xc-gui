@@ -6,6 +6,7 @@
 #include <QWidget>
 #include <QSettings>
 #include <QScatterSeries>
+#include <QSplineSeries>
 #include <QLineSeries>
 #include <ahp_xc.h>
 #include <cmath>
@@ -32,10 +33,10 @@ public:
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
-    inline QScatterSeries* getDots() { return &series; }
-    inline QScatterSeries* getCounts() { return &counts; }
-    inline QScatterSeries* getAutocorrelations() { return &autocorrelations; }
-    inline QScatterSeries* getCrosscorrelations() { return &crosscorrelations; }
+    inline QSplineSeries* getDots() { return &series; }
+    inline QSplineSeries* getCounts() { return &counts; }
+    inline QSplineSeries* getAutocorrelations() { return &autocorrelations; }
+    inline QSplineSeries* getCrosscorrelations() { return &crosscorrelations; }
     bool showCounts();
     bool showAutocorrelations();
     bool showCrosscorrelations();
@@ -78,11 +79,11 @@ private:
     Mode mode;
     QMap<double, double> dark;
     QMap<double, double> crossdark;
-    QScatterSeries series;
     QMap<double, double>  average;
-    QScatterSeries counts;
-    QScatterSeries autocorrelations;
-    QScatterSeries crosscorrelations;
+    QSplineSeries series;
+    QSplineSeries counts;
+    QSplineSeries autocorrelations;
+    QSplineSeries crosscorrelations;
     unsigned int line;
     int flags;
     Ui::Line *ui;
