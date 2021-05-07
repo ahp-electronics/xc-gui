@@ -398,26 +398,26 @@ void Line::stackCorrelations(unsigned int line2)
     stop = 0;
     off_t start1, start2;
     int size = (ui->CrossEnd->value() - ui->CrossStart->value());
-    start1 = ui->CrossStart->value() + size;
-    start2 = ui->CrossEnd->value() - size;
+    start1 = ui->CrossStart->value();
+    start2 = ui->CrossEnd->value();
     start1 = start1 > 0 ? 0 : -start1;
     start2 = start2 < 0 ? 0 : start2;
     int nread = ahp_xc_scan_crosscorrelations(line, line2, &spectrum, start1, start2, (size_t)size, &stop, &percent);
-    if(nread != size)
+    if(nread < size)
         return;
     if(spectrum != nullptr) {
-        int size = (ui->CrossEnd->value() - ui->CrossStart->value());
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         double value;
         stack += 1.0;
         series.clear();
-        for (long x = start2, z = 1; x > start1 && z < size-1; x--, z++) {
+        for (long x = -start1, z = 1; x < start2 && z < size-1; x++, z++) {
             double y = (double)x*timespan;
-            value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence/stack;
+            value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence / stack;
             value += average.value(y, 0)*(stack-1)/stack;
             series.append(y, value - crossdark.value(y, 0));
-            if(average.contains(y))
-                average.remove(y);
+            if(average.count() > z)
+                if(average.contains(y))
+                    average.remove(y);
             average.insert(y, value);
         }
         emit activeStateChanged(this);

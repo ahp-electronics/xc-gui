@@ -19,7 +19,8 @@ void MainWindow::UiThread(QWidget *sender)
         return;
     for(int i = 0; i < wnd->Lines.count(); i++) {
         wnd->Lines[i]->setPercent();
-        wnd->getGraph()->Update();
+        if(wnd->Lines[i]->isActive())
+            wnd->getGraph()->Update();
     }
     QThread::msleep(200);
 }
