@@ -197,7 +197,7 @@ MainWindow::MainWindow(QWidget *parent)
                 update();
             }
         } else {
-            ahp_xc_connect(comport.toUtf8());
+            ahp_xc_connect(comport.toUtf8(),false);
         }
         if(ahp_xc_is_connected()) {
             if(!ahp_xc_get_properties()) {

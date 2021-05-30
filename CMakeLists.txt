@@ -28,7 +28,6 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 find_package(Qt5 COMPONENTS Widgets SerialPort Charts Network REQUIRED)
 find_package(M REQUIRED)
 find_package(AHPXC REQUIRED)
-find_package(Threads REQUIRED)
 
 include_directories(${AHPXC_INCLUDE_DIR})
 
@@ -67,5 +66,5 @@ else()
   )
 endif()
 
-target_link_libraries(xc-gui PRIVATE ${AHPXC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${AHPXC_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
