@@ -1,0 +1,9 @@
+Package: xc-gui
+Version: VERSION
+Architecture: ARCH
+Maintainer: Ilia Platone <info@iliaplatone.com>
+Installed-Size: XXX		
+Depends: libahp-xc, qt5-default, libqt5serialport5
+Section: utils
+Priority: extra
+Description: GUI test tool for the AHP XC correlators

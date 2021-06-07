@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=XC Gui
+GenericName=Graphical test frontend application
+Comment=Test your AHP XC Correlator
+Exec=xc-gui
+Icon=xc-gui
+StartupNotify=true
+Terminal=false
+Type=Application
+Categories=GNOME;GTK;Development;IDE;
