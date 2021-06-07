@@ -31,6 +31,8 @@ find_package(AHPXC REQUIRED)
 
 include_directories(${AHPXC_INCLUDE_DIR})
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/files.xc-gui.cmake ${CMAKE_CURRENT_BINARY_DIR}/files.xc-gui )
+
 if(ANDROID)
   add_library(xc-gui SHARED
     main.cpp
