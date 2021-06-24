@@ -28,10 +28,13 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 find_package(Qt5 COMPONENTS Widgets SerialPort Charts Network REQUIRED)
 find_package(M REQUIRED)
 find_package(AHPXC REQUIRED)
+find_package(FFTW3 REQUIRED)
 
 include_directories(${AHPXC_INCLUDE_DIR})
+include_directories(${FFTW3_INCLUDE_DIR})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/files.xc-gui.cmake ${CMAKE_CURRENT_BINARY_DIR}/files.xc-gui )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.desktop.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ahp.png.cmake ${CMAKE_CURRENT_BINARY_DIR}/ahp.png )
 
 if(ANDROID)
   add_library(xc-gui SHARED
@@ -68,5 +71,7 @@ else()
   )
 endif()
 
-target_link_libraries(xc-gui PRIVATE ${AHPXC_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
+install(TARGETS ahp.png FILES /usr/share/icons)
+install(TARGETS xc-gui.desktop FILES /usr/share/applications)

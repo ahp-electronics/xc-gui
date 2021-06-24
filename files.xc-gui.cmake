@@ -1,1 +1,0 @@
-xc-gui,/usr/bin/

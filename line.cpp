@@ -1,5 +1,6 @@
 #include "line.h"
 #include "ui_line.h"
+#include <fftw3.h>
 #include <QMapNode>
 #include <QFile>
 #include <QFileDialog>
@@ -15,6 +16,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     percent = 0;
     parents = p;
     name = ln;
+    ac = (double*)malloc(1);
+    dft = (fftw_complex*)malloc(1);
     series.setName(name+" coherence");
     counts.setName(name+" (counts)");
     autocorrelations.setName(name+" (autocorrelations)");
@@ -376,16 +379,26 @@ void Line::stackCorrelations()
         double value;
         stack += 1.0;
         series.clear();
+        autocorrelations_dft.clear();
+        ac = (double*)realloc(ac, sizeof(double)*len);
+        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex)*len);
+        for (int z = 0; z < len; z++) {
+            ac[z] = spectrum[z].correlations[0].coherence;
+        }
+        fftw_plan plan = fftw_plan_dft_r2c_1d(len, ac, dft, 0);
+        fftw_execute(plan);
         for (int x = start, z = 0; x < end && z < len; x++, z++) {
             double y = (double)x*timespan;
             value = spectrum[z].correlations[0].coherence / stack;
             value += average.value(y, 0)*(stack-1)/stack;
+            autocorrelations_dft.append(y, pow(dft[z][0], 2)+pow(dft[z][1], 2));
             series.append(y, value - dark.value(y, 0));
             if(average.count() > z)
                 if(average.contains(y))
                    average.remove(y);
             average.insert(y, value);
         }
+        fftw_destroy_plan(plan);
         emit activeStateChanged(this);
     }
     scanning = false;

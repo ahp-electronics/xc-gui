@@ -9,6 +9,7 @@
 #include <QSplineSeries>
 #include <QLineSeries>
 #include <ahp_xc.h>
+#include <fftw3.h>
 #include <cmath>
 #include "types.h"
 #include "threads.h"
@@ -33,7 +34,7 @@ public:
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
-    inline QSplineSeries* getDots() { return &series; }
+    inline QSplineSeries* getDots() { return &autocorrelations_dft; }
     inline QSplineSeries* getCounts() { return &counts; }
     inline QSplineSeries* getAutocorrelations() { return &autocorrelations; }
     inline QSplineSeries* getCrosscorrelations() { return &crosscorrelations; }
@@ -68,6 +69,8 @@ signals:
     void activeStateChanged(Line* line);
 
 private:
+    double *ac;
+    fftw_complex *dft;
     bool running;
     QString name;
     QSettings *settings;
@@ -82,6 +85,7 @@ private:
     QMap<double, double>  average;
     QSplineSeries series;
     QSplineSeries counts;
+    QSplineSeries autocorrelations_dft;
     QSplineSeries autocorrelations;
     QSplineSeries crosscorrelations;
     unsigned int line;
