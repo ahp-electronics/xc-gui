@@ -16,12 +16,18 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     percent = 0;
     parents = p;
     name = ln;
-    ac = (double*)malloc(1);
-    dft = (fftw_complex*)malloc(1);
-    series.setName(name+" coherence");
-    counts.setName(name+" (counts)");
-    autocorrelations.setName(name+" (autocorrelations)");
-    crosscorrelations.setName(name+" (crosscorrelations)");
+    average = new QMap<double, double>();
+    dark = new QMap<double, double>();
+    autodark = new QMap<double, double>();
+    crossdark = new QMap<double, double>();
+    series = new QSplineSeries();
+    counts = new QSplineSeries();
+    autocorrelations = new QSplineSeries();
+    crosscorrelations = new QSplineSeries();
+    getDots()->setName(name+" coherence");
+    getCounts()->setName(name+" (counts)");
+    getAutocorrelations()->setName(name+" (autocorrelations)");
+    getCrosscorrelations()->setName(name+" (crosscorrelations)");
     line = n;
     flags = 0;
     ui->setupUi(this);
@@ -38,6 +44,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->CrossStart->setValue(readInt("CrossStart", ui->CrossStart->minimum()));
     ui->CrossEnd->setValue(readInt("CrossEnd", ui->CrossEnd->maximum()));
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
+    ui->IDFT->setChecked(readBool("IDFT", false));
+    int start = ui->StartLine->value();
+    int end = ui->EndLine->value();
+    int len = end-start;
+    ac = (double*)malloc(sizeof(double)*len);
+    dft = (fftw_complex*)malloc(sizeof(fftw_complex)*len);
+    plan = fftw_plan_dft_c2r_1d(len, dft, ac, FFTW_ESTIMATE);
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [=](int state) {
         flags &= ~(1 << 0);
         flags |= ui->flag0->isChecked() << 0;
@@ -98,13 +111,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             if(mode == Autocorrelator || mode == Crosscorrelator) {
                 output << "'notes:';'" << ui->Notes->toPlainText() << "'\n";
                 output << "'lag (ns)';'coherence degree'\n";
-                for(int x = 0, y = 0; x < series.count(); y++, x++) {
-                    output << "'"+QString::number(series.at(y).x())+"';'"+QString::number(series.at(y).y())+"'\n";
+                for(int x = 0, y = 0; x < getDots()->count(); y++, x++) {
+                    output << "'"+QString::number(getDots()->at(y).x())+"';'"+QString::number(getDots()->at(y).y())+"'\n";
                 }
             } else {
                 output << "time (s);counts;autocorrelations;crosscorrelations\n";
-                for(int x = 0, y = 0; x < series.count(); y++, x++) {
-                    output << ""+QString::number(counts.at(y).x())+";"+QString::number(counts.at(y).y())+";"+QString::number(autocorrelations.at(y).y())+";"+QString::number(crosscorrelations.at(y).y())+"\n";
+                for(int x = 0, y = 0; x < getDots()->count(); y++, x++) {
+                    output << ""+QString::number(getCounts()->at(y).x())+";"+QString::number(getCounts()->at(y).y())+";"+QString::number(getAutocorrelations()->at(y).y())+";"+QString::number(getCrosscorrelations()->at(y).y())+"\n";
                 }
             }
         }
@@ -112,54 +125,72 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->TakeDark, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
         if(ui->TakeDark->text() == "Apply Dark") {
-            dark.clear();for(int x = 0; x < series.count(); x++) {
-                dark.insert(series.at(x).x(), series.at(x).y());
+            getDark()->clear();
+            for(int x = 0; x < getDots()->count(); x++) {
+                getDark()->insert(getDots()->at(x).x(), getDots()->at(x).y());
                 QString darkstring = readString("Dark", "");
                 if(!darkstring.isEmpty())
                     saveSetting("Dark", darkstring+";");
                 darkstring = readString("Dark", "");
-                saveSetting("Dark", darkstring+QString::number(series.at(x).x())+","+QString::number(series.at(x).y()));
+                saveSetting("Dark", darkstring+QString::number(getDots()->at(x).x())+","+QString::number(getDots()->at(x).y()));
             }
             ui->TakeDark->setText("Clear Dark");
-            series.setName(name+" coherence (residuals)");
+            getDots()->setName(name+" coherence (residuals)");
         } else {
             removeSetting("Dark");
-            dark.clear();
+            getDark()->clear();
             ui->TakeDark->setText("Apply Dark");
-            series.setName(name+" coherence");
+            getDots()->setName(name+" coherence");
         }
     });
     connect(ui->CrossDark, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
         if(ui->CrossDark->text() == "Apply Dark") {
-            dark.clear();
+            getDark()->clear();
             double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
             for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
-                dark.insert(x*timespan, series.at(y).y());
+                getDark()->insert(x*timespan, getDots()->at(y).y());
                 QString darkstring = readString("CrossDark", "");
                 if(!darkstring.isEmpty())
                     saveSetting("CrossDark", darkstring+";");
                 darkstring = readString("CrossDark", "");
-                saveSetting("CrossDark", darkstring+QString::number(x*timespan)+","+QString::number(series.at(y).y()));
+                saveSetting("CrossDark", darkstring+QString::number(x*timespan)+","+QString::number(getDots()->at(y).y()));
             }
             ui->CrossDark->setText("Clear Dark");
-            series.setName(name+" coherence (residuals)");
+            getDots()->setName(name+" coherence (residuals)");
         } else {
             removeSetting("CrossDark");
-            dark.clear();
+            getDark()->clear();
             ui->CrossDark->setText("Apply Dark");
-            series.setName(name+" coherence");
+            getDots()->setName(name+" coherence");
         }
+    });
+    connect(ui->IDFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [=](int state) {
+        saveSetting("IDFT", ui->IDFT->isChecked());
     });
     connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         if(ui->StartLine->value()>=ui->EndLine->value()-5) {
             ui->EndLine->setValue(ui->StartLine->value()+1);
         }
+        int start = ui->StartLine->value();
+        int end = ui->EndLine->value();
+        int len = end-start;
+        ac = (double*)realloc(ac, sizeof(double)*len);
+        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex)*len);
+        fftw_destroy_plan(plan);
+        plan = fftw_plan_dft_c2r_1d(len, dft, ac, FFTW_ESTIMATE);
         saveSetting("StartLine", ui->StartLine->value());
     });
     connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         if(ui->StartLine->value()>=ui->EndLine->value()-5) {
             ui->StartLine->setValue(ui->EndLine->value()-1);
         }
+        int start = ui->StartLine->value();
+        int end = ui->EndLine->value();
+        int len = end-start;
+        ac = (double*)realloc(ac, sizeof(double)*len);
+        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex)*len);
+        fftw_destroy_plan(plan);
+        plan = fftw_plan_dft_c2r_1d(len, dft, ac, FFTW_ESTIMATE);
         saveSetting("EndLine", ui->EndLine->value());
     });
     connect(ui->CrossStart, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
@@ -176,14 +207,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
          clearCorrelations();
-         series.clear();
-         average.clear();
+         getDots()->clear();
+         getAverage()->clear();
          emit activeStateChanged(this);
     });
     connect(ui->ClearCross, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
          clearCorrelations();
-         series.clear();
-         average.clear();
+         getDots()->clear();
+         getAverage()->clear();
          for(int x = 0; x < nodes.count(); x++)
          {
              nodes[x]->getDots()->clear();
@@ -225,32 +256,32 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->test->setChecked(readBool(ui->test->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
-    dark.clear();
     if(haveSetting("Dark")) {
         QStringList darkstring = readString("Dark", "").split(";");
         for(int x = 0; x < darkstring.length(); x++) {
             QStringList lag_value = darkstring[x].split(",");
             if(lag_value.length()==2)
-                dark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+                getDark()->insert(lag_value[0].toDouble(), lag_value[1].toDouble());
         }
-        if(dark.count() > 0) {
+        if(getDark()->count() > 0) {
             ui->TakeDark->setText("Clear Dark");
-            series.setName(name+" coherence (residuals)");
+            getDots()->setName(name+" coherence (residuals)");
         }
     }
-    crossdark.clear();
+    getDark()->clear();
     if(haveSetting("CrossDark")) {
         QStringList darkstring = readString("CrossDark", "").split(";");
         for(int x = 0; x < darkstring.length(); x++) {
             QStringList lag_value = darkstring[x].split(",");
             if(lag_value.length()==2)
-                crossdark.insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+                getDark()->insert(lag_value[0].toDouble(), lag_value[1].toDouble());
         }
-        if(crossdark.count() > 0) {
+        if(getDark()->count() > 0) {
             ui->CrossDark->setText("Clear Dark");
-            series.setName(name+" coherence (residuals)");
+            getDots()->setName(name+" coherence (residuals)");
         }
     }
+    setMode(Counter);
 }
 
 unsigned int Line::getLine2() {
@@ -329,11 +360,12 @@ bool Line::showCrosscorrelations()
 void Line::setMode(Mode m)
 {
     mode = m;
-    series.clear();
-    average.clear();
-    counts.clear();
-    autocorrelations.clear();
-    crosscorrelations.clear();
+    getDark()->clear();
+    getDots()->clear();
+    getAverage()->clear();
+    getCounts()->clear();
+    getAutocorrelations()->clear();
+    getCrosscorrelations()->clear();
     if(mode == Autocorrelator  || mode == Crosscorrelator) {
         stack = 0.0;
     }
@@ -361,6 +393,13 @@ void Line::setPercent()
     }
 }
 
+void Line::insertValue(double x, double y)
+{
+    y += getAverage()->value(x, 0)*(stack-1)/stack;
+    getAverage()->insert(x, y);
+    getDots()->append(x, y - getDark()->value(x, 0));
+}
+
 void Line::stackCorrelations()
 {
     scanning = true;
@@ -378,27 +417,24 @@ void Line::stackCorrelations()
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         double value;
         stack += 1.0;
-        series.clear();
-        autocorrelations_dft.clear();
-        ac = (double*)realloc(ac, sizeof(double)*len);
-        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex)*len);
-        for (int z = 0; z < len; z++) {
-            ac[z] = spectrum[z].correlations[0].coherence;
+        getDots()->clear();
+        if(ui->IDFT->isChecked()) {
+            for (int z = 0; z < len; z++) {
+                dft[z][0] = spectrum[z].correlations[0].coherence;
+                dft[z][1] = 0;
+            }
+            fftw_execute(plan);
         }
-        fftw_plan plan = fftw_plan_dft_r2c_1d(len, ac, dft, 0);
-        fftw_execute(plan);
-        for (int x = start, z = 0; x < end && z < len; x++, z++) {
-            double y = (double)x*timespan;
-            value = spectrum[z].correlations[0].coherence / stack;
-            value += average.value(y, 0)*(stack-1)/stack;
-            autocorrelations_dft.append(y, pow(dft[z][0], 2)+pow(dft[z][1], 2));
-            series.append(y, value - dark.value(y, 0));
-            if(average.count() > z)
-                if(average.contains(y))
-                   average.remove(y);
-            average.insert(y, value);
+        for (int x = start+1, z = 1; x < end && z < len; x++, z++) {
+            double y;
+            y = (double)x*timespan;
+            if(ui->IDFT->isChecked()) {
+                value = ac[z] / stack;
+            } else {
+                value = spectrum[z].correlations[0].coherence / stack;
+            }
+            insertValue(y, value);
         }
-        fftw_destroy_plan(plan);
         emit activeStateChanged(this);
     }
     scanning = false;
@@ -422,16 +458,11 @@ void Line::stackCorrelations(unsigned int line2)
         double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         double value;
         stack += 1.0;
-        series.clear();
+        getDots()->clear();
         for (long x = -start1, z = 1; x < start2 && z < size-1; x++, z++) {
             double y = (double)x*timespan;
             value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence / stack;
-            value += average.value(y, 0)*(stack-1)/stack;
-            series.append(y, value - crossdark.value(y, 0));
-            if(average.count() > z)
-                if(average.contains(y))
-                    average.remove(y);
-            average.insert(y, value);
+            insertValue(y, value);
         }
         emit activeStateChanged(this);
     }
@@ -440,6 +471,7 @@ void Line::stackCorrelations(unsigned int line2)
 
 Line::~Line()
 {
+    fftw_destroy_plan(plan);
     setActive(false);
     delete ui;
 }

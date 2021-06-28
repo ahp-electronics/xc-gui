@@ -184,6 +184,19 @@
      <number>1</number>
     </property>
    </widget>
+   <widget class="QCheckBox" name="IDFT">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>90</y>
+      <width>191</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Inverse transform</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="Counter">
    <property name="enabled">

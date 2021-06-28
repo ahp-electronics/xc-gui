@@ -33,9 +33,6 @@ find_package(FFTW3 REQUIRED)
 include_directories(${AHPXC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.desktop.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ahp.png.cmake ${CMAKE_CURRENT_BINARY_DIR}/ahp.png )
-
 if(ANDROID)
   add_library(xc-gui SHARED
     main.cpp
@@ -73,5 +70,5 @@ endif()
 
 target_link_libraries(xc-gui PRIVATE ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
-install(TARGETS ahp.png FILES /usr/share/icons)
-install(TARGETS xc-gui.desktop FILES /usr/share/applications)
+install(FILES ahp.png DESTINATION /usr/share/icons/xc-gui.png)
+install(FILES app.desktop DESTINATION /usr/share/applications/xc-gui.desktop)

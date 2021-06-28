@@ -9,6 +9,7 @@
 #include <QSplineSeries>
 #include <QLineSeries>
 #include <ahp_xc.h>
+#include <complex.h>
 #include <fftw3.h>
 #include <cmath>
 #include "types.h"
@@ -34,10 +35,6 @@ public:
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
-    inline QSplineSeries* getDots() { return &autocorrelations_dft; }
-    inline QSplineSeries* getCounts() { return &counts; }
-    inline QSplineSeries* getAutocorrelations() { return &autocorrelations; }
-    inline QSplineSeries* getCrosscorrelations() { return &crosscorrelations; }
     bool showCounts();
     bool showAutocorrelations();
     bool showCrosscorrelations();
@@ -61,15 +58,23 @@ public:
     inline int readInt(QString setting, int defaultValue) { return readSetting(setting, defaultValue).toInt(); }
     inline bool readBool(QString setting, bool defaultValue) { return readSetting(setting, defaultValue).toBool(); }
     inline bool isRunning() { return running; }
+
+    inline QSplineSeries* getDots() { return series; }
+    inline QMap<double, double>* getAverage() { return average; }
+    inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
+    inline QSplineSeries* getCounts() { return counts; }
+    inline QSplineSeries* getAutocorrelations() { return autocorrelations; }
+    inline QSplineSeries* getCrosscorrelations() { return crosscorrelations; }
+
     double percent;
 
     void setPercent();
 
-signals:
-    void activeStateChanged(Line* line);
-
 private:
+    void insertValue(double x, double y);
+
     double *ac;
+    fftw_plan plan;
     fftw_complex *dft;
     bool running;
     QString name;
@@ -80,18 +85,21 @@ private:
     int stop;
     double stack;
     Mode mode;
-    QMap<double, double> dark;
-    QMap<double, double> crossdark;
-    QMap<double, double>  average;
-    QSplineSeries series;
-    QSplineSeries counts;
-    QSplineSeries autocorrelations_dft;
-    QSplineSeries autocorrelations;
-    QSplineSeries crosscorrelations;
+    QMap<double, double>* dark;
+    QMap<double, double>* autodark;
+    QMap<double, double>* crossdark;
+    QMap<double, double>* average;
+    QSplineSeries* series;
+    QSplineSeries* counts;
+    QSplineSeries* autocorrelations;
+    QSplineSeries* crosscorrelations;
     unsigned int line;
     int flags;
     Ui::Line *ui;
     int old_index2;
+
+signals:
+    void activeStateChanged(Line* line);
 };
 
 #endif // LINE_H
