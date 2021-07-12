@@ -42,13 +42,11 @@ public:
     void setMode(Mode m);
     Scale getYScale();
     void stackCorrelations();
-    void stackCorrelations(unsigned int line2);
     inline void clearCorrelations() { stack = 0.0; }
     inline double getPercent() { return percent; }
     inline double isScanning() { return !stop; }
     inline void addBaseline(Baseline* b) { nodes.append(b); }
     inline unsigned int getLineIndex() { return line; }
-    unsigned int getLine2();
     bool haveSetting(QString setting);
     void removeSetting(QString setting);
     void saveSetting(QString name, QVariant value);
@@ -64,7 +62,6 @@ public:
     inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
     inline QSplineSeries* getCounts() { return counts; }
     inline QSplineSeries* getAutocorrelations() { return autocorrelations; }
-    inline QSplineSeries* getCrosscorrelations() { return crosscorrelations; }
 
     double percent;
 

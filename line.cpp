@@ -27,22 +27,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getDots()->setName(name+" coherence");
     getCounts()->setName(name+" (counts)");
     getAutocorrelations()->setName(name+" (autocorrelations)");
-    getCrosscorrelations()->setName(name+" (crosscorrelations)");
     line = n;
     flags = 0;
     ui->setupUi(this);
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-7);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize()-7);
     ui->EndLine->setRange(5, ahp_xc_get_delaysize()-1);
-    ui->CrossStart->setRange(-ahp_xc_get_delaysize()+1, ahp_xc_get_delaysize()-1);
-    ui->CrossEnd->setRange(-ahp_xc_get_delaysize()+6, ahp_xc_get_delaysize()-1);
-    old_index2 = readInt("Index2", (line == 0 ? 2 : (line == ahp_xc_get_nlines()-1 ? ahp_xc_get_nlines()-1 : line )));
-    ui->Index2->setRange(1, ahp_xc_get_nlines());
-    ui->Index2->setValue(old_index2);
     ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
-    ui->CrossStart->setValue(readInt("CrossStart", ui->CrossStart->minimum()));
-    ui->CrossEnd->setValue(readInt("CrossEnd", ui->CrossEnd->maximum()));
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->IDFT->setChecked(readBool("IDFT", false));
     int start = ui->StartLine->value();
@@ -114,11 +106,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
                 for(int x = 0, y = 0; x < getDots()->count(); y++, x++) {
                     output << "'"+QString::number(getDots()->at(y).x())+"';'"+QString::number(getDots()->at(y).y())+"'\n";
                 }
-            } else {
-                output << "time (s);counts;autocorrelations;crosscorrelations\n";
-                for(int x = 0, y = 0; x < getDots()->count(); y++, x++) {
-                    output << ""+QString::number(getCounts()->at(y).x())+";"+QString::number(getCounts()->at(y).y())+";"+QString::number(getAutocorrelations()->at(y).y())+";"+QString::number(getCrosscorrelations()->at(y).y())+"\n";
-                }
             }
         }
         data.close();
@@ -140,27 +127,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             removeSetting("Dark");
             getDark()->clear();
             ui->TakeDark->setText("Apply Dark");
-            getDots()->setName(name+" coherence");
-        }
-    });
-    connect(ui->CrossDark, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
-        if(ui->CrossDark->text() == "Apply Dark") {
-            getDark()->clear();
-            double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
-            for(int x = ui->StartLine->value(), y = 0; x < ui->EndLine->value(); y++, x++) {
-                getDark()->insert(x*timespan, getDots()->at(y).y());
-                QString darkstring = readString("CrossDark", "");
-                if(!darkstring.isEmpty())
-                    saveSetting("CrossDark", darkstring+";");
-                darkstring = readString("CrossDark", "");
-                saveSetting("CrossDark", darkstring+QString::number(x*timespan)+","+QString::number(getDots()->at(y).y()));
-            }
-            ui->CrossDark->setText("Clear Dark");
-            getDots()->setName(name+" coherence (residuals)");
-        } else {
-            removeSetting("CrossDark");
-            getDark()->clear();
-            ui->CrossDark->setText("Apply Dark");
             getDots()->setName(name+" coherence");
         }
     });
@@ -193,51 +159,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         plan = fftw_plan_dft_c2r_1d(len, dft, ac, FFTW_ESTIMATE);
         saveSetting("EndLine", ui->EndLine->value());
     });
-    connect(ui->CrossStart, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        if(ui->CrossStart->value()>=ui->CrossEnd->value()-5) {
-            ui->CrossEnd->setValue(ui->CrossStart->value()+1);
-        }
-        saveSetting("CrossStart", ui->CrossStart->value());
-    });
-    connect(ui->CrossEnd, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        if(ui->CrossStart->value()>=ui->CrossEnd->value()-5) {
-            ui->CrossStart->setValue(ui->CrossEnd->value()-1);
-        }
-        saveSetting("CrossEnd", ui->CrossEnd->value());
-    });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
          clearCorrelations();
          getDots()->clear();
          getAverage()->clear();
          emit activeStateChanged(this);
-    });
-    connect(ui->ClearCross, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
-         clearCorrelations();
-         getDots()->clear();
-         getAverage()->clear();
-         for(int x = 0; x < nodes.count(); x++)
-         {
-             nodes[x]->getDots()->clear();
-             nodes[x]->getAverage()->clear();
-         }
-    });
-    connect(ui->Index2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
-        int idx = line+1;
-        int new_value = value;
-        if(new_value==idx) {
-            if(idx == ui->Index2->minimum() || idx == ui->Index2->maximum())
-                new_value = old_index2;
-            else {
-                if(old_index2 > new_value)  {
-                    new_value = idx-1;
-                } else if(old_index2 < new_value)  {
-                    new_value = idx+1;
-                }
-            }
-        }
-        old_index2 = new_value;
-        ui->Index2->setValue(new_value);
-        saveSetting("Index2", new_value);
     });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [=](bool checked) {
         saveSetting(ui->Counts->text(), ui->Counts->isChecked());
@@ -269,23 +195,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
     }
     getDark()->clear();
-    if(haveSetting("CrossDark")) {
-        QStringList darkstring = readString("CrossDark", "").split(";");
-        for(int x = 0; x < darkstring.length(); x++) {
-            QStringList lag_value = darkstring[x].split(",");
-            if(lag_value.length()==2)
-                getDark()->insert(lag_value[0].toDouble(), lag_value[1].toDouble());
-        }
-        if(getDark()->count() > 0) {
-            ui->CrossDark->setText("Clear Dark");
-            getDots()->setName(name+" coherence (residuals)");
-        }
-    }
     setMode(Counter);
-}
-
-unsigned int Line::getLine2() {
-    return ui->Index2->value()-1;
 }
 
 bool Line::haveSetting(QString setting) {
@@ -352,11 +262,6 @@ bool Line::showAutocorrelations()
     return ui->Autocorrelations->isChecked();
 }
 
-bool Line::showCrosscorrelations()
-{
-    return ui->Crosscorrelations->isChecked();
-}
-
 void Line::setMode(Mode m)
 {
     mode = m;
@@ -365,8 +270,7 @@ void Line::setMode(Mode m)
     getAverage()->clear();
     getCounts()->clear();
     getAutocorrelations()->clear();
-    getCrosscorrelations()->clear();
-    if(mode == Autocorrelator  || mode == Crosscorrelator) {
+    if(mode == Autocorrelator) {
         stack = 0.0;
     }
     if(!isActive()) {
@@ -383,12 +287,8 @@ void Line::setPercent()
         if(mode == Autocorrelator) {
             if(percent>ui->Progress->minimum() && percent<ui->Progress->maximum())
                 ui->Progress->setValue(percent);
-        } else if (mode == Crosscorrelator) {
-            if(percent>ui->Progress2->minimum() && percent<ui->Progress2->maximum())
-                ui->Progress2->setValue(percent);
-        } else {
+        } else if (mode == Counter)  {
             ui->Progress->setValue(0);
-            ui->Progress2->setValue(0);
         }
     }
 }
@@ -433,35 +333,6 @@ void Line::stackCorrelations()
             } else {
                 value = spectrum[z].correlations[0].coherence / stack;
             }
-            insertValue(y, value);
-        }
-        emit activeStateChanged(this);
-    }
-    scanning = false;
-}
-
-void Line::stackCorrelations(unsigned int line2)
-{
-    scanning = true;
-    ahp_xc_sample *spectrum = nullptr;
-    stop = 0;
-    off_t start1, start2;
-    int size = (ui->CrossEnd->value() - ui->CrossStart->value());
-    start1 = ui->CrossStart->value();
-    start2 = ui->CrossEnd->value();
-    start1 = start1 > 0 ? 0 : -start1;
-    start2 = start2 < 0 ? 0 : start2;
-    int nread = ahp_xc_scan_crosscorrelations(line, line2, &spectrum, start1, start2, (size_t)size, &stop, &percent);
-    if(nread < size)
-        return;
-    if(spectrum != nullptr) {
-        double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
-        double value;
-        stack += 1.0;
-        getDots()->clear();
-        for (long x = -start1, z = 1; x < start2 && z < size-1; x++, z++) {
-            double y = (double)x*timespan;
-            value = spectrum[z].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].coherence / stack;
             insertValue(y, value);
         }
         emit activeStateChanged(this);

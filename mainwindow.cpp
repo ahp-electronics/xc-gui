@@ -41,8 +41,7 @@ void MainWindow::ReadThread(QWidget *sender)
                 Line * line = wnd->Lines[x];
                 QSplineSeries *counts[3] = {
                     wnd->Lines[x]->getCounts(),
-                    wnd->Lines[x]->getAutocorrelations(),
-                    wnd->Lines[x]->getCrosscorrelations()
+                    wnd->Lines[x]->getAutocorrelations()
                 };
                 for (int y = 0; y < 3; y++) {
                     if(diff > (double)wnd->getTimeRange())
@@ -59,10 +58,6 @@ void MainWindow::ReadThread(QWidget *sender)
                             if(wnd->Lines[x]->showAutocorrelations())
                                 counts[y]->append(diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
                             break;
-                        case 2:
-                            if(wnd->Lines[x]->showCrosscorrelations())
-                                counts[y]->append(diff, packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize()-1].correlations*1000000/ahp_xc_get_packettime());
-                            break;
                         default:
                             break;
                         }
@@ -78,14 +73,6 @@ void MainWindow::ReadThread(QWidget *sender)
             Line * line = wnd->Lines[x];
             if(line->isActive()) {
                 line->stackCorrelations();
-            }
-        }
-        break;
-    case Crosscorrelator:
-        for(int x = 0; x < wnd->Lines.count(); x++) {
-            Line * line = wnd->Lines[x];
-            if(line->isActive()) {
-                line->stackCorrelations(line->getLine2());
             }
         }
         break;
@@ -119,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     getGraph()->setVisible(true);
 
     settings->beginGroup("Connection");
+    ui->ComPort->clear();
     ui->ComPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
     QStringList devices = settings->value("devices", "").toString().split(",");
     settings->endGroup();
@@ -144,7 +132,6 @@ MainWindow::MainWindow(QWidget *parent)
             Lines[x]->setMode((Mode)index);
         }
     });
-
     connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [=](int value) {
         settings->setValue("Timescale", value);
@@ -197,6 +184,7 @@ MainWindow::MainWindow(QWidget *parent)
                 update();
             }
         } else {
+            comport = ui->ComPort->currentText();
             ahp_xc_connect(comport.toUtf8(),false);
         }
         if(ahp_xc_is_connected()) {
@@ -222,7 +210,6 @@ MainWindow::MainWindow(QWidget *parent)
                     getGraph()->addSeries(Lines[l]->getDots());
                     getGraph()->addSeries(Lines[l]->getCounts());
                     getGraph()->addSeries(Lines[l]->getAutocorrelations());
-                    getGraph()->addSeries(Lines[l]->getCrosscorrelations());
                     ui->Lines->addTab(Lines[l], name);
                 }
                 createPacket();
