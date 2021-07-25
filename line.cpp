@@ -23,10 +23,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     series = new QSplineSeries();
     counts = new QSplineSeries();
     autocorrelations = new QSplineSeries();
-    crosscorrelations = new QSplineSeries();
     getDots()->setName(name+" coherence");
     getCounts()->setName(name+" (counts)");
     getAutocorrelations()->setName(name+" (autocorrelations)");
+    stream = dsp_stream_new();
+    dsp_stream_add_dim(stream, 1);
+    dsp_stream_alloc_buffer(stream, stream->len);
     line = n;
     flags = 0;
     ui->setupUi(this);
@@ -89,9 +91,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         } else {
             ui->Counter->setEnabled(!isActive());
         }
-        for(int x = 0; x < nodes.count(); x++)
-            nodes[x]->setActive(nodes[x]->getLine1()->isActive()&&nodes[x]->getLine2()->isActive()&&mode==Crosscorrelator);
-
     });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
         QString filename = QFileDialog::getSaveFileName(this, "DialogTitle", "filename.csv", "CSV files (.csv);;Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)

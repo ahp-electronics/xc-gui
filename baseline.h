@@ -19,7 +19,7 @@ class Baseline : public QWidget
     Q_OBJECT
 
 public:
-    Baseline(QString name, Line* n1, Line* n2, QSettings *settings = nullptr, QWidget *parent = nullptr);
+    Baseline(QString name, int index, Line* n1, Line* n2, QSettings *settings = nullptr, QWidget *parent = nullptr);
     ~Baseline();
 
     inline void setName(QString n) {  name = n; series->setName(n); }
@@ -27,25 +27,24 @@ public:
     inline QList<double>* getDark() { return &dark; }
     inline QLineSeries* getDots() { return series; }
     inline QLineSeries* getAverage() { return average; }
+    inline QList<double> *getValues() { return &values; }
     void setMode(Mode m);
-    void stackCorrelations();
-    inline void clearCorrelations() { stack = 0.0; }
-    inline void setActive(bool a) { active = a; stop = !active; }
-    inline bool isActive() { return active; }
+    inline void setDelay(double s);
+    inline bool isActive() { return (active == 3); }
     inline double getPercent() { return percent; }
     inline double isScanning() { return scanning; }
     inline Line* getLine1() { return line1; }
     inline Line* getLine2() { return line2; }
 
 private:
+    int Index;
     QSettings *settings;
     QString name;
-    bool active;
+    int active;
     bool scanning;
     bool threadRunning;
     int stop;
     double percent;
-    double stack;
     Mode mode;
     QList<double> dark;
     QList<double> values;

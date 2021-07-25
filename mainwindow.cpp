@@ -9,8 +9,37 @@
 #include <QTcpSocket>
 #include <QDir>
 #include <fcntl.h>
+#include <vlbi.h>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+
+void MainWindow::VLBIThread(QWidget *sender)
+{
+    MainWindow* wnd = qobject_cast<MainWindow*>(sender);
+    if(!wnd)
+        return;
+    double radec [2] = { wnd->getRa(), wnd->getDec() };
+    dsp_stream_p plot = vlbi_get_uv_plot(wnd->getVLBIContext(), 256, 256, radec, wnd->getFrequency(), ahp_xc_get_frequency()>>ahp_xc_get_frequency_divider(), 1, 1, nullptr);
+    QImage *image1 = wnd->getGraph()->getPlot();
+    QImage *image2 = wnd->getGraph()->getIDFT();
+    dsp_stream_p idft = vlbi_get_ifft_estimate(plot);
+    dsp_buffer_copy(plot->buf, image1->bits(), plot->len);
+    dsp_buffer_copy(idft->buf, image2->bits(), idft->len);
+    dsp_stream_free_buffer(plot);
+    dsp_stream_free_buffer(idft);
+    dsp_stream_free(plot);
+    dsp_stream_free(idft);
+
+    QThread::msleep(200);
+}
+
+void MainWindow::GTThread(QWidget *sender)
+{
+    MainWindow* wnd = qobject_cast<MainWindow*>(sender);
+    if(!wnd)
+        return;
+    QThread::msleep(200);
+}
 
 void MainWindow::UiThread(QWidget *sender)
 {
@@ -31,19 +60,43 @@ void MainWindow::ReadThread(QWidget *sender)
     if(!wnd)
         return;
     ahp_xc_packet* packet = wnd->getPacket();
-
     switch (wnd->getMode()) {
-        case Counter:
+    case Crosscorrelator:
+        if(!ahp_xc_get_packet(packet)) {
+            QDateTime now = QDateTime::currentDateTimeUtc();
+            for(int x = 0; x < wnd->Lines.count(); x++) {
+                Line * line = wnd->Lines[x];
+                if(line->isActive()) {
+                    line->getStream()->location = (dsp_location*)realloc(line->getStream()->location, sizeof(dsp_location)*(line->getStream()->len));
+                    line->getStream()->location[line->getStream()->len-1].xyz.x = line->getLocation()->xyz.x;
+                    line->getStream()->location[line->getStream()->len-1].xyz.y = line->getLocation()->xyz.y;
+                    line->getStream()->location[line->getStream()->len-1].xyz.z = line->getLocation()->xyz.z;
+                }
+            }
+            for(int x = 0; x < wnd->Baselines.count(); x++) {
+                Baseline * line = wnd->Baselines[x];
+                if(line->isActive()) {
+                    line->getValues()->append(packet->crosscorrelations[x].correlations[0].coherence);
+                    vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+                } else {
+                    line->getValues()->clear();
+                    line->getValues()->append(1.0);
+                    vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+                }
+            }
+        }
+        break;
+    case Counter:
         if(!ahp_xc_get_packet(packet)) {
             QDateTime now = QDateTime::currentDateTimeUtc();
             double diff = (double)wnd->start.msecsTo(now)/1000.0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
-                QSplineSeries *counts[3] = {
+                QSplineSeries *counts[2] = {
                     wnd->Lines[x]->getCounts(),
                     wnd->Lines[x]->getAutocorrelations()
                 };
-                for (int y = 0; y < 3; y++) {
+                for (int y = 0; y < 2; y++) {
                     if(diff > (double)wnd->getTimeRange())
                         for(int d = 0; d < counts[y]->count(); d++)
                             if(counts[y]->at(d).x()<diff-(double)wnd->getTimeRange())
@@ -93,7 +146,6 @@ MainWindow::MainWindow(QWidget *parent)
         QDir().mkdir(inidir);
     }
     settings = new QSettings(ini, QSettings::Format::NativeFormat);
-
     setMode(Counter);
     connected = false;
     TimeRange = 60;
@@ -143,7 +195,10 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Disconnect->setEnabled(false);
         ui->BaudRate->setEnabled(false);
         ui->Scale->setEnabled(false);
+        if(!connected)
+            return;
         freePacket();
+        vlbi_exit(vlbi_context);
         for(int l = 0; l < ahp_xc_get_nlines(); l++) {
             Lines[l]->~Line();
         }
@@ -204,13 +259,22 @@ MainWindow::MainWindow(QWidget *parent)
                 settings->endGroup();
                 settings->beginGroup(header);
                 settings->setValue("connection", ui->ComPort->currentText());
+                vlbi_context = vlbi_init();
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
                     QString name = "Line "+QString::number(l+1);
                     Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                     getGraph()->addSeries(Lines[l]->getDots());
                     getGraph()->addSeries(Lines[l]->getCounts());
                     getGraph()->addSeries(Lines[l]->getAutocorrelations());
+                    vlbi_add_stream(getVLBIContext(), Lines[l]->getStream(), (char*)name.toStdString().c_str(), 0);
                     ui->Lines->addTab(Lines[l], name);
+                }
+                int idx = 0;
+                for(int l = 0; l < ahp_xc_get_nlines(); l++) {
+                    for(int i = l; i < ahp_xc_get_nlines(); i++) {
+                        QString name = "Baseline "+QString::number(l+1)+"*"+QString::number(i+1);
+                        Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
+                    }
                 }
                 createPacket();
                 setMode(Counter);

@@ -12,6 +12,8 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <cmath>
+#include <vlbi.h>
+#include <ahp_gt.h>
 #include "types.h"
 #include "threads.h"
 #include "baseline.h"
@@ -38,6 +40,7 @@ public:
     bool showCounts();
     bool showAutocorrelations();
     bool showCrosscorrelations();
+    inline QString getName() { return name; }
 
     void setMode(Mode m);
     Scale getYScale();
@@ -62,14 +65,24 @@ public:
     inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
     inline QSplineSeries* getCounts() { return counts; }
     inline QSplineSeries* getAutocorrelations() { return autocorrelations; }
-
+    inline QList<double*> getCrosscorrelations() { return crosscorrelations; }
+    inline dsp_stream_p getStream() { return stream; }
+    inline dsp_location *getLocation() { return &location; }
+    inline int getGTAddress() { return gt_address; }
+    inline double getAxisPosition(int axis) { ahp_gt_select_device(getGTAddress()); return ahp_gt_get_position(axis); }
+    inline void setAxisPosition(int axis, double value) { ahp_gt_select_device(getGTAddress()); ahp_gt_set_position(axis, value); }
+    inline void setAxisVelocity(int axis, double speed) { ahp_gt_select_device(getGTAddress()); ahp_gt_start_motion(axis, speed); }
+    inline void moveAxisBy(int axis, double value, double speed) { ahp_gt_select_device(getGTAddress()); ahp_gt_goto_relative(axis, value, speed); }
+    inline void moveAxisTo(int axis, double value, double speed) { ahp_gt_select_device(getGTAddress()); ahp_gt_goto_absolute(axis, value, speed); }
+    inline void stopAxis(int axis) { ahp_gt_select_device(getGTAddress()); ahp_gt_stop_motion(axis); }
     double percent;
-
     void setPercent();
 
 private:
     void insertValue(double x, double y);
 
+    dsp_stream_p stream;
+    dsp_location location;
     double *ac;
     fftw_plan plan;
     fftw_complex *dft;
@@ -89,11 +102,12 @@ private:
     QSplineSeries* series;
     QSplineSeries* counts;
     QSplineSeries* autocorrelations;
-    QSplineSeries* crosscorrelations;
+    QList<double*> crosscorrelations;
     unsigned int line;
     int flags;
     Ui::Line *ui;
     int old_index2;
+    int gt_address;
 
 signals:
     void activeStateChanged(Line* line);

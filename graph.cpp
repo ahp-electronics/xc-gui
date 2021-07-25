@@ -14,6 +14,10 @@ Graph::Graph(QWidget *parent, QString name) :
     view = new QChartView(chart, this);
     view->setRubberBand(QChartView::HorizontalRubberBand);
     view->setRenderHint(QPainter::Antialiasing);
+    plot_w = 128;
+    plot_h = 128;
+    plot = initGrayPicture(getPlotWidth(), getPlotHeight());
+    idft = initGrayPicture(getPlotWidth(), getPlotHeight());
 }
 
 Graph::~Graph()
