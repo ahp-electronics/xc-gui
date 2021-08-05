@@ -33,7 +33,7 @@ public:
     void resizeEvent(QResizeEvent* event);
     QList<Line*> Lines;
     QList<Baseline*> Baselines;
-    inline double getFrequency() { return 1.0/wavelength; }
+    inline double getFrequency() { return ahp_xc_get_frequency()>>ahp_xc_get_frequency_divider(); }
     inline double getRa() { return Ra; }
     inline double getDec() { return Dec; }
     inline void setRa(double value) { Ra = value; }
@@ -45,15 +45,21 @@ public:
     inline Graph *getGraph() { return graph; }
     inline Mode getMode() { return mode; }
     inline QList<int> getGTAddresses() { return gt_addresses; }
-    inline void * getVLBIContext() { return vlbi_context; }
+    inline void* getVLBIContext() { return vlbi_context; }
+    inline double getStartTime() { return J2000_starttime; }
     inline void setMode(Mode m) {
         mode = m;
         if(connected){
-            if(mode == Counter) {
-                start = QDateTime::currentDateTimeUtc();
+            ahp_xc_clear_capture_flag(CAP_ENABLE);
+            for(int i = 0; i < Lines.count(); i++)
+                ahp_xc_set_lag_cross(i, 0);
+            ahp_xc_set_capture_flag(CAP_RESET_TIMESTAMP);
+            start = QDateTime::currentDateTimeUtc();
+            ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);
+            timespec ts = vlbi_time_mktimespec(start.date().year(), start.date().month(), start.date().day(), start.time().hour(), start.time().minute(), start.time().second(), start.time().msec()*1000000);
+            J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
+            if(mode == Counter || mode == Crosscorrelator) {
                 ahp_xc_set_capture_flag(CAP_ENABLE);
-            } else {
-                ahp_xc_clear_capture_flag(CAP_ENABLE);
             }
         }
     }
@@ -64,7 +70,7 @@ public:
 private:
     double Ra, Dec;
     double wavelength;
-    void *vlbi_context;
+    void* vlbi_context;
     ahp_xc_packet *packet;
     QSettings *settings;
     QTcpSocket socket;
@@ -79,5 +85,6 @@ private:
     static void GTThread(QWidget *sender);
     QList<int> gt_addresses;
     Ui::MainWindow *ui;
+    double J2000_starttime;
 };
 #endif // MAINWINDOW_H

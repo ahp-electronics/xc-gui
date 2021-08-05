@@ -19,7 +19,11 @@ void MainWindow::VLBIThread(QWidget *sender)
     if(!wnd)
         return;
     double radec [2] = { wnd->getRa(), wnd->getDec() };
-    dsp_stream_p plot = vlbi_get_uv_plot(wnd->getVLBIContext(), 256, 256, radec, wnd->getFrequency(), ahp_xc_get_frequency()>>ahp_xc_get_frequency_divider(), 1, 1, nullptr);
+    for(int i  = 0; i < wnd->Baselines.count(); i++) {
+        Baseline* line = wnd->Baselines[i];
+        vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+    }
+    dsp_stream_p plot = vlbi_get_uv_plot(wnd->getVLBIContext(), 256, 256, radec, wnd->getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
     QImage *image1 = wnd->getGraph()->getPlot();
     QImage *image2 = wnd->getGraph()->getIDFT();
     dsp_stream_p idft = vlbi_get_ifft_estimate(plot);
@@ -63,7 +67,11 @@ void MainWindow::ReadThread(QWidget *sender)
     switch (wnd->getMode()) {
     case Crosscorrelator:
         if(!ahp_xc_get_packet(packet)) {
-            QDateTime now = QDateTime::currentDateTimeUtc();
+            double offs_time = (double)packet->timestamp/10000.0;
+            QDateTime now = wnd->start.addMSecs(offs_time);
+            offs_time /= 1000.0;
+            offs_time += wnd->getStartTime();
+            double offset1, offset2;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
                 if(line->isActive()) {
@@ -76,20 +84,19 @@ void MainWindow::ReadThread(QWidget *sender)
             for(int x = 0; x < wnd->Baselines.count(); x++) {
                 Baseline * line = wnd->Baselines[x];
                 if(line->isActive()) {
-                    line->getValues()->append(packet->crosscorrelations[x].correlations[0].coherence);
-                    vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+                    vlbi_get_offsets(wnd->getVLBIContext(), offs_time, (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), wnd->getRa(), wnd->getDec(), &offset1, &offset2);
+                    ahp_xc_set_lag_cross(line->getLine1()->getLineIndex(), (off_t)(offset1*wnd->getFrequency()));
+                    ahp_xc_set_lag_cross(line->getLine2()->getLineIndex(), (off_t)(offset2*wnd->getFrequency()));
+                    line->getValues()->append(packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize()/2].coherence);
                 } else {
-                    line->getValues()->clear();
-                    line->getValues()->append(1.0);
-                    vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+                    line->getValues()->append(0.0);
                 }
             }
         }
         break;
     case Counter:
         if(!ahp_xc_get_packet(packet)) {
-            QDateTime now = QDateTime::currentDateTimeUtc();
-            double diff = (double)wnd->start.msecsTo(now)/1000.0;
+            double diff = (double)packet->timestamp/10000000.0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
                 QSplineSeries *counts[2] = {

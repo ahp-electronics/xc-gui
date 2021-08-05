@@ -33,7 +33,7 @@ public:
     ~Line();
 
     inline bool isActive() { return running; }
-    void setActive(bool a) { running = a; emit activeStateChanged(this); }
+    void setActive(bool a) { running = a; emit activeStateChanged(this); timespec_get(&getStream()->starttimeutc, TIME_UTC); }
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);
