@@ -50,9 +50,10 @@ public:
     inline void setMode(Mode m) {
         mode = m;
         if(connected){
-            ahp_xc_clear_capture_flag(CAP_ENABLE);
+            ahp_xc_set_capture_flag(CAP_ENABLE);
             for(int i = 0; i < Lines.count(); i++)
                 ahp_xc_set_lag_cross(i, 0);
+            ahp_xc_clear_capture_flag(CAP_ENABLE);
             ahp_xc_set_capture_flag(CAP_RESET_TIMESTAMP);
             start = QDateTime::currentDateTimeUtc();
             ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);

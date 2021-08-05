@@ -99,7 +99,7 @@ void MainWindow::ReadThread(QWidget *sender)
             double diff = (double)packet->timestamp/10000000.0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
-                QSplineSeries *counts[2] = {
+                QLineSeries *counts[2] = {
                     wnd->Lines[x]->getCounts(),
                     wnd->Lines[x]->getAutocorrelations()
                 };

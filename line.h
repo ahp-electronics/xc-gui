@@ -63,8 +63,8 @@ public:
     inline QSplineSeries* getDots() { return series; }
     inline QMap<double, double>* getAverage() { return average; }
     inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
-    inline QSplineSeries* getCounts() { return counts; }
-    inline QSplineSeries* getAutocorrelations() { return autocorrelations; }
+    inline QLineSeries* getCounts() { return counts; }
+    inline QLineSeries* getAutocorrelations() { return autocorrelations; }
     inline QList<double*> getCrosscorrelations() { return crosscorrelations; }
     inline dsp_stream_p getStream() { return stream; }
     inline dsp_location *getLocation() { return &location; }
