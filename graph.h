@@ -30,6 +30,8 @@ public:
     void Update();
     void addSeries(QAbstractSeries* series);
     void removeSeries(QAbstractSeries* series);
+    void setMode(Mode m);
+    inline Mode getMode() { return mode; }
     inline int getPlotWidth() { return plot_w; }
     inline int getPlotHeight() { return plot_h; }
     inline void setPlotWidth(int value) {  plot_w = value; plot = plot.scaled(getPlotWidth(), getPlotHeight()); idft = plot.scaled(getPlotWidth(), getPlotHeight()); }
@@ -38,6 +40,7 @@ public:
     inline QImage *getIDFT() { return &idft; }
 
 private:
+    Mode mode;
     inline QImage initGrayPicture(int w, int h) {
         QVector<QRgb> palette;
         for(int c = 0; c < 256; c++)
@@ -46,6 +49,10 @@ private:
         image.setColorTable(palette);
         return image;
     }
+    QGraphicsView *PlotView;
+    QGraphicsView *IDFTView;
+    QGraphicsScene *Plot;
+    QGraphicsScene *IDFT;
     QImage plot;
     QImage idft;
     int plot_w, plot_h;

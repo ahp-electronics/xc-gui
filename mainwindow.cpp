@@ -15,14 +15,18 @@
 
 void MainWindow::VLBIThread(QWidget *sender)
 {
+    QThread::msleep(200);
     MainWindow* wnd = qobject_cast<MainWindow*>(sender);
     if(!wnd)
         return;
-    double radec [2] = { wnd->getRa(), wnd->getDec() };
+    if(wnd->getMode() != Crosscorrelator)
+        return;
     for(int i  = 0; i < wnd->Baselines.count(); i++) {
         Baseline* line = wnd->Baselines[i];
-        vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+        if(line->getValues()->count() > 0)
+            vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
     }
+    double radec [2] = { wnd->getRa(), wnd->getDec() };
     dsp_stream_p plot = vlbi_get_uv_plot(wnd->getVLBIContext(), 256, 256, radec, wnd->getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
     QImage *image1 = wnd->getGraph()->getPlot();
     QImage *image2 = wnd->getGraph()->getIDFT();
@@ -33,8 +37,6 @@ void MainWindow::VLBIThread(QWidget *sender)
     dsp_stream_free_buffer(idft);
     dsp_stream_free(plot);
     dsp_stream_free(idft);
-
-    QThread::msleep(200);
 }
 
 void MainWindow::GTThread(QWidget *sender)
@@ -42,11 +44,11 @@ void MainWindow::GTThread(QWidget *sender)
     MainWindow* wnd = qobject_cast<MainWindow*>(sender);
     if(!wnd)
         return;
-    QThread::msleep(200);
 }
 
 void MainWindow::UiThread(QWidget *sender)
 {
+    QThread::msleep(200);
     MainWindow* wnd = qobject_cast<MainWindow*>(sender);
     if(!wnd)
         return;
@@ -55,7 +57,6 @@ void MainWindow::UiThread(QWidget *sender)
         if(wnd->Lines[i]->isActive())
             wnd->getGraph()->Update();
     }
-    QThread::msleep(200);
 }
 
 void MainWindow::ReadThread(QWidget *sender)
@@ -71,7 +72,7 @@ void MainWindow::ReadThread(QWidget *sender)
             QDateTime now = wnd->start.addMSecs(offs_time);
             offs_time /= 1000.0;
             offs_time += wnd->getStartTime();
-            double offset1, offset2;
+            double offset1 = 0, offset2 = 0;
             for(int x = 0; x < wnd->Lines.count(); x++) {
                 Line * line = wnd->Lines[x];
                 if(line->isActive()) {
@@ -153,13 +154,15 @@ MainWindow::MainWindow(QWidget *parent)
         QDir().mkdir(inidir);
     }
     settings = new QSettings(ini, QSettings::Format::NativeFormat);
-    setMode(Counter);
     connected = false;
     TimeRange = 60;
     ui->setupUi(this);
-    uiThread = new progressThread(this);
-    readThread = new progressThread(this);
+    uiThread = new xcThread(this);
+    readThread = new xcThread(this);
+    vlbiThread = new xcThread(this);
+    gtThread = new xcThread(this);
     graph = new Graph(this);
+    setMode(Counter);
     int starty = ui->Lines->y()+ui->Lines->height()+5;
     getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
     getGraph()->setVisible(true);
@@ -278,7 +281,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 int idx = 0;
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
-                    for(int i = l; i < ahp_xc_get_nlines(); i++) {
+                    for(int i = l+1; i < ahp_xc_get_nlines(); i++) {
                         QString name = "Baseline "+QString::number(l+1)+"*"+QString::number(i+1);
                         Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                     }
@@ -286,10 +289,14 @@ MainWindow::MainWindow(QWidget *parent)
                 createPacket();
                 setMode(Counter);
                 ui->BaudRate->setEnabled(true);
-                connect(readThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::ReadThread);
+                connect(readThread, static_cast<void (xcThread::*)(QWidget*)>(&xcThread::threadLoop), MainWindow::ReadThread);
                 readThread->start();
-                connect(uiThread, static_cast<void (progressThread::*)(QWidget*)>(&progressThread::progressChanged), MainWindow::UiThread);
+                connect(uiThread, static_cast<void (xcThread::*)(QWidget*)>(&xcThread::threadLoop), MainWindow::UiThread);
                 uiThread->start();
+                connect(vlbiThread, static_cast<void (xcThread::*)(QWidget*)>(&xcThread::threadLoop), MainWindow::VLBIThread);
+                vlbiThread->start();
+                connect(gtThread, static_cast<void (xcThread::*)(QWidget*)>(&xcThread::threadLoop), MainWindow::GTThread);
+                gtThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
@@ -314,10 +321,16 @@ MainWindow::~MainWindow()
 {
     uiThread->requestInterruption();
     uiThread->wait();
-    uiThread->~progressThread();
+    uiThread->~xcThread();
     readThread->requestInterruption();
     readThread->wait();
-    readThread->~progressThread();
+    readThread->~xcThread();
+    vlbiThread->requestInterruption();
+    vlbiThread->wait();
+    vlbiThread->~xcThread();
+    gtThread->requestInterruption();
+    gtThread->wait();
+    gtThread->~xcThread();
     for(int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }

@@ -49,7 +49,8 @@ public:
     inline double getStartTime() { return J2000_starttime; }
     inline void setMode(Mode m) {
         mode = m;
-        if(connected){
+        if(connected) {
+            getGraph()->setMode(m);
             ahp_xc_set_capture_flag(CAP_ENABLE);
             for(int i = 0; i < Lines.count(); i++)
                 ahp_xc_set_lag_cross(i, 0);
@@ -60,6 +61,8 @@ public:
             timespec ts = vlbi_time_mktimespec(start.date().year(), start.date().month(), start.date().day(), start.time().hour(), start.time().minute(), start.time().second(), start.time().msec()*1000000);
             for(int i = 0; i < Lines.count(); i++)
                 Lines[i]->getStream()->starttimeutc = ts;
+            for(int i = 0; i < Baselines.count(); i++)
+                Baselines[i]->getValues()->clear();
             J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
             if(mode == Counter || mode == Crosscorrelator) {
                 ahp_xc_set_capture_flag(CAP_ENABLE);
@@ -67,8 +70,10 @@ public:
         }
     }
     QDateTime start;
-    progressThread *readThread;
-    progressThread *uiThread;
+    xcThread *readThread;
+    xcThread *uiThread;
+    xcThread *vlbiThread;
+    xcThread *gtThread;
 
 private:
     double Ra, Dec;

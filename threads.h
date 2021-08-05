@@ -5,22 +5,22 @@
 #include <QWidget>
 #include "types.h"
 
-class progressThread : public QThread {
+class xcThread : public QThread {
     Q_OBJECT
 private:
-    QWidget* line;
+    QWidget* parent;
 public:
-    progressThread(QWidget *parent = nullptr) : QThread() { line = parent; }
+    xcThread(QWidget *p = nullptr) : QThread() { parent = p; }
     void run() {
         while(!isInterruptionRequested()) {
             QThread::msleep(20);
-             emit progressChanged(line);
+             emit threadLoop(parent);
         }
         disconnect(this, 0, 0, 0);
     }
-    inline void setLine(QWidget* l)  { line = l; }
+    inline void setParent(QWidget* p)  { parent = p; }
 signals:
-    void progressChanged(QWidget* l);
+    void threadLoop(QWidget* p);
 };
 
 #endif // LINE_H

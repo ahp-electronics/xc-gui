@@ -14,16 +14,42 @@ Graph::Graph(QWidget *parent, QString name) :
     view = new QChartView(chart, this);
     view->setRubberBand(QChartView::HorizontalRubberBand);
     view->setRenderHint(QPainter::Antialiasing);
-    plot_w = 128;
-    plot_h = 128;
+    plot_w = 512;
+    plot_h = 512;
     plot = initGrayPicture(getPlotWidth(), getPlotHeight());
     idft = initGrayPicture(getPlotWidth(), getPlotHeight());
+    PlotView = new QGraphicsView(this);
+    Plot = new QGraphicsScene(this);
+    Plot->addPixmap(QPixmap::fromImage(plot));
+    Plot->setSceneRect(plot.rect());
+    PlotView->setVisible(false);
+    PlotView->setScene(Plot);
+    IDFTView = new QGraphicsView(this);
+    IDFT = new QGraphicsScene(this);
+    IDFT->addPixmap(QPixmap::fromImage(idft));
+    IDFT->setSceneRect(idft.rect());
+    IDFTView->setVisible(false);
+    IDFTView->setScene(IDFT);
 }
 
 Graph::~Graph()
 {
     chart->~QChart();
     view->~QChartView();
+}
+
+void Graph::setMode(Mode m)
+{
+    mode = m;
+    if(mode == Crosscorrelator) {
+        PlotView->setVisible(true);
+        IDFTView->setVisible(true);
+        chart->setVisible(false);
+    } else {
+        PlotView->setVisible(false);
+        IDFTView->setVisible(false);
+        chart->setVisible(true);
+    }
 }
 
 void Graph::addSeries(QAbstractSeries *series)
@@ -49,6 +75,8 @@ void Graph::Update()
     Graph* sender = this;
     if(!sender)
         return;
+    PlotView->update();
+    IDFTView->update();
     if(sender->chart == nullptr)
         return;
     if(sender->chart->series().length() == 0)
@@ -98,4 +126,6 @@ void Graph::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     view->setGeometry(0, 0, width(), height());
+    PlotView->setGeometry(5, 5, width()/2 - 10, width() / 2 - 10);
+    IDFTView->setGeometry(width()/2 + 5, 5, width() / 2 - 10, width()/2 - 10);
 }

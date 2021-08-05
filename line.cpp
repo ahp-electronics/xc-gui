@@ -35,10 +35,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-7);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize()-7);
     ui->EndLine->setRange(5, ahp_xc_get_delaysize()-1);
+    ui->x_location->setRange(-ahp_xc_get_delaysize()*1000, ahp_xc_get_delaysize()*1000);
+    ui->y_location->setRange(-ahp_xc_get_delaysize()*1000, ahp_xc_get_delaysize()*1000);
+    ui->z_location->setRange(-ahp_xc_get_delaysize()*1000, ahp_xc_get_delaysize()*1000);
     ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->IDFT->setChecked(readBool("IDFT", false));
+    ui->x_location->setValue(readDouble("x_location", 0)/1000.0);
+    ui->y_location->setValue(readDouble("y_location", 0)/1000.0);
+    ui->z_location->setValue(readDouble("z_location", 0)/1000.0);
     int start = ui->StartLine->value();
     int end = ui->EndLine->value();
     int len = end-start;
@@ -173,6 +179,22 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         ahp_xc_set_lag_auto(line, value);
         saveSetting("SpectralLine", value);
+    });
+    connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        ahp_xc_set_lag_cross(line, value);
+        saveSetting("SpectralLine", value);
+    });
+    connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        getLocation()->xyz.x = (double)value/1000.0;
+        saveSetting("x_location", value);
+    });
+    connect(ui->y_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        getLocation()->xyz.y = (double)value/1000.0;
+        saveSetting("y_location", value);
+    });
+    connect(ui->z_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        getLocation()->xyz.z = (double)value/1000.0;
+        saveSetting("z_location", value);
     });
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
