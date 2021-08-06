@@ -7,6 +7,7 @@
 #include <QSerialPortInfo>
 #include <QDateTime>
 #include <QTcpSocket>
+#include <QThreadPool>
 #include <QDir>
 #include <fcntl.h>
 #include <vlbi.h>
@@ -27,7 +28,7 @@ void MainWindow::VLBIThread(QWidget *sender)
             vlbi_set_baseline_buffer(wnd->getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
     }
     double radec [2] = { wnd->getRa(), wnd->getDec() };
-    dsp_stream_p plot = vlbi_get_uv_plot(wnd->getVLBIContext(), 256, 256, radec, wnd->getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
+    dsp_stream_p plot = vlbi_get_uv_plot(wnd->getVLBIContext(), wnd->getGraph()->getPlotWidth(), wnd->getGraph()->getPlotHeight(), radec, wnd->getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
     QImage *image1 = wnd->getGraph()->getPlot();
     QImage *image2 = wnd->getGraph()->getIDFT();
     dsp_stream_p idft = vlbi_get_ifft_estimate(plot);
@@ -270,6 +271,7 @@ MainWindow::MainWindow(QWidget *parent)
                 settings->beginGroup(header);
                 settings->setValue("connection", ui->ComPort->currentText());
                 vlbi_context = vlbi_init();
+                vlbi_max_threads(QThreadPool::globalInstance()->maxThreadCount());
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
                     QString name = "Line "+QString::number(l+1);
                     Lines.append(new Line(name, l, settings, ui->Lines, &Lines));

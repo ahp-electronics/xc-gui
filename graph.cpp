@@ -126,6 +126,6 @@ void Graph::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
     view->setGeometry(0, 0, width(), height());
-    PlotView->setGeometry(5, 5, width()/2 - 10, width() / 2 - 10);
-    IDFTView->setGeometry(width()/2 + 5, 5, width() / 2 - 10, width()/2 - 10);
+    PlotView->setGeometry(5, 5, height() - 10, height() - 10);
+    IDFTView->setGeometry(width()/2 + 5, 5, height() - 10, height() - 10);
 }

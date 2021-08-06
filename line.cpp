@@ -20,9 +20,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     dark = new QMap<double, double>();
     autodark = new QMap<double, double>();
     crossdark = new QMap<double, double>();
-    series = new QSplineSeries();
-    counts = new QSplineSeries();
-    autocorrelations = new QSplineSeries();
+    series = new QLineSeries();
+    counts = new QLineSeries();
+    autocorrelations = new QLineSeries();
     getDots()->setName(name+" coherence");
     getCounts()->setName(name+" (counts)");
     getAutocorrelations()->setName(name+" (autocorrelations)");

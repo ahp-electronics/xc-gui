@@ -60,7 +60,7 @@ public:
     inline bool readBool(QString setting, bool defaultValue) { return readSetting(setting, defaultValue).toBool(); }
     inline bool isRunning() { return running; }
 
-    inline QSplineSeries* getDots() { return series; }
+    inline QLineSeries* getDots() { return series; }
     inline QMap<double, double>* getAverage() { return average; }
     inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
     inline QLineSeries* getCounts() { return counts; }
@@ -99,9 +99,9 @@ private:
     QMap<double, double>* autodark;
     QMap<double, double>* crossdark;
     QMap<double, double>* average;
-    QSplineSeries* series;
-    QSplineSeries* counts;
-    QSplineSeries* autocorrelations;
+    QLineSeries* series;
+    QLineSeries* counts;
+    QLineSeries* autocorrelations;
     QList<double*> crosscorrelations;
     unsigned int line;
     int flags;
