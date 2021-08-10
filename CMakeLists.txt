@@ -74,5 +74,5 @@ endif()
 
 target_link_libraries(xc-gui PRIVATE ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
-install(FILES xc-gui.png DESTINATION /usr/share/icons/xc-gui.png)
+install(FILES xc-gui.png DESTINATION /usr/share/icons)
 install(FILES xc-gui.desktop DESTINATION /usr/share/applications)
