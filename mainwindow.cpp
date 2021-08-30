@@ -278,7 +278,7 @@ MainWindow::MainWindow(QWidget *parent)
                     getGraph()->addSeries(Lines[l]->getDots());
                     getGraph()->addSeries(Lines[l]->getCounts());
                     getGraph()->addSeries(Lines[l]->getAutocorrelations());
-                    vlbi_add_stream(getVLBIContext(), Lines[l]->getStream(), (char*)name.toStdString().c_str(), 0);
+                    vlbi_add_node(getVLBIContext(), Lines[l]->getStream(), (char*)name.toStdString().c_str(), 0);
                     ui->Lines->addTab(Lines[l], name);
                 }
                 int idx = 0;

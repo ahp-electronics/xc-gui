@@ -34,6 +34,7 @@ else (VLBI_INCLUDE_DIR AND VLBI_LIBRARIES)
     ${_obLinkDir}
     ${GNUWIN32_DIR}/lib
     /usr/local/lib
+    HINTS ${CMAKE_C_IMPLICIT_LINK_DIRECTORIES}
   )
 
   if(VLBI_LIBRARIES)
