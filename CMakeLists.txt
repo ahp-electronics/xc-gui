@@ -53,7 +53,7 @@ if(ANDROID)
     types.h
     threads.h
   )
-else()
+else(ANDROID)
   add_executable(xc-gui
     main.cpp
     mainwindow.cpp
@@ -66,11 +66,15 @@ else()
     line.ui
     graph.cpp
     graph.h
-    resource.qrc
     types.h
     threads.h
+    resource.qrc
   )
-endif()
+  if(WIN32)
+    add_definitions(-D _win32_IE=0x0500 -D WINVER=0x0500)
+    set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
+  endif(WIN32)
+endif(ANDROID)
 
 target_link_libraries(xc-gui PRIVATE ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
