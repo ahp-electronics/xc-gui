@@ -33,7 +33,7 @@ public:
     ~Line();
 
     inline bool isActive() { return running; }
-    void setActive(bool a) { running = a; emit activeStateChanged(this); }
+    void setActive(bool a) { running = a; if(!running) { getCounts()->clear(); getAutocorrelations()->clear(); } emit activeStateChanged(this); }
     inline int getFlags() { return flags; }
     void setFlag(int flag, bool value);
     bool getFlag(int flag);

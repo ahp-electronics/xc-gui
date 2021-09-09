@@ -69,10 +69,11 @@ else(ANDROID)
     types.h
     threads.h
     resource.qrc
+    app.rc
   )
   if(WIN32)
-    add_definitions(-D _win32_IE=0x0500 -D WINVER=0x0500)
-    set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
+      add_definitions(-D _win32_IE=0x0500 -D WINVER=0x0500)
+      set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
   endif(WIN32)
 endif(ANDROID)
 

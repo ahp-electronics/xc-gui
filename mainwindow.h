@@ -70,12 +70,15 @@ public:
         }
     }
     QDateTime start;
-    xcThread *readThread;
-    xcThread *uiThread;
-    xcThread *vlbiThread;
-    xcThread *gtThread;
-
+    Q_INVOKABLE void UiThreadCallback();
+    Q_INVOKABLE void ReadThreadCallback();
+    Q_INVOKABLE void VLBIThreadCallback();
+    Q_INVOKABLE void MotorThreadCallback();
 private:
+    bool ReadThreadBusy;
+    bool UiThreadBusy;
+    bool GTThreadBusy;
+    bool VLBIThreadBusy;
     double Ra, Dec;
     double wavelength;
     void* vlbi_context;
@@ -87,12 +90,13 @@ private:
     bool connected;
     double TimeRange;
     Graph *graph;
-    static void ReadThread(QWidget *wnd);
-    static void UiThread(QWidget *wnd);
-    static void VLBIThread(QWidget *sender);
-    static void GTThread(QWidget *sender);
     QList<int> gt_addresses;
     Ui::MainWindow *ui;
     double J2000_starttime;
+
+    Thread* ReadThread;
+    Thread* UiThread;
+    Thread* VLBIThread;
+    Thread* MotorThread;
 };
 #endif // MAINWINDOW_H

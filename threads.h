@@ -1,26 +1,54 @@
 #ifndef THREADS_H
 #define THREADS_H
 
-#include <QThread>
+#include <QMetaMethod>
 #include <QWidget>
+#include <QThread>
+#include <thread>
 #include "types.h"
 
-class xcThread : public QThread {
+class MainWindow;
+
+class Thread : QObject
+{
     Q_OBJECT
-private:
-    QWidget* parent;
 public:
-    xcThread(QWidget *p = nullptr) : QThread() { parent = p; }
-    void run() {
-        while(!isInterruptionRequested()) {
-            QThread::msleep(20);
-             emit threadLoop(parent);
-        }
-        disconnect(this, 0, 0, 0);
+    void start()
+    {
+        std::thread(Thread::run, this).detach();
     }
-    inline void setParent(QWidget* p)  { parent = p; }
-signals:
-    void threadLoop(QWidget* p);
+    Thread(QObject* p, const char* signal) : QObject(p) {
+        running = true;
+        callback = signal;
+        parent = p;
+    }
+
+    ~Thread() {
+        running = false;
+    }
+
+    inline bool isRunning() { return running; }
+    inline bool Locked() { return locked; }
+    inline void Lock() { locked = true; }
+    inline void Unlock() { locked = false; }
+    inline QObject *getParent() { return parent; }
+    inline const char* getCallback() { return callback; }
+
+private:
+    static void run(Thread* t)
+    {
+        while (t->isRunning()) {
+            if(!t->Locked())
+                QMetaObject::invokeMethod(t->getParent(), t->getCallback());
+            else
+                QThread::msleep(100);
+        }
+    }
+    const char* callback;
+    QObject *parent;
+    bool locked { false };
+    bool running { false };
 };
+
 
 #endif // LINE_H

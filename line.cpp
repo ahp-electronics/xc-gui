@@ -11,7 +11,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui(new Ui::Line)
 {
     setAccessibleName("Line");
-    setActive(false);
     settings = s;
     percent = 0;
     parents = p;
@@ -216,6 +215,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
     }
     getDark()->clear();
+    setActive(false);
     setMode(Counter);
 }
 
@@ -308,8 +308,6 @@ void Line::setPercent()
         if(mode == Autocorrelator) {
             if(percent>ui->Progress->minimum() && percent<ui->Progress->maximum())
                 ui->Progress->setValue(percent);
-        } else if (mode == Counter)  {
-            ui->Progress->setValue(0);
         }
     }
 }
