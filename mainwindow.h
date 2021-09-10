@@ -70,15 +70,12 @@ public:
         }
     }
     QDateTime start;
-    Q_INVOKABLE void UiThreadCallback();
-    Q_INVOKABLE void ReadThreadCallback();
-    Q_INVOKABLE void VLBIThreadCallback();
-    Q_INVOKABLE void MotorThreadCallback();
+    Thread *readThread;
+    Thread *uiThread;
+    Thread *vlbiThread;
+    Thread *gtThread;
+
 private:
-    bool ReadThreadBusy;
-    bool UiThreadBusy;
-    bool GTThreadBusy;
-    bool VLBIThreadBusy;
     double Ra, Dec;
     double wavelength;
     void* vlbi_context;
@@ -93,10 +90,5 @@ private:
     QList<int> gt_addresses;
     Ui::MainWindow *ui;
     double J2000_starttime;
-
-    Thread* ReadThread;
-    Thread* UiThread;
-    Thread* VLBIThread;
-    Thread* MotorThread;
 };
 #endif // MAINWINDOW_H

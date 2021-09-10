@@ -11,7 +11,6 @@
 #include <QDir>
 #include <fcntl.h>
 #include <vlbi.h>
-#include "threads.h"
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
@@ -30,6 +29,10 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 60;
     ui->setupUi(this);
+    uiThread = new Thread();
+    readThread = new Thread();
+    vlbiThread = new Thread();
+    gtThread = new Thread();
     graph = new Graph(this);
     setMode(Counter);
     int starty = ui->Lines->y()+ui->Lines->height()+5;
@@ -110,8 +113,8 @@ MainWindow::MainWindow(QWidget *parent)
             socket.waitForConnected();
             if(socket.isValid()) {
                 socket.setReadBufferSize(4096);
-                fd = (int)socket.socketDescriptor();
-                if(fd != -1)
+                fd = socket.socketDescriptor();
+                if(fd > -1)
                     ahp_xc_connect_fd(fd);
             } else {
                 ui->Connect->setEnabled(true);
@@ -159,66 +162,27 @@ MainWindow::MainWindow(QWidget *parent)
                 createPacket();
                 setMode(Counter);
                 ui->BaudRate->setEnabled(true);
+                readThread->start();
+                uiThread->start();
+                vlbiThread->start();
+                gtThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
                 ui->Scale->setEnabled(true);
-                //UiThread->start();
-                //ReadThread->start();
             } else
                 ahp_xc_disconnect();
         } else
             ahp_xc_disconnect();
     });
-
-    UiThread = new Thread(this, "UiThreadCallback");
-    ReadThread = new Thread(this, "ReadThreadCallback");
-    VLBIThread = new Thread(this, "VLBIThreadCallback");
-    MotorThread = new Thread(this, "MotorThreadCallback");
-}
-
-void MainWindow::resizeEvent(QResizeEvent* event)
-{
-   QMainWindow::resizeEvent(event);
-   int starty = 15+ui->ComPort->y()+ui->ComPort->height();
-   ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
-   starty += 5+ui->Lines->height();
-   getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
-}
-
-MainWindow::~MainWindow()
-{
-    UiThread->~Thread();
-    ReadThread->~Thread();
-    VLBIThread->~Thread();
-    MotorThread->~Thread();
-    for(int l = 0; l < ahp_xc_get_nlines(); l++) {
-        ahp_xc_set_leds(l, 0);
-    }
-    if(connected) {
-        ahp_xc_clear_capture_flag(CAP_ENABLE);
-        ui->Disconnect->clicked(false);
-    }
-    getGraph()->~Graph();
-    delete ui;
-}
-
-void MainWindow::UiThreadCallback()
-{
-    UiThread->Lock();
-    for(int i = 0; i < Lines.count(); i++) {
-        Lines[i]->setPercent();
-    }
-    UiThread->Unlock();
-}
-
-void MainWindow::ReadThreadCallback()
-{
-    ReadThread->Lock();
-    switch (getMode()) {
+    connect(readThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    {
+        ahp_xc_packet* packet = getPacket();
+        switch (getMode()) {
         case Crosscorrelator:
             if(!ahp_xc_get_packet(packet)) {
                 double offs_time = (double)packet->timestamp/10000.0;
+                QDateTime now = start.addMSecs(offs_time);
                 offs_time /= 1000.0;
                 offs_time += getStartTime();
                 double offset1 = 0, offset2 = 0;
@@ -249,8 +213,6 @@ void MainWindow::ReadThreadCallback()
                 double diff = (double)packet->timestamp/10000000.0;
                 for(int x = 0; x < Lines.count(); x++) {
                     Line * line = Lines[x];
-                    if(!line->isActive())
-                        continue;
                     QLineSeries *counts[2] = {
                         Lines[x]->getCounts(),
                         Lines[x]->getAutocorrelations()
@@ -260,17 +222,21 @@ void MainWindow::ReadThreadCallback()
                             for(int d = 0; d < counts[y]->count(); d++)
                                 if(counts[y]->at(d).x()<diff-(double)getTimeRange())
                                     counts[y]->remove(d);
-                        switch (y) {
-                        case 0:
-                            if(Lines[x]->showCounts())
-                                counts[y]->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
-                            break;
-                        case 1:
-                            if(Lines[x]->showAutocorrelations())
-                                counts[y]->append(diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
-                            break;
-                        default:
-                            break;
+                        if(line->isActive()) {
+                            switch (y) {
+                            case 0:
+                                if(Lines[x]->showCounts())
+                                    counts[y]->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                                break;
+                            case 1:
+                                if(Lines[x]->showAutocorrelations())
+                                    counts[y]->append(diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
+                                break;
+                            default:
+                                break;
+                            }
+                        } else {
+                            counts[y]->clear();
                         }
                     }
                 }
@@ -286,39 +252,74 @@ void MainWindow::ReadThreadCallback()
             break;
         default:
             break;
-    }
-    getGraph()->Update();
-    ReadThread->Unlock();
+        }
+    });
+    connect(uiThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    {
+        QThread::msleep(200);
+        for(int i = 0; i < Lines.count(); i++) {
+            Lines[i]->setPercent();
+            if(Lines[i]->isActive())
+                getGraph()->Update();
+        }
+    });
+    connect(vlbiThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    {
+        QThread::msleep(200);
+        if(getMode() != Crosscorrelator)
+            return;
+        for(int i  = 0; i < Baselines.count(); i++) {
+            Baseline* line = Baselines[i];
+            if(line->getValues()->count() > 0)
+                vlbi_set_baseline_buffer(getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+        }
+        double radec [2] = { getRa(), getDec() };
+        dsp_stream_p plot = vlbi_get_uv_plot(getVLBIContext(), getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec, getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
+        QImage *image1 = getGraph()->getPlot();
+        QImage *image2 = getGraph()->getIDFT();
+        dsp_stream_p idft = vlbi_get_ifft_estimate(plot);
+        dsp_buffer_copy(plot->buf, image1->bits(), plot->len);
+        dsp_buffer_copy(idft->buf, image2->bits(), idft->len);
+        dsp_stream_free_buffer(plot);
+        dsp_stream_free_buffer(idft);
+        dsp_stream_free(plot);
+        dsp_stream_free(idft);
+    });
+    connect(gtThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    {
+    });
 }
 
-void MainWindow::MotorThreadCallback()
+void MainWindow::resizeEvent(QResizeEvent* event)
 {
-    MotorThread->Lock();
-    QThread::msleep(1000);
-    ///TODO: Motor thread here
-    MotorThread->Unlock();
+   QMainWindow::resizeEvent(event);
+   int starty = 15+ui->ComPort->y()+ui->ComPort->height();
+   ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
+   starty += 5+ui->Lines->height();
+   getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
 }
 
-void MainWindow::VLBIThreadCallback()
+MainWindow::~MainWindow()
 {
-    VLBIThread->Lock();
-    if(getMode() != Crosscorrelator)
-        return;
-    for(int i  = 0; i < Baselines.count(); i++) {
-        Baseline* line = Baselines[i];
-        if(line->getValues()->count() > 0)
-            vlbi_set_baseline_buffer(getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
+    uiThread->requestInterruption();
+    uiThread->wait();
+    uiThread->~Thread();
+    readThread->requestInterruption();
+    readThread->wait();
+    readThread->~Thread();
+    vlbiThread->requestInterruption();
+    vlbiThread->wait();
+    vlbiThread->~Thread();
+    gtThread->requestInterruption();
+    gtThread->wait();
+    gtThread->~Thread();
+    for(int l = 0; l < ahp_xc_get_nlines(); l++) {
+        ahp_xc_set_leds(l, 0);
     }
-    double radec [2] = { getRa(), getDec() };
-    dsp_stream_p plot = vlbi_get_uv_plot(getVLBIContext(), getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec, getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
-    QImage *image1 = getGraph()->getPlot();
-    QImage *image2 = getGraph()->getIDFT();
-    dsp_stream_p idft = vlbi_get_ifft_estimate(plot);
-    dsp_buffer_copy(plot->buf, image1->bits(), plot->len);
-    dsp_buffer_copy(idft->buf, image2->bits(), idft->len);
-    dsp_stream_free_buffer(plot);
-    dsp_stream_free_buffer(idft);
-    dsp_stream_free(plot);
-    dsp_stream_free(idft);
-    VLBIThread->Unlock();
+    if(connected) {
+        ahp_xc_clear_capture_flag(CAP_ENABLE);
+        ui->Disconnect->clicked(false);
+    }
+    getGraph()->~Graph();
+    delete ui;
 }

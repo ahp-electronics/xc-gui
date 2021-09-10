@@ -72,19 +72,16 @@ void Graph::clearSeries()
 
 void Graph::Update()
 {
-    Graph* sender = this;
-    if(!sender)
-        return;
     PlotView->update();
     IDFTView->update();
-    if(sender->chart == nullptr)
+    if(chart == nullptr)
         return;
-    if(sender->chart->series().length() == 0)
+    if(chart->series().length() == 0)
         return;
     double mn = DBL_MAX;
     double mx = DBL_MIN;
-    for(int x = 0; x < sender->chart->series().length(); x++) {
-        QLineSeries *series = (QLineSeries*)sender->chart->series()[x];
+    for(int x = 0; x < chart->series().length(); x++) {
+        QLineSeries *series = (QLineSeries*)chart->series()[x];
         if(series->count() == 0)
             continue;
         for(int y = 0; y < series->count(); y++) {
@@ -96,16 +93,16 @@ void Graph::Update()
         mx = 1;
         mn = 0;
     }
-    if(sender->chart->axes().count()<2)
+    if(chart->axes().count()<2)
         return;
-    QValueAxis* axis = static_cast<QValueAxis*>(sender->chart->axes()[0]);
+    QValueAxis* axis = static_cast<QValueAxis*>(chart->axes()[0]);
     if(axis == nullptr)
         return;
     axis->setRange(mn, mx);
     mn = DBL_MAX;
     mx = DBL_MIN;
-    for(int x = 0; x < sender->chart->series().length(); x++) {
-        QLineSeries *series = (QLineSeries*)sender->chart->series()[x];
+    for(int x = 0; x < chart->series().length(); x++) {
+        QLineSeries *series = (QLineSeries*)chart->series()[x];
         for(int y = 0; y < series->count(); y++) {
             mn = (mn < series->at(y).y()) ? mn : series->at(y).y();
             mx = (mx > series->at(y).y()) ? mx : series->at(y).y();
@@ -116,7 +113,7 @@ void Graph::Update()
         mn = 0;
     }
     double diff = mx-mn;
-    axis = static_cast<QValueAxis*>(sender->chart->axes()[1]);
+    axis = static_cast<QValueAxis*>(chart->axes()[1]);
     if(axis == nullptr)
         return;
     axis->setRange(mn-diff*0.2, mx+diff*0.2);
