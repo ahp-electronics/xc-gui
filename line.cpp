@@ -230,6 +230,7 @@ void Line::removeSetting(QString setting) {
 void Line::saveSetting(QString setting, QVariant value)
 {
     settings->setValue(QString(name+"_"+setting).replace(' ', ""), value);
+    settings->sync();
 }
 
 QVariant Line::readSetting(QString setting, QVariant defaultValue)

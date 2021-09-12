@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QMainWindow>
 #include <QTcpSocket>
+#include <QSerialPort>
 #include <QSettings>
 #include <ahp_xc.h>
 #include <vlbi.h>
@@ -58,12 +59,12 @@ public:
             ahp_xc_set_capture_flag(CAP_RESET_TIMESTAMP);
             start = QDateTime::currentDateTimeUtc();
             ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);
-            timespec ts = vlbi_time_mktimespec(start.date().year(), start.date().month(), start.date().day(), start.time().hour(), start.time().minute(), start.time().second(), start.time().msec()*1000000);
+            timespec ts = vlbi_time_string_to_utc ((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
+            J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
             for(int i = 0; i < Lines.count(); i++)
                 Lines[i]->getStream()->starttimeutc = ts;
             for(int i = 0; i < Baselines.count(); i++)
                 Baselines[i]->getValues()->clear();
-            J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
             if(mode == Counter || mode == Crosscorrelator) {
                 ahp_xc_set_capture_flag(CAP_ENABLE);
             }
@@ -73,7 +74,7 @@ public:
     Thread *readThread;
     Thread *uiThread;
     Thread *vlbiThread;
-    Thread *gtThread;
+    Thread *motorThread;
 
 private:
     double Ra, Dec;
@@ -82,6 +83,7 @@ private:
     ahp_xc_packet *packet;
     QSettings *settings;
     QTcpSocket socket;
+    QSerialPort serial;
     QFile file;
     Mode mode;
     bool connected;

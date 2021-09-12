@@ -2,6 +2,7 @@
 #include <cmath>
 #include <ctime>
 #include <cstring>
+#include <QIODevice>
 #include <QStandardPaths>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -19,20 +20,25 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     setAccessibleName("MainWindow");
-    QString homedir = QStandardPaths::standardLocations(QStandardPaths::HomeLocation).at(0);
-    QString inidir = homedir+"/.xc-gui/";
-    QString ini = homedir+"/.xc-gui/settings.ini";
-    if(!QDir(inidir).exists()){
-        QDir().mkdir(inidir);
+    QString homedir = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).at(0);
+    QString ini = homedir+"/settings.ini";
+    if(!QDir(homedir).exists()){
+        QDir().mkdir(homedir);
+    }
+    if(!QFile(ini).exists()){
+        QFile *f = new QFile(ini);
+        f->open(QIODevice::WriteOnly);
+        f->close();
+        f->~QFile();
     }
     settings = new QSettings(ini, QSettings::Format::NativeFormat);
     connected = false;
     TimeRange = 60;
     ui->setupUi(this);
     uiThread = new Thread();
-    readThread = new Thread();
-    vlbiThread = new Thread();
-    gtThread = new Thread();
+    readThread = new Thread(100);
+    vlbiThread = new Thread(500);
+    motorThread = new Thread(500);
     graph = new Graph(this);
     setMode(Counter);
     int starty = ui->Lines->y()+ui->Lines->height()+5;
@@ -102,7 +108,6 @@ MainWindow::MainWindow(QWidget *parent)
         int fd = -1;
         int port = 5760;
         QString address = "localhost";
-        QString comport = "/dev/ttyUSB0";
         bool ttyconn = false;
         if(ui->ComPort->currentText().contains(':')) {
             address = ui->ComPort->currentText().split(":")[0];
@@ -121,8 +126,7 @@ MainWindow::MainWindow(QWidget *parent)
                 update();
             }
         } else {
-            comport = ui->ComPort->currentText();
-            ahp_xc_connect(comport.toUtf8(),false);
+            ahp_xc_connect(ui->ComPort->currentText().toUtf8(), false);
         }
         if(ahp_xc_is_connected()) {
             if(!ahp_xc_get_properties()) {
@@ -162,10 +166,11 @@ MainWindow::MainWindow(QWidget *parent)
                 createPacket();
                 setMode(Counter);
                 ui->BaudRate->setEnabled(true);
+                readThread->setTimer(ahp_xc_get_packettime()/1000);
                 readThread->start();
                 uiThread->start();
                 vlbiThread->start();
-                gtThread->start();
+                motorThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
@@ -175,7 +180,7 @@ MainWindow::MainWindow(QWidget *parent)
         } else
             ahp_xc_disconnect();
     });
-    connect(readThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
         ahp_xc_packet* packet = getPacket();
         switch (getMode()) {
@@ -253,17 +258,19 @@ MainWindow::MainWindow(QWidget *parent)
         default:
             break;
         }
+        thread->unlock();
     });
-    connect(uiThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [=](Thread* thread)
     {
-        QThread::msleep(200);
+
         for(int i = 0; i < Lines.count(); i++) {
             Lines[i]->setPercent();
-            if(Lines[i]->isActive())
-                getGraph()->Update();
         }
+        getGraph()->Update();
+        settings->sync();
+        thread->unlock();
     });
-    connect(vlbiThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
         QThread::msleep(200);
         if(getMode() != Crosscorrelator)
@@ -284,8 +291,9 @@ MainWindow::MainWindow(QWidget *parent)
         dsp_stream_free_buffer(idft);
         dsp_stream_free(plot);
         dsp_stream_free(idft);
+        thread->unlock();
     });
-    connect(gtThread, static_cast<void (Thread::*)()>(&Thread::threadLoop), [=]()
+    connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
     });
 }
@@ -301,18 +309,10 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 
 MainWindow::~MainWindow()
 {
-    uiThread->requestInterruption();
-    uiThread->wait();
     uiThread->~Thread();
-    readThread->requestInterruption();
-    readThread->wait();
     readThread->~Thread();
-    vlbiThread->requestInterruption();
-    vlbiThread->wait();
     vlbiThread->~Thread();
-    gtThread->requestInterruption();
-    gtThread->wait();
-    gtThread->~Thread();
+    motorThread->~Thread();
     for(int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }
