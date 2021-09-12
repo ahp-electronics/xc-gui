@@ -43,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     setMode(Counter);
     int starty = ui->Lines->y()+ui->Lines->height()+5;
     getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
+    getGraph()->setUpdatesEnabled(true);
     getGraph()->setVisible(true);
 
     settings->beginGroup("Connection");
@@ -231,11 +232,11 @@ MainWindow::MainWindow(QWidget *parent)
                             switch (y) {
                             case 0:
                                 if(Lines[x]->showCounts())
-                                    counts[y]->append(diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                                    counts[y]->append(J2000_starttime+diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
                                 break;
                             case 1:
                                 if(Lines[x]->showAutocorrelations())
-                                    counts[y]->append(diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
+                                    counts[y]->append(J2000_starttime+diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
                                 break;
                             default:
                                 break;
@@ -262,11 +263,9 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [=](Thread* thread)
     {
-
-        for(int i = 0; i < Lines.count(); i++) {
-            Lines[i]->setPercent();
-        }
-        getGraph()->Update();
+        for(int x = 0; x < Lines.count(); x++)
+            Lines.at(x)->paint();
+        getGraph()->paint();
         settings->sync();
         thread->unlock();
     });
@@ -309,9 +308,21 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 
 MainWindow::~MainWindow()
 {
+    uiThread->requestInterruption();
+    uiThread->wait();
+    uiThread->unlock();
     uiThread->~Thread();
+    readThread->requestInterruption();
+    readThread->wait();
+    readThread->unlock();
     readThread->~Thread();
+    vlbiThread->requestInterruption();
+    vlbiThread->wait();
+    vlbiThread->unlock();
     vlbiThread->~Thread();
+    motorThread->requestInterruption();
+    motorThread->wait();
+    motorThread->unlock();
     motorThread->~Thread();
     for(int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);

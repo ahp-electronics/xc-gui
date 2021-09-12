@@ -302,7 +302,7 @@ void Line::setMode(Mode m)
     }
 }
 
-void Line::setPercent()
+void Line::paint()
 {
     stop = !isActive();
     if(ui->Progress != nullptr) {

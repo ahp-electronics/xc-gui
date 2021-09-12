@@ -70,10 +70,8 @@ void Graph::clearSeries()
     chart->series().clear();
 }
 
-void Graph::Update()
+void Graph::paint()
 {
-    PlotView->update();
-    IDFTView->update();
     if(chart == nullptr)
         return;
     if(chart->series().length() == 0)
@@ -103,6 +101,8 @@ void Graph::Update()
     mx = DBL_MIN;
     for(int x = 0; x < chart->series().length(); x++) {
         QLineSeries *series = (QLineSeries*)chart->series()[x];
+        if(series->count() == 0)
+            continue;
         for(int y = 0; y < series->count(); y++) {
             mn = (mn < series->at(y).y()) ? mn : series->at(y).y();
             mx = (mx > series->at(y).y()) ? mx : series->at(y).y();

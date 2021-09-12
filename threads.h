@@ -23,7 +23,6 @@ public:
         }
         disconnect(this, 0, 0, 0);
     }
-    ~Thread() { requestInterruption(); }
     bool lock() { return mutex.tryLock(); }
     void unlock() { mutex.unlock(); }
     void setTimer(int timer) { timer_ms = timer; }

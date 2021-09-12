@@ -24,10 +24,11 @@ public:
     Graph(QWidget *parent = nullptr, QString name="");
     ~Graph();
 
+    void resizeEvent(QResizeEvent *event) override;
+    void paint();
+
     void clearSeries();
-    void resizeEvent(QResizeEvent *event);
     bool threadRunning;
-    void Update();
     void addSeries(QAbstractSeries* series);
     void removeSeries(QAbstractSeries* series);
     void setMode(Mode m);

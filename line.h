@@ -32,6 +32,8 @@ public:
     explicit Line(QString name, int n, QSettings *settings = nullptr, QWidget *parent = nullptr, QList<Line*> *p = nullptr);
     ~Line();
 
+    void paint();
+
     inline bool isActive() { return running; }
     void setActive(bool a) { running = a; if(!running) { getCounts()->clear(); getAutocorrelations()->clear(); } emit activeStateChanged(this); }
     inline int getFlags() { return flags; }
