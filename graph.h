@@ -4,10 +4,13 @@
 #include <QThread>
 #include <QWidget>
 #include <QChart>
+#include <QLabel>
+#include <QGroupBox>
 #include <QDateTime>
 #include <QChartView>
 #include <QLineSeries>
 #include <QValueAxis>
+#include <QVBoxLayout>
 #include "threads.h"
 
 using namespace QtCharts;
@@ -35,27 +38,30 @@ public:
     inline Mode getMode() { return mode; }
     inline int getPlotWidth() { return plot_w; }
     inline int getPlotHeight() { return plot_h; }
-    inline void setPlotWidth(int value) {  plot_w = value; plot = plot.scaled(getPlotWidth(), getPlotHeight()); idft = plot.scaled(getPlotWidth(), getPlotHeight()); }
-    inline void setPlotHeight(int value) { plot_h = value; plot = plot.scaled(getPlotWidth(), getPlotHeight()); idft = idft.scaled(getPlotWidth(), getPlotHeight()); }
-    inline QImage *getPlot() { return &plot; }
-    inline QImage *getIDFT() { return &idft; }
+    inline void setPlotWidth(int value) {  plot_w = value; }
+    inline void setPlotHeight(int value) { plot_h = value; }
+    inline QImage *getRaw() { return &raw; }
+    inline QImage *getCoverage() { return &coverage; }
+    inline QImage *getIdft() { return &idft; }
 
 private:
     Mode mode;
     inline QImage initGrayPicture(int w, int h) {
         QVector<QRgb> palette;
-        for(int c = 0; c < 256; c++)
-            palette.append((QRgb)(c|(c<<8)|(c<<16)));
-        QImage image = QImage(w, h, QImage::Format::Format_Indexed8);
-        image.setColorTable(palette);
+        QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
+        image.fill(0);
         return image;
     }
-    QGraphicsView *PlotView;
-    QGraphicsView *IDFTView;
-    QGraphicsScene *Plot;
-    QGraphicsScene *IDFT;
-    QImage plot;
     QImage idft;
+    QImage raw;
+    QImage coverage;
+    QGroupBox *correlator;
+    QLabel *idftLabel;
+    QLabel *rawLabel;
+    QLabel *coverageLabel;
+    QLabel *idftView;
+    QLabel *rawView;
+    QLabel *coverageView;
     int plot_w, plot_h;
     QValueAxis *axisX;
     QValueAxis *axisY;

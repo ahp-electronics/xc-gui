@@ -47,6 +47,8 @@ public:
     void setMode(Mode m);
     Scale getYScale();
     void stackCorrelations();
+    inline bool applyMedian() { return applymedian; }
+    inline bool applySigmaClipping() { return applysigmaclipping; }
     inline void clearCorrelations() { stack = 0.0; }
     inline double getPercent() { return percent; }
     inline double isScanning() { return !stop; }
@@ -83,6 +85,8 @@ public:
 private:
     void insertValue(double x, double y);
 
+    bool applysigmaclipping;
+    bool applymedian;
     dsp_stream_p stream;
     dsp_location location;
     double *ac;

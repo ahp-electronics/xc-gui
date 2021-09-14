@@ -6,6 +6,7 @@
 #include <QTcpSocket>
 #include <QSerialPort>
 #include <QSettings>
+#include <QMutex>
 #include <ahp_xc.h>
 #include <vlbi.h>
 #include "graph.h"
@@ -77,6 +78,7 @@ public:
     Thread *motorThread;
 
 private:
+    QMutex vlbi_mutex;;
     double Ra, Dec;
     double wavelength;
     void* vlbi_context;

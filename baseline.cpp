@@ -13,13 +13,13 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     average->setName(name);
     line1 = n1;
     line2 = n2;
-    connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+    connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged), this,
             [=](Line* sender){
         active &= ~1;
         active |= sender->isActive();
         stop = !isActive();
     });
-    connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+    connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged), this,
             [=](Line* sender){
         active &= ~2;
         active |= sender->isActive() << 1;

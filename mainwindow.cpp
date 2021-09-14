@@ -15,6 +15,11 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
+static double coverage_delegate(double x, double y)
+{
+    return 1;
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -36,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     TimeRange = 60;
     ui->setupUi(this);
     uiThread = new Thread();
-    readThread = new Thread(100);
+    readThread = new Thread(500);
     vlbiThread = new Thread(500);
     motorThread = new Thread(500);
     graph = new Graph(this);
@@ -194,12 +199,10 @@ MainWindow::MainWindow(QWidget *parent)
                 double offset1 = 0, offset2 = 0;
                 for(int x = 0; x < Lines.count(); x++) {
                     Line * line = Lines[x];
-                    if(line->isActive()) {
-                        line->getStream()->location = (dsp_location*)realloc(line->getStream()->location, sizeof(dsp_location)*(line->getStream()->len));
-                        line->getStream()->location[line->getStream()->len-1].xyz.x = line->getLocation()->xyz.x;
-                        line->getStream()->location[line->getStream()->len-1].xyz.y = line->getLocation()->xyz.y;
-                        line->getStream()->location[line->getStream()->len-1].xyz.z = line->getLocation()->xyz.z;
-                    }
+                    line->getStream()->location = (dsp_location*)realloc(line->getStream()->location, sizeof(dsp_location)*(line->getStream()->len));
+                    line->getStream()->location[line->getStream()->len-1].xyz.x = line->getLocation()->xyz.x;
+                    line->getStream()->location[line->getStream()->len-1].xyz.y = line->getLocation()->xyz.y;
+                    line->getStream()->location[line->getStream()->len-1].xyz.z = line->getLocation()->xyz.z;
                 }
                 for(int x = 0; x < Baselines.count(); x++) {
                     Baseline * line = Baselines[x];
@@ -265,13 +268,15 @@ MainWindow::MainWindow(QWidget *parent)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
-        getGraph()->paint();
+        if(vlbi_mutex.tryLock()) {
+            getGraph()->paint();
+            vlbi_mutex.unlock();
+        }
         settings->sync();
         thread->unlock();
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
-        QThread::msleep(200);
         if(getMode() != Crosscorrelator)
             return;
         for(int i  = 0; i < Baselines.count(); i++) {
@@ -280,16 +285,29 @@ MainWindow::MainWindow(QWidget *parent)
                 vlbi_set_baseline_buffer(getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(), (char*)line->getLine2()->getName().toStdString().c_str(), line->getValues()->toVector().data(), line->getValues()->count());
         }
         double radec [2] = { getRa(), getDec() };
-        dsp_stream_p plot = vlbi_get_uv_plot(getVLBIContext(), getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec, getFrequency(), 1000000.0/ahp_xc_get_packettime(), 1, 1, nullptr);
-        QImage *image1 = getGraph()->getPlot();
-        QImage *image2 = getGraph()->getIDFT();
-        dsp_stream_p idft = vlbi_get_ifft_estimate(plot);
-        dsp_buffer_copy(plot->buf, image1->bits(), plot->len);
-        dsp_buffer_copy(idft->buf, image2->bits(), idft->len);
-        dsp_stream_free_buffer(plot);
-        dsp_stream_free_buffer(idft);
-        dsp_stream_free(plot);
-        dsp_stream_free(idft);
+        dsp_stream_p coverage_stream = vlbi_get_uv_plot(getVLBIContext(), getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec, getFrequency(), 1000000.0/ahp_xc_get_packettime(), true, true, coverage_delegate);
+        dsp_stream_p raw_stream = vlbi_get_uv_plot(getVLBIContext(), getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec, getFrequency(), 1000000.0/ahp_xc_get_packettime(), true, true, vlbi_default_delegate);
+        dsp_buffer_stretch(coverage_stream->buf, coverage_stream->len, 0.0, 255.0);
+        dsp_buffer_stretch(raw_stream->buf, raw_stream->len, 0.0, 255.0);
+        QImage *coverage = getGraph()->getCoverage();
+        QImage *idft = getGraph()->getIdft();
+        QImage *raw = getGraph()->getRaw();
+        dsp_stream_p idft_stream = vlbi_get_ifft_estimate(raw_stream);
+        dsp_buffer_stretch(idft_stream->buf, idft_stream->len, 0.0, 255.0);
+        while(!vlbi_mutex.tryLock()) {
+            if(thread->isInterruptionRequested())
+                goto end_free;
+            QThread::msleep(10);
+        }
+        dsp_buffer_copy(coverage_stream->buf, coverage->bits(), coverage_stream->len);
+        dsp_buffer_copy(raw_stream->buf, raw->bits(), raw_stream->len);
+        dsp_buffer_copy(idft_stream->buf, idft->bits(), idft_stream->len);
+        vlbi_mutex.unlock();
+end_free:
+        dsp_stream_free_buffer(raw_stream);
+        dsp_stream_free_buffer(idft_stream);
+        dsp_stream_free(raw_stream);
+        dsp_stream_free(idft_stream);
         thread->unlock();
     });
     connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
