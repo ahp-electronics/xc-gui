@@ -1,6 +1,7 @@
 #include "line.h"
 #include "ui_line.h"
 #include <fftw3.h>
+#include <dsp.h>
 #include <QMapNode>
 #include <QFile>
 #include <QFileDialog>
@@ -20,8 +21,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     autodark = new QMap<double, double>();
     crossdark = new QMap<double, double>();
     series = new QLineSeries();
+    spectrum = new QScatterSeries();
     counts = new QLineSeries();
     autocorrelations = new QLineSeries();
+    spectrum->setMarkerSize(7);
     getDots()->setName(name+" coherence");
     getCounts()->setName(name+" (counts)");
     getAutocorrelations()->setName(name+" (autocorrelations)");
@@ -31,9 +34,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     line = n;
     flags = 0;
     ui->setupUi(this);
+    ui->Delay->setRange(0, ahp_xc_get_delaysize()-7);
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize()-7);
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize()-7);
-    ui->EndLine->setRange(5, ahp_xc_get_delaysize()-1);
+    ui->StartLine->setRange(0, ahp_xc_get_delaysize()*2-7);
+    ui->EndLine->setRange(5, ahp_xc_get_delaysize()*2-1);
     ui->x_location->setRange(-ahp_xc_get_delaysize()*1000, ahp_xc_get_delaysize()*1000);
     ui->y_location->setRange(-ahp_xc_get_delaysize()*1000, ahp_xc_get_delaysize()*1000);
     ui->z_location->setRange(-ahp_xc_get_delaysize()*1000, ahp_xc_get_delaysize()*1000);
@@ -89,10 +93,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ui->Counter->setEnabled(false);
         ui->Autocorrelator->setEnabled(false);
         ui->Crosscorrelator->setEnabled(false);
+        ui->Spectrograph->setEnabled(false);
         if(mode == Autocorrelator) {
             ui->Autocorrelator->setEnabled(!isActive());
         } else if(mode == Crosscorrelator) {
             ui->Crosscorrelator->setEnabled(!isActive());
+        } else if(mode == Spectrograph) {
+            ui->Spectrograph->setEnabled(!isActive());
         } else {
             ui->Counter->setEnabled(!isActive());
         }
@@ -169,11 +176,24 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
          getAverage()->clear();
          emit activeStateChanged(this);
     });
+    connect(ui->Clear_1, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
+         getSpectrum()->clear();
+         getAverage()->clear();
+         emit activeStateChanged(this);
+    });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [=](bool checked) {
         saveSetting(ui->Counts->text(), ui->Counts->isChecked());
     });
     connect(ui->Autocorrelations, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [=](bool checked) {
         saveSetting(ui->Autocorrelations->text(), ui->Autocorrelations->isChecked());
+    });
+    connect(ui->Delay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        ahp_xc_set_lag_auto(line, value);
+        saveSetting("Delay", value);
+    });
+    connect(ui->Divider, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        divider = value;
+        saveSetting("Divider", value);
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         ahp_xc_set_lag_auto(line, value);
@@ -181,7 +201,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         ahp_xc_set_lag_cross(line, value);
-        saveSetting("SpectralLine", value);
+        saveSetting("LineDelay", value);
     });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         getLocation()->xyz.x = (double)value/1000.0;
@@ -214,6 +234,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             getDots()->setName(name+" coherence (residuals)");
         }
     }
+    ui->Delay->setValue(readInt("Delay", ui->Delay->minimum()));
+    ui->Divider->setValue(readInt("Divider", ui->Divider->minimum()));
     getDark()->clear();
     setActive(false);
     setMode(Counter);
@@ -288,6 +310,7 @@ void Line::setMode(Mode m)
 {
     mode = m;
     getDark()->clear();
+    getSpectrum()->clear();
     getDots()->clear();
     getAverage()->clear();
     getCounts()->clear();
@@ -298,6 +321,7 @@ void Line::setMode(Mode m)
     if(!isActive()) {
         ui->Counter->setEnabled(mode == Counter);
         ui->Autocorrelator->setEnabled(mode == Autocorrelator);
+        ui->Spectrograph->setEnabled(mode == Spectrograph);
         ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
     }
 }
@@ -315,9 +339,19 @@ void Line::paint()
 
 void Line::insertValue(double x, double y)
 {
-    y += getAverage()->value(x, 0)*(stack-1)/stack;
+    y += getAverage()->value(x, 0)*(stack-1);
+    y /= stack;
     getAverage()->insert(x, y);
     getDots()->append(x, y - getDark()->value(x, 0));
+}
+
+void Line::sumValue(double x, double y)
+{
+    double v = y;
+    v += getAverage()->value(x, 0);
+    getAverage()->insert(x, v);
+    getSpectrum()->append(x, v);
+    getSpectrum()->remove(x, v-y);
 }
 
 void Line::stackCorrelations()
@@ -339,19 +373,19 @@ void Line::stackCorrelations()
         stack += 1.0;
         getDots()->clear();
         if(ui->IDFT->isChecked()) {
-            for (int z = 0; z < len; z++) {
-                dft[z][0] = spectrum[z].correlations[0].coherence;
-                dft[z][1] = 0;
+            for (int x = 0, z = 3; x < len && z < len; x++, z++) {
+                dft[x][0] = fmax(0.0, 1.0-spectrum[z].correlations[0].coherence);
+                dft[x][1] = 0;
             }
             fftw_execute(plan);
         }
-        for (int x = start+1, z = 1; x < end && z < len; x++, z++) {
+        for (int x = start, z = 3; x < end && z < len; x++, z++) {
             double y;
             y = (double)x*timespan;
             if(ui->IDFT->isChecked()) {
-                value = ac[z] / stack;
+                value = ac[z];
             } else {
-                value = spectrum[z].correlations[0].coherence / stack;
+                value = fmax(0.0, 1.0-spectrum[z].correlations[0].coherence);
             }
             insertValue(y, value);
         }

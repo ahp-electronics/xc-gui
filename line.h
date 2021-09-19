@@ -64,11 +64,13 @@ public:
     inline bool readBool(QString setting, bool defaultValue) { return readSetting(setting, defaultValue).toBool(); }
     inline bool isRunning() { return running; }
 
-    inline QLineSeries* getDots() { return series; }
+    inline int getDivider() { return divider; }
     inline QMap<double, double>* getAverage() { return average; }
     inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
     inline QLineSeries* getCounts() { return counts; }
     inline QLineSeries* getAutocorrelations() { return autocorrelations; }
+    inline QLineSeries* getDots() { return series; }
+    inline QScatterSeries* getSpectrum() { return spectrum; }
     inline QList<double*> getCrosscorrelations() { return crosscorrelations; }
     inline dsp_stream_p getStream() { return stream; }
     inline dsp_location *getLocation() { return &location; }
@@ -81,10 +83,12 @@ public:
     inline void stopAxis(int axis) { ahp_gt_select_device(getGTAddress()); ahp_gt_stop_motion(axis); }
     double percent;
     void setPercent();
+    void insertValue(double x, double y);
+    void sumValue(double x, double y);
 
 private:
-    void insertValue(double x, double y);
-
+    int divider;
+    Ui::Line *ui;
     bool applysigmaclipping;
     bool applymedian;
     dsp_stream_p stream;
@@ -105,13 +109,13 @@ private:
     QMap<double, double>* autodark;
     QMap<double, double>* crossdark;
     QMap<double, double>* average;
+    QScatterSeries* spectrum;
     QLineSeries* series;
     QLineSeries* counts;
     QLineSeries* autocorrelations;
     QList<double*> crosscorrelations;
     unsigned int line;
     int flags;
-    Ui::Line *ui;
     int old_index2;
     int gt_address;
 

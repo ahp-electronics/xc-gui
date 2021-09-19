@@ -66,7 +66,8 @@ public:
                 Lines[i]->getStream()->starttimeutc = ts;
             for(int i = 0; i < Baselines.count(); i++)
                 Baselines[i]->getValues()->clear();
-            if(mode == Counter || mode == Crosscorrelator) {
+            //if(mode == Counter || mode == Crosscorrelator)
+            {
                 ahp_xc_set_capture_flag(CAP_ENABLE);
             }
         }

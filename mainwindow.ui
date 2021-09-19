@@ -98,6 +98,11 @@
     </item>
     <item>
      <property name="text">
+      <string>Spectrograph</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
       <string>Autocorrelator</string>
      </property>
     </item>

@@ -156,6 +156,7 @@ MainWindow::MainWindow(QWidget *parent)
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
                     QString name = "Line "+QString::number(l+1);
                     Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
+                    getGraph()->addSeries(Lines[l]->getSpectrum());
                     getGraph()->addSeries(Lines[l]->getDots());
                     getGraph()->addSeries(Lines[l]->getCounts());
                     getGraph()->addSeries(Lines[l]->getAutocorrelations());
@@ -256,6 +257,20 @@ MainWindow::MainWindow(QWidget *parent)
                 Line * line = Lines[x];
                 if(line->isActive()) {
                     line->stackCorrelations();
+                }
+            }
+            break;
+        case Spectrograph:
+            if(!ahp_xc_get_packet(packet)) {
+                for(int x = 0; x < Lines.count(); x++) {
+                    Line * line = Lines[x];
+                    if(line->isActive()) {
+                        unsigned long value = (unsigned long)(packet->autocorrelations[x].correlations[0].coherence * line->getDivider());
+                        if(value > 0)
+                            line->sumValue(value, 1);
+                    } else {
+                        line->getAverage()->clear();
+                    }
                 }
             }
             break;

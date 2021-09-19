@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>989</width>
+    <width>1181</width>
     <height>150</height>
    </rect>
   </property>
@@ -298,7 +298,7 @@
   <widget class="QPushButton" name="Run">
    <property name="geometry">
     <rect>
-     <x>890</x>
+     <x>1070</x>
      <y>20</y>
      <width>91</width>
      <height>81</height>
@@ -426,7 +426,7 @@
   <widget class="QPushButton" name="Save">
    <property name="geometry">
     <rect>
-     <x>890</x>
+     <x>1070</x>
      <y>110</y>
      <width>91</width>
      <height>31</height>
@@ -439,7 +439,7 @@
   <widget class="QPlainTextEdit" name="Notes">
    <property name="geometry">
     <rect>
-     <x>720</x>
+     <x>900</x>
      <y>20</y>
      <width>161</width>
      <height>121</height>
@@ -449,7 +449,7 @@
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>720</x>
+     <x>900</x>
      <y>0</y>
      <width>67</width>
      <height>17</height>
@@ -458,6 +458,93 @@
    <property name="text">
     <string>Notes</string>
    </property>
+  </widget>
+  <widget class="QGroupBox" name="Spectrograph">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>720</x>
+     <y>0</y>
+     <width>171</width>
+     <height>141</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Spectrograph</string>
+   </property>
+   <widget class="QSpinBox" name="Delay">
+    <property name="geometry">
+     <rect>
+      <x>100</x>
+      <y>70</y>
+      <width>51</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="value">
+     <number>1</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_9">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>70</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>A/C Delay:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_10">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>100</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Divider</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="Divider">
+    <property name="geometry">
+     <rect>
+      <x>100</x>
+      <y>100</y>
+      <width>51</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>16</number>
+    </property>
+    <property name="maximum">
+     <number>2048</number>
+    </property>
+    <property name="value">
+     <number>16</number>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Clear_1">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>151</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Clear Plot</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>
