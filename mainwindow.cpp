@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 60;
     ui->setupUi(this);
-    uiThread = new Thread();
+    uiThread = new Thread(100);
     readThread = new Thread(500);
     vlbiThread = new Thread(500);
     motorThread = new Thread(500);
@@ -193,9 +193,7 @@ MainWindow::MainWindow(QWidget *parent)
         switch (getMode()) {
         case Crosscorrelator:
             if(!ahp_xc_get_packet(packet)) {
-                double offs_time = (double)packet->timestamp/10000.0;
-                QDateTime now = start.addMSecs(offs_time);
-                offs_time /= 1000.0;
+                double offs_time = (double)packet->timestamp/10000000.0;
                 offs_time += getStartTime();
                 double offset1 = 0, offset2 = 0;
                 for(int x = 0; x < Lines.count(); x++) {
@@ -220,7 +218,10 @@ MainWindow::MainWindow(QWidget *parent)
             break;
         case Counter:
             if(!ahp_xc_get_packet(packet)) {
-                double diff = (double)packet->timestamp/10000000.0;
+                double packettime = (double)packet->timestamp/10.0;
+                double diff = packettime - lastpackettime;
+                lastpackettime = packettime;
+                packettime /= 1000000.0;
                 for(int x = 0; x < Lines.count(); x++) {
                     Line * line = Lines[x];
                     QLineSeries *counts[2] = {
@@ -228,19 +229,21 @@ MainWindow::MainWindow(QWidget *parent)
                         Lines[x]->getAutocorrelations()
                     };
                     for (int y = 0; y < 2; y++) {
-                        if(diff > (double)getTimeRange())
+                        if(counts[y]->at(counts[y]->count() - 1).x() > J2000_starttime+packettime)
+                            counts[y]->remove(counts[y]->count() - 1);
+                        if(packettime > (double)getTimeRange())
                             for(int d = 0; d < counts[y]->count(); d++)
-                                if(counts[y]->at(d).x()<diff-(double)getTimeRange())
+                                if(counts[y]->at(d).x()<packettime-(double)getTimeRange())
                                     counts[y]->remove(d);
                         if(line->isActive()) {
                             switch (y) {
                             case 0:
                                 if(Lines[x]->showCounts())
-                                    counts[y]->append(J2000_starttime+diff, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                                    counts[y]->append(J2000_starttime+packettime, packet->counts[x]*1000000/ahp_xc_get_packettime());
                                 break;
                             case 1:
                                 if(Lines[x]->showAutocorrelations())
-                                    counts[y]->append(J2000_starttime+diff, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
+                                    counts[y]->append(J2000_starttime+packettime, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
                                 break;
                             default:
                                 break;
@@ -265,9 +268,13 @@ MainWindow::MainWindow(QWidget *parent)
                 for(int x = 0; x < Lines.count(); x++) {
                     Line * line = Lines[x];
                     if(line->isActive()) {
-                        unsigned long value = (unsigned long)(packet->autocorrelations[x].correlations[0].coherence * line->getDivider());
-                        if(value > 0)
-                            line->sumValue(value, 1);
+                        if(packet->autocorrelations[x].correlations[0].coherence > 0 && packet->autocorrelations[x].correlations[0].coherence < 1.0) {
+                            while(!uiThread->lock()&&!thread->isInterruptionRequested()) {
+                                QThread::msleep(1);
+                            }
+                            line->sumValue(packet->autocorrelations[x].correlations[0].coherence, 1);
+                            uiThread->unlock();
+                        }
                     } else {
                         line->getAverage()->clear();
                     }
@@ -314,6 +321,9 @@ MainWindow::MainWindow(QWidget *parent)
                 goto end_free;
             QThread::msleep(10);
         }
+        dsp_buffer_1sub(coverage_stream, 255.0);
+        dsp_buffer_1sub(raw_stream, 255.0);
+        dsp_buffer_1sub(idft_stream, 255.0);
         dsp_buffer_copy(coverage_stream->buf, coverage->bits(), coverage_stream->len);
         dsp_buffer_copy(raw_stream->buf, raw->bits(), raw_stream->len);
         dsp_buffer_copy(idft_stream->buf, idft->bits(), idft_stream->len);

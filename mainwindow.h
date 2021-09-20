@@ -66,7 +66,7 @@ public:
                 Lines[i]->getStream()->starttimeutc = ts;
             for(int i = 0; i < Baselines.count(); i++)
                 Baselines[i]->getValues()->clear();
-            //if(mode == Counter || mode == Crosscorrelator)
+            if(mode != Autocorrelator)
             {
                 ahp_xc_set_capture_flag(CAP_ENABLE);
             }
@@ -79,6 +79,7 @@ public:
     Thread *motorThread;
 
 private:
+    double lastpackettime;
     QMutex vlbi_mutex;;
     double Ra, Dec;
     double wavelength;

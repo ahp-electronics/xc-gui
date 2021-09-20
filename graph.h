@@ -49,7 +49,7 @@ private:
     inline QImage initGrayPicture(int w, int h) {
         QVector<QRgb> palette;
         QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
-        image.fill(0);
+        image.fill(255);
         return image;
     }
     QImage idft;

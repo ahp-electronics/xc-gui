@@ -66,6 +66,7 @@ public:
 
     inline int getDivider() { return divider; }
     inline QMap<double, double>* getAverage() { return average; }
+    inline QList<double>* getBuffer() { return &buffer; }
     inline QMap<double, double>* getDark() { return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark); }
     inline QLineSeries* getCounts() { return counts; }
     inline QLineSeries* getAutocorrelations() { return autocorrelations; }
@@ -74,6 +75,8 @@ public:
     inline QList<double*> getCrosscorrelations() { return crosscorrelations; }
     inline dsp_stream_p getStream() { return stream; }
     inline dsp_location *getLocation() { return &location; }
+    inline double getAverageBottom() { return averageBottom; }
+    inline double getAverageTop() { return averageTop; }
     inline int getGTAddress() { return gt_address; }
     inline double getAxisPosition(int axis) { ahp_gt_select_device(getGTAddress()); return ahp_gt_get_position(axis); }
     inline void setAxisPosition(int axis, double value) { ahp_gt_select_device(getGTAddress()); ahp_gt_set_position(axis, value); }
@@ -87,6 +90,7 @@ public:
     void sumValue(double x, double y);
 
 private:
+    int buffersize { 3 };
     int divider;
     Ui::Line *ui;
     bool applysigmaclipping;
@@ -101,6 +105,7 @@ private:
     QSettings *settings;
     QList<Line*> *parents;
     QList<Baseline*> nodes;
+    QList<double> buffer;
     bool scanning;
     int stop;
     double stack;
@@ -118,6 +123,9 @@ private:
     int flags;
     int old_index2;
     int gt_address;
+    double averageBottom { 0 };
+    double averageTop { 1.0 };
+    void getMinMax();
 
 signals:
     void activeStateChanged(Line* line);

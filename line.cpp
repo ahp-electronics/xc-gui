@@ -90,18 +90,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             setActive(false);
             ui->Run->setText("Run");
         }
-        ui->Counter->setEnabled(false);
+        ui->Counter->setEnabled(mode == Counter);
+        ui->Spectrograph->setEnabled(mode == Spectrograph);
         ui->Autocorrelator->setEnabled(false);
         ui->Crosscorrelator->setEnabled(false);
-        ui->Spectrograph->setEnabled(false);
         if(mode == Autocorrelator) {
             ui->Autocorrelator->setEnabled(!isActive());
         } else if(mode == Crosscorrelator) {
             ui->Crosscorrelator->setEnabled(!isActive());
-        } else if(mode == Spectrograph) {
-            ui->Spectrograph->setEnabled(!isActive());
-        } else {
-            ui->Counter->setEnabled(!isActive());
         }
     });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
@@ -179,6 +175,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     connect(ui->Clear_1, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [=](bool checked) {
          getSpectrum()->clear();
          getAverage()->clear();
+         getBuffer()->clear();
          emit activeStateChanged(this);
     });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [=](bool checked) {
@@ -194,6 +191,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     connect(ui->Divider, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         divider = value;
         saveSetting("Divider", value);
+    });
+    connect(ui->BufferSize, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
+        buffersize = value;
+        saveSetting("BufferSize", value);
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int value) {
         ahp_xc_set_lag_auto(line, value);
@@ -234,6 +235,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             getDots()->setName(name+" coherence (residuals)");
         }
     }
+    ui->BufferSize->setValue(readInt("BufferSize", ui->BufferSize->minimum()));
     ui->Delay->setValue(readInt("Delay", ui->Delay->minimum()));
     ui->Divider->setValue(readInt("Divider", ui->Divider->minimum()));
     getDark()->clear();
@@ -311,17 +313,18 @@ void Line::setMode(Mode m)
     mode = m;
     getDark()->clear();
     getSpectrum()->clear();
+    getBuffer()->clear();
     getDots()->clear();
     getAverage()->clear();
     getCounts()->clear();
     getAutocorrelations()->clear();
-    if(mode == Autocorrelator) {
+    if(mode == Autocorrelator || mode == Spectrograph) {
         stack = 0.0;
     }
+    ui->Counter->setEnabled(mode == Counter);
+    ui->Spectrograph->setEnabled(mode == Spectrograph);
     if(!isActive()) {
-        ui->Counter->setEnabled(mode == Counter);
         ui->Autocorrelator->setEnabled(mode == Autocorrelator);
-        ui->Spectrograph->setEnabled(mode == Spectrograph);
         ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
     }
 }
@@ -345,8 +348,33 @@ void Line::insertValue(double x, double y)
     getDots()->append(x, y - getDark()->value(x, 0));
 }
 
+void Line::getMinMax()
+{
+    if(getBuffer()->count() < buffersize)
+        return;
+    if(getBuffer()->count() > buffersize)
+        getBuffer()->removeAt(0);
+    averageBottom = DBL_MAX;
+    averageTop = -DBL_MAX;
+    for(int x = 1; x < (int)getBuffer()->count()-1; x++) {
+        averageBottom = fmin(averageBottom, getBuffer()->at(getBuffer()->count()-x));
+        averageTop = fmax(averageTop, getBuffer()->at(getBuffer()->count()-x));
+    }
+    if(fabs(averageBottom) == fabs(averageTop)) {
+        averageBottom = 0;
+        averageTop = 1;
+    }
+}
+
 void Line::sumValue(double x, double y)
 {
+    getBuffer()->append(x);
+    getMinMax();
+    if(getBuffer()->count() < buffersize)
+        return;
+    x = floor((x - getAverageBottom()) * getDivider() / (getAverageTop()-getAverageBottom())) / getDivider();
+    if(x == 1.0 || x == 0.0)
+        return;
     double v = y;
     v += getAverage()->value(x, 0);
     getAverage()->insert(x, v);
