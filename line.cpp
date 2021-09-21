@@ -352,8 +352,6 @@ void Line::getMinMax()
 {
     if(getBuffer()->count() < buffersize)
         return;
-    if(getBuffer()->count() > buffersize)
-        getBuffer()->removeAt(0);
     averageBottom = DBL_MAX;
     averageTop = -DBL_MAX;
     for(int x = 1; x < (int)getBuffer()->count()-1; x++) {
@@ -417,7 +415,6 @@ void Line::stackCorrelations()
             }
             insertValue(y, value);
         }
-        emit activeStateChanged(this);
     }
     scanning = false;
 }
