@@ -233,7 +233,7 @@ MainWindow::MainWindow(QWidget *parent)
                             if(counts[y]->count() > 1) {
                                 if(diff < 0)
                                     counts[y]->remove(counts[y]->count() - 1);
-                                if(packettime > (double)getTimeRange())
+                                if(packettime > (double)getTimeRange() && counts[y]->count() > getTimeRange()*1000000/ahp_xc_get_packettime())
                                     counts[y]->remove(0);
                             }
                             switch (y) {
