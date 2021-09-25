@@ -229,13 +229,13 @@ MainWindow::MainWindow(QWidget *parent)
                         Lines[x]->getAutocorrelations()
                     };
                     for (int y = 0; y < 2; y++) {
-                        if(counts[y]->at(counts[y]->count() - 1).x() > J2000_starttime+packettime)
-                            counts[y]->remove(counts[y]->count() - 1);
-                        if(packettime > (double)getTimeRange())
-                            for(int d = 0; d < counts[y]->count(); d++)
-                                if(counts[y]->at(d).x()<packettime-(double)getTimeRange())
-                                    counts[y]->remove(d);
                         if(line->isActive()) {
+                            if(counts[y]->count() > 1) {
+                                if(diff < 0)
+                                    counts[y]->remove(counts[y]->count() - 1);
+                                if(packettime > (double)getTimeRange())
+                                    counts[y]->remove(0);
+                            }
                             switch (y) {
                             case 0:
                                 if(Lines[x]->showCounts())
