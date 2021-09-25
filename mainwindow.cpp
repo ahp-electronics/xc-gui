@@ -176,8 +176,8 @@ MainWindow::MainWindow(QWidget *parent)
                 readThread->setTimer(ahp_xc_get_packettime()/1000);
                 readThread->start();
                 uiThread->start();
-                vlbiThread->start();
-                motorThread->start();
+                //vlbiThread->start();
+                //motorThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
@@ -248,6 +248,14 @@ MainWindow::MainWindow(QWidget *parent)
                             default:
                                 break;
                             }
+                            if(counts[y]->count() > 0) {
+                                if(counts[y]->at(counts[y]->count() - 1).x() > J2000_starttime+packettime)
+                                    counts[y]->remove(counts[y]->count() - 1);
+                                if(packettime > (double)getTimeRange())
+                                    for(int d = 0; d < counts[y]->count(); d++)
+                                        if(counts[y]->at(d).x()<packettime-(double)getTimeRange())
+                                            counts[y]->remove(d);
+                            }
                         } else {
                             counts[y]->clear();
                         }
@@ -269,11 +277,7 @@ MainWindow::MainWindow(QWidget *parent)
                     Line * line = Lines[x];
                     if(line->isActive()) {
                         if(packet->autocorrelations[x].correlations[0].coherence > 0 && packet->autocorrelations[x].correlations[0].coherence < 1.0) {
-                            while(!uiThread->lock()&&!thread->isInterruptionRequested()) {
-                                QThread::msleep(1);
-                            }
                             line->sumValue(packet->autocorrelations[x].correlations[0].coherence, 1);
-                            uiThread->unlock();
                         }
                     } else {
                         line->getAverage()->clear();
