@@ -286,13 +286,13 @@ bool Line::getFlag(int flag)
 {
     switch (flag) {
     case 0:
-        return ui->flag0->checkState();
+        return ui->flag0->isChecked();
     case 1:
-        return ui->flag1->checkState();
+        return ui->flag1->isChecked();
     case 2:
-        return ui->flag2->checkState();
+        return ui->flag2->isChecked();
     case 3:
-        return ui->flag3->checkState();
+        return ui->flag3->isChecked();
     default:
         return false;
     }
@@ -411,7 +411,7 @@ void Line::stackCorrelations()
             if(ui->IDFT->isChecked()) {
                 value = ac[z];
             } else {
-                value = fmax(0.0, 1.0-spectrum[z].correlations[0].coherence);
+                value = fmax(0.0, getFlag(2) ? 1.0 - spectrum[z].correlations[0].coherence : spectrum[z].correlations[0].coherence);
             }
             insertValue(y, value);
         }

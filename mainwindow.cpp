@@ -231,10 +231,12 @@ MainWindow::MainWindow(QWidget *parent)
                     for (int y = 0; y < 2; y++) {
                         if(line->isActive()) {
                             if(counts[y]->count() > 1) {
-                                if(diff < 0)
-                                    counts[y]->remove(counts[y]->count() - 1);
-                                if(packettime > (double)getTimeRange() && counts[y]->count() > getTimeRange()*1000000/ahp_xc_get_packettime())
-                                    counts[y]->remove(0);
+                                for(int d = 0; d < counts[y]->count(); d++) {
+                                    if(counts[y]->at(d-1).x() > counts[y]->at(d).x())
+                                        counts[y]->remove(d-1);
+                                    if(counts[y]->at(d).x()<packettime-(double)getTimeRange())
+                                        counts[y]->remove(d);
+                                }
                             }
                             switch (y) {
                             case 0:
@@ -247,14 +249,6 @@ MainWindow::MainWindow(QWidget *parent)
                                 break;
                             default:
                                 break;
-                            }
-                            if(counts[y]->count() > 0) {
-                                if(counts[y]->at(counts[y]->count() - 1).x() > J2000_starttime+packettime)
-                                    counts[y]->remove(counts[y]->count() - 1);
-                                if(packettime > (double)getTimeRange())
-                                    for(int d = 0; d < counts[y]->count(); d++)
-                                        if(counts[y]->at(d).x()<packettime-(double)getTimeRange())
-                                            counts[y]->remove(d);
                             }
                         } else {
                             counts[y]->clear();
