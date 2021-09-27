@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QThread>
+#include <QCoreApplication>
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QSerialPort>

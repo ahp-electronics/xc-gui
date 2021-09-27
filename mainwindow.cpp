@@ -36,7 +36,9 @@ MainWindow::MainWindow(QWidget *parent)
         f->close();
         f->~QFile();
     }
-    settings = new QSettings(ini, QSettings::Format::NativeFormat);
+    settings = new QSettings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    settings->setDefaultFormat(QSettings::Format::NativeFormat);
+    settings->setUserIniPath(ini);
     connected = false;
     TimeRange = 60;
     ui->setupUi(this);
