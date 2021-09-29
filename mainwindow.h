@@ -58,13 +58,6 @@ public:
             for(int i = 0; i < Lines.count(); i++)
                 ahp_xc_set_lag_cross(i, 0);
             ahp_xc_clear_capture_flag(CAP_ENABLE);
-            ahp_xc_set_capture_flag(CAP_RESET_TIMESTAMP);
-            start = QDateTime::currentDateTimeUtc();
-            ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);
-            timespec ts = vlbi_time_string_to_utc ((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
-            J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
-            for(int i = 0; i < Lines.count(); i++)
-                Lines[i]->getStream()->starttimeutc = ts;
             for(int i = 0; i < Baselines.count(); i++)
                 Baselines[i]->getValues()->clear();
             if(mode != Autocorrelator)
@@ -72,6 +65,17 @@ public:
                 ahp_xc_set_capture_flag(CAP_ENABLE);
             }
         }
+    }
+    inline void resetTimestamp() {
+        ahp_xc_set_capture_flag(CAP_RESET_TIMESTAMP);
+        start = QDateTime::currentDateTimeUtc();
+        lastpackettime = 0;
+        ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);
+        timespec ts = vlbi_time_string_to_utc ((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
+        J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
+        for(int i = 0; i < Lines.count(); i++)
+            Lines[i]->getStream()->starttimeutc = ts;
+
     }
     QDateTime start;
     Thread *readThread;

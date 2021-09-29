@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     settings->setDefaultFormat(QSettings::Format::NativeFormat);
     settings->setUserIniPath(ini);
     connected = false;
-    TimeRange = 60;
+    TimeRange = 10;
     ui->setupUi(this);
     uiThread = new Thread(100);
     readThread = new Thread(500);
@@ -79,6 +79,11 @@ MainWindow::MainWindow(QWidget *parent)
         for(int x = 0; x < Lines.count(); x++) {
             Lines[x]->setMode((Mode)index);
         }
+    });
+    connect(ui->Range, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+            [=](int value) {
+        settings->setValue("Timerange", value);
+        TimeRange = ui->Range->value();
     });
     connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [=](int value) {
@@ -182,8 +187,10 @@ MainWindow::MainWindow(QWidget *parent)
                 //motorThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
+                ui->Range->setValue(settings->value("Timerange", 0).toInt());
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
                 ui->Scale->setEnabled(true);
+                ui->Range->setEnabled(true);
             } else
                 ahp_xc_disconnect();
         } else
@@ -222,8 +229,13 @@ MainWindow::MainWindow(QWidget *parent)
             if(!ahp_xc_get_packet(packet)) {
                 double packettime = (double)packet->timestamp/10.0;
                 double diff = packettime - lastpackettime;
+                if(diff < 0 || diff > 10000000) {
+                    resetTimestamp();
+                    break;
+                }
                 lastpackettime = packettime;
                 packettime /= 1000000.0;
+                packettime += J2000_starttime;
                 for(int x = 0; x < Lines.count(); x++) {
                     Line * line = Lines[x];
                     QLineSeries *counts[2] = {
@@ -232,22 +244,20 @@ MainWindow::MainWindow(QWidget *parent)
                     };
                     for (int y = 0; y < 2; y++) {
                         if(line->isActive()) {
-                            if(counts[y]->count() > 1) {
-                                for(int d = 0; d < counts[y]->count(); d++) {
-                                    if(counts[y]->at(d-1).x() > counts[y]->at(d).x())
-                                        counts[y]->remove(d-1);
-                                    if(counts[y]->at(d).x()<packettime-(double)getTimeRange())
+                            if(counts[y]->count() > 0) {
+                                for(int d = counts[y]->count() - 1; d >= 0; d--) {
+                                    if(counts[y]->at(d).x() < packettime-(double)getTimeRange())
                                         counts[y]->remove(d);
                                 }
                             }
                             switch (y) {
                             case 0:
                                 if(Lines[x]->showCounts())
-                                    counts[y]->append(J2000_starttime+packettime, packet->counts[x]*1000000/ahp_xc_get_packettime());
+                                    counts[y]->append(packettime, packet->counts[x]*1000000/ahp_xc_get_packettime());
                                 break;
                             case 1:
                                 if(Lines[x]->showAutocorrelations())
-                                    counts[y]->append(J2000_starttime+packettime, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
+                                    counts[y]->append(packettime, packet->autocorrelations[x].correlations[0].correlations*1000000/ahp_xc_get_packettime());
                                 break;
                             default:
                                 break;
