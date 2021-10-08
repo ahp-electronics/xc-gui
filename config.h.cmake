@@ -1,0 +1,1 @@
+#define XC_GUI_VERSION "@XC_GUI_VERSION@"
