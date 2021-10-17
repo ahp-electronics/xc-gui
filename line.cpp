@@ -380,6 +380,13 @@ void Line::sumValue(double x, double y)
     getSpectrum()->remove(x, v-y);
 }
 
+void Line::setLocation(dsp_location location)
+{
+    ui->x_location->setValue(location.xyz.x);
+    ui->y_location->setValue(location.xyz.y);
+    ui->z_location->setValue(location.xyz.z);
+}
+
 void Line::stackCorrelations()
 {
     scanning = true;

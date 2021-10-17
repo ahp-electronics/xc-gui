@@ -183,8 +183,8 @@ MainWindow::MainWindow(QWidget *parent)
                 readThread->setTimer(ahp_xc_get_packettime()/1000);
                 readThread->start();
                 uiThread->start();
-                //vlbiThread->start();
-                //motorThread->start();
+                vlbiThread->start();
+                motorThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Range->setValue(settings->value("Timerange", 0).toInt());

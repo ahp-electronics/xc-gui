@@ -74,16 +74,10 @@ public:
     inline QScatterSeries* getSpectrum() { return spectrum; }
     inline QList<double*> getCrosscorrelations() { return crosscorrelations; }
     inline dsp_stream_p getStream() { return stream; }
-    inline dsp_location *getLocation() { return &location; }
     inline double getAverageBottom() { return averageBottom; }
     inline double getAverageTop() { return averageTop; }
-    inline int getGTAddress() { return gt_address; }
-    inline double getAxisPosition(int axis) { ahp_gt_select_device(getGTAddress()); return ahp_gt_get_position(axis); }
-    inline void setAxisPosition(int axis, double value) { ahp_gt_select_device(getGTAddress()); ahp_gt_set_position(axis, value); }
-    inline void setAxisVelocity(int axis, double speed) { ahp_gt_select_device(getGTAddress()); ahp_gt_start_motion(axis, speed); }
-    inline void moveAxisBy(int axis, double value, double speed) { ahp_gt_select_device(getGTAddress()); ahp_gt_goto_relative(axis, value, speed); }
-    inline void moveAxisTo(int axis, double value, double speed) { ahp_gt_select_device(getGTAddress()); ahp_gt_goto_absolute(axis, value, speed); }
-    inline void stopAxis(int axis) { ahp_gt_select_device(getGTAddress()); ahp_gt_stop_motion(axis); }
+    inline dsp_location *getLocation() { return &location; }
+    void setLocation(dsp_location location);
     double percent;
     void setPercent();
     void insertValue(double x, double y);
@@ -121,8 +115,6 @@ private:
     QList<double*> crosscorrelations;
     unsigned int line;
     int flags;
-    int old_index2;
-    int gt_address;
     double averageBottom { 0 };
     double averageTop { 1.0 };
     void getMinMax();
