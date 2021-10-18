@@ -80,6 +80,9 @@ public:
         vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
         return az;
     }
+    inline void setRa(double ra) { Ra = ra; }
+    inline void setDec(double dec) { Dec = dec; }
+
     QString toHMS(double hms);
     QString toDMS(double dms);
 
