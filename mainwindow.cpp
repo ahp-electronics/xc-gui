@@ -347,6 +347,11 @@ end_free:
     });
     connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
+        dsp_location location;
+        for(int x = 0; x < Lines.count(); x++) {
+            Lines[x]->setLocation(location);
+        }
+        thread->unlock();
     });
 }
 

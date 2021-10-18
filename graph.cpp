@@ -28,26 +28,95 @@ Graph::Graph(QWidget *parent, QString name) :
     idft = initGrayPicture(getPlotWidth(), getPlotHeight());
     idftView = new QLabel(correlator);
     idftView->setVisible(true);
-    QPalette palette = coverageView->palette();
-    palette.setColor(correlator->foregroundRole(), Qt::white);
     coverageLabel = new QLabel(coverageView);
     coverageLabel->setVisible(true);
-    coverageLabel->setPalette(palette);
     coverageLabel->setText("Coverage");
     rawLabel = new QLabel(rawView);
     rawLabel->setVisible(true);
-    rawLabel->setPalette(palette);
     rawLabel->setText("Raw");
     idftLabel = new QLabel(idftView);
     idftLabel->setVisible(true);
-    idftLabel->setPalette(palette);
     idftLabel->setText("IDFT");
+    infoLabel = new QLabel(correlator);
+    idftLabel->setVisible(true);
 }
 
 Graph::~Graph()
 {
     chart->~QChart();
     view->~QChartView();
+}
+
+QString Graph::toDMS(double dms)
+{
+    double d, m, s;
+    dms = fabs(dms);
+    d = floor(dms);
+    dms -= d;
+    dms *= 60.0;
+    m = floor(dms);
+    dms -= m;
+    dms *= 60.0;
+    s = floor(dms)/1000.0;
+    return QString::number(d) + QString("°") + QString::number(m) + QString("'") + QString::number(s) + QString("\"");
+}
+
+QString Graph::toHMS(double hms)
+{
+    double h, m, s;
+    hms = fabs(hms);
+    h = floor(hms);
+    hms -= h;
+    hms *= 60.0;
+    m = floor(hms);
+    hms -= m;
+    hms *= 60000.0;
+    s = floor(hms)/1000.0;
+    return QString::number(h) + QString(":") + QString::number(m) + QString(":") + QString::number(s);
+}
+
+void Graph::updateInfo()
+{
+    if(getGnssHandle() > -1) {
+        int32_t latitude, longitude, elevation;
+        uGnssPosGet(getGnssHandle(), &latitude, &longitude, &elevation, NULL, NULL, NULL, NULL, NULL);
+        Latitude = (double)latitude / 10000000.0;
+        Longitude = (double)longitude / 10000000.0;
+        Elevation = (double)elevation / 10000000.0;
+    }
+    QString label = "";
+    label += QString("UTC: ") + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate);
+    label += "\n";
+    label += QString("Latitude: ") + toDMS(Latitude);
+    label += QString(Latitude < 0 ? "S" : "N");
+    label += "\n";
+    label += QString("Longitude: ") + toDMS(Longitude);
+    label += QString(Longitude < 0 ? "W" : "E");
+    label += "\n";
+    label += QString("Elevation: ") + Elevation;
+    label += "\n";
+    label += QString("Altitude: ") + QString(getAltitude() < 0 ? "-" : "+") + toDMS(getAltitude());
+    label += "\n";
+    label += QString("Azimuth: ") + toDMS(getAzimuth());
+    label += "\n";
+    label += QString("LST: ") + toHMS(getLST());
+    label += "\n";
+    infoLabel->setText(label);
+}
+
+bool Graph::initGPS()
+{
+    if(!uGnssInit()) {
+        setGnssHandle(uGnssAdd(U_GNSS_MODULE_TYPE_M8, U_GNSS_TRANSPORT_NMEA_UART, getGnssPortHandle(), -1, false));
+        return true;
+    }
+    return false;
+}
+
+void Graph::deinitGPS()
+{
+    uGnssRemove(getGnssHandle());
+    uGnssDeinit();
 }
 
 void Graph::setMode(Mode m)
@@ -83,6 +152,7 @@ void Graph::clearSeries()
 void Graph::paint()
 {
     if(mode == Crosscorrelator) {
+        updateInfo();
         coverageView->setPixmap(QPixmap::fromImage(coverage.scaled(coverageView->geometry().size())));
         rawView->setPixmap(QPixmap::fromImage(raw.scaled(rawView->geometry().size())));
         idftView->setPixmap(QPixmap::fromImage(idft.scaled(idftView->geometry().size())));
@@ -140,11 +210,12 @@ void Graph::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
     view->setGeometry(0, 0, width(), height());
     correlator->setGeometry(0, 0, width(), height());
-    int size = correlator->width() / 3 - 25;
+    int size = (correlator->width() - 260) / 3;
     coverageView->setGeometry(5, 40, size, size);
-    idftView->setGeometry(correlator->width() / 3  + 10, 40, size, size);
-    rawView->setGeometry(correlator->width() * 2 / 3 + 15, 40, size, size);
+    idftView->setGeometry(size + 10, 40, size, size);
+    rawView->setGeometry(size * 2 + 15, 40, size, size);
     coverageLabel->setGeometry(0,0, size, 30);
     rawLabel->setGeometry(0,0, size, 30);
     idftLabel->setGeometry(0,0, size, 30);
+    infoLabel->setGeometry(correlator->width() - 240, 40, 230, 150);
 }

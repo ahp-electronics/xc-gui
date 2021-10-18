@@ -70,7 +70,7 @@ public:
         start = QDateTime::currentDateTimeUtc();
         lastpackettime = 0;
         ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);
-        timespec ts = vlbi_time_string_to_utc ((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
+        timespec ts = vlbi_time_string_to_timespec ((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
         J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
         for(int i = 0; i < Lines.count(); i++)
             Lines[i]->getStream()->starttimeutc = ts;
@@ -82,6 +82,10 @@ public:
     Thread *vlbiThread;
     Thread *motorThread;
 
+    inline bool initMotor(QString port) { return !ahp_gt_connect(port.toStdString().c_str()); }
+    inline void deinitMotor() { ahp_gt_disconnect(); }
+    inline int getMotorHandle() { return motorFD; }
+    inline void setMotorHandle(int fd) { motorFD = fd; }
     inline QList<double> getMotorPositionMultipliers() { return position_multipliers; }
     inline QList<int> getMotorAddresses() { return gt_addresses; }
     inline void setMotorAddress(int index, int address) { if(index < getMotorAddresses().count()) getMotorAddresses()[index] = address; }
@@ -96,6 +100,7 @@ public:
     inline void stopMotorAxis(int index, int axis) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_stop_motion(axis); }
 
 private:
+    int motorFD;
     double lastpackettime;
     QMutex vlbi_mutex;
     double Ra, Dec;
