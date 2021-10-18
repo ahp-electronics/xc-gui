@@ -37,11 +37,13 @@ find_package(AHPXC REQUIRED)
 find_package(AHPGT REQUIRED)
 find_package(VLBI REQUIRED)
 find_package(FFTW3 REQUIRED)
+find_package(UBX REQUIRED)
 
 include_directories(${VLBI_INCLUDE_DIR})
 include_directories(${AHPGT_INCLUDE_DIR})
 include_directories(${AHPXC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
+include_directories(${UBX_INCLUDE_DIR})
 
 if(ANDROID)
   add_library(xc-gui SHARED
@@ -86,7 +88,7 @@ endif(ANDROID)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_SOURCE_DIR}/xc-gui.iss )
 
-target_link_libraries(xc-gui PRIVATE ${CMAKE_THREAD_LIBS_INIT} ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${CMAKE_THREAD_LIBS_INIT} ${VLBI_LIBRARIES} ${UBX_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
 install(FILES xc-gui.png DESTINATION /usr/share/icons)
 install(FILES xc-gui.desktop DESTINATION /usr/share/applications)
