@@ -54,25 +54,37 @@ MainWindow::MainWindow(QWidget *parent)
     getGraph()->setVisible(true);
 
     settings->beginGroup("Connection");
-    ui->ComPort->clear();
-    ui->ComPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
+    ui->XCPort->clear();
+    ui->XCPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
     QStringList devices = settings->value("devices", "").toString().split(",");
     settings->endGroup();
     for (int i = 0; i < devices.length(); i++) {
         settings->beginGroup(devices[i]);
-        QString connection = settings->value("connection", "").toString();
+        QString connection = settings->value("xc_connection", "").toString();
         if(!connection.isEmpty())
-            ui->ComPort->addItem(connection);
+            ui->XCPort->addItem(connection);
+        connection = settings->value("gps_connection", "").toString();
+        if(!connection.isEmpty())
+            ui->GpsPort->addItem(connection);
+        connection = settings->value("motor_connection", "").toString();
+        if(!connection.isEmpty())
+            ui->MotorPort->addItem(connection);
         settings->endGroup();
     }
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-    for (int i = 0; i < ports.length(); i++)
-        ui->ComPort->addItem(
-#ifndef _WIN32
-"/dev/"+
-#endif
-                    ports[i].portName());
-    ui->ComPort->setCurrentIndex(0);
+    for (int i = 0; i < ports.length(); i++) {
+        QString portname =
+        #ifndef _WIN32
+        "/dev/"+
+        #endif
+                            ports[i].portName();
+        ui->XCPort->addItem(portname);
+        ui->GpsPort->addItem(portname);
+        ui->MotorPort->addItem(portname);
+    }
+    ui->XCPort->setCurrentIndex(0);
+    ui->GpsPort->setCurrentIndex(0);
+    ui->MotorPort->setCurrentIndex(0);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [=](int index) {
         setMode((Mode)index);
@@ -92,9 +104,9 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(ui->Disconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
+        stopThreads();
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
-        ui->BaudRate->setEnabled(false);
         ui->Scale->setEnabled(false);
         if(!connected)
             return;
@@ -105,16 +117,20 @@ MainWindow::MainWindow(QWidget *parent)
         }
         Lines.clear();
         getGraph()->clearSeries();
-        if(socket.isOpen()) {
-            socket.disconnectFromHost();
+        if(xc_socket.isOpen()) {
+            xc_socket.disconnectFromHost();
+        }
+        if(motor_socket.isOpen()) {
+            motor_socket.disconnectFromHost();
+        }
+        if(gps_socket.isOpen()) {
+            gps_socket.disconnectFromHost();
         }
         ahp_xc_disconnect();
+        ahp_gt_disconnect();
+        getGraph()->deinitGPS();
         settings->endGroup();
         connected = false;
-    });
-    connect(ui->BaudRate, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-            [=](int currentIndex) {
-        ahp_xc_set_baudrate((baud_rate)currentIndex);
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
@@ -122,16 +138,42 @@ MainWindow::MainWindow(QWidget *parent)
         int port = 5760;
         QString address = "localhost";
         bool ttyconn = false;
-        if(ui->ComPort->currentText().contains(':')) {
-            address = ui->ComPort->currentText().split(":")[0];
-            port = ui->ComPort->currentText().split(":")[1].toInt();
+        if(ui->GpsPort->currentText().contains(':')) {
+            address = ui->GpsPort->currentText().split(":")[0];
+            port = ui->GpsPort->currentText().split(":")[1].toInt();
             ui->Connect->setEnabled(false);
             update();
-            socket.connectToHost(address, port);
-            socket.waitForConnected();
-            if(socket.isValid()) {
-                socket.setReadBufferSize(4096);
-                fd = socket.socketDescriptor();
+            gps_socket.connectToHost(address, port);
+            gps_socket.waitForConnected();
+            if(gps_socket.isValid()) {
+                gps_socket.setReadBufferSize(4096);
+                fd = gps_socket.socketDescriptor();
+                if(fd > -1){
+                    getGraph()->setGnssPortFD(fd);
+                }
+            } else {
+                ui->Connect->setEnabled(true);
+                update();
+            }
+        } else {
+            fd = open(ui->GpsPort->currentText().toUtf8(), O_RDWR);
+            if(fd > -1) {
+                getGraph()->setGnssPortFD(fd);
+            }
+        }
+        if(getGraph()->initGPS())
+            settings->setValue("gps_connection", ui->GpsPort->currentText());
+        fd = -1;
+        if(ui->XCPort->currentText().contains(':')) {
+            address = ui->XCPort->currentText().split(":")[0];
+            port = ui->XCPort->currentText().split(":")[1].toInt();
+            ui->Connect->setEnabled(false);
+            update();
+            xc_socket.connectToHost(address, port);
+            xc_socket.waitForConnected();
+            if(xc_socket.isValid()) {
+                xc_socket.setReadBufferSize(4096);
+                fd = xc_socket.socketDescriptor();
                 if(fd > -1)
                     ahp_xc_connect_fd(fd);
             } else {
@@ -139,13 +181,13 @@ MainWindow::MainWindow(QWidget *parent)
                 update();
             }
         } else {
-            ahp_xc_connect(ui->ComPort->currentText().toUtf8(), false);
+            ahp_xc_connect(ui->XCPort->currentText().toUtf8(), false);
         }
         if(ahp_xc_is_connected()) {
             if(!ahp_xc_get_properties()) {
                 connected = true;
                 settings->beginGroup("Connection");
-                settings->setValue("lastconnected", ui->ComPort->currentText());
+                settings->setValue("lastconnected", ui->XCPort->currentText());
                 QString header = ahp_xc_get_header();
                 settings->setValue("lastdevice", header);
                 QString devices = settings->value("devices", "").toString();
@@ -157,7 +199,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 settings->endGroup();
                 settings->beginGroup(header);
-                settings->setValue("connection", ui->ComPort->currentText());
+                settings->setValue("xc_connection", ui->XCPort->currentText());
                 vlbi_context = vlbi_init();
                 vlbi_max_threads(QThreadPool::globalInstance()->maxThreadCount());
                 for(int l = 0; l < ahp_xc_get_nlines(); l++) {
@@ -179,12 +221,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 createPacket();
                 setMode(Counter);
-                ui->BaudRate->setEnabled(true);
-                readThread->setTimer(ahp_xc_get_packettime()/1000);
-                readThread->start();
-                uiThread->start();
-                vlbiThread->start();
-                motorThread->start();
+                startThreads();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Range->setValue(settings->value("Timerange", 0).toInt());
@@ -195,6 +232,31 @@ MainWindow::MainWindow(QWidget *parent)
                 ahp_xc_disconnect();
         } else
             ahp_xc_disconnect();
+        fd = -1;
+        if(ui->MotorPort->currentText().contains(':')) {
+            address = ui->MotorPort->currentText().split(":")[0];
+            port = ui->MotorPort->currentText().split(":")[1].toInt();
+            ui->Connect->setEnabled(false);
+            update();
+            motor_socket.connectToHost(address, port);
+            motor_socket.waitForConnected();
+            if(motor_socket.isValid()) {
+                motor_socket.setReadBufferSize(4096);
+                fd = motor_socket.socketDescriptor();
+                if(fd > -1) {
+                    if(!ahp_gt_connect_fd(fd)) {
+                        settings->setValue("motor_connection", ui->MotorPort->currentText());
+                    }
+                }
+            } else {
+                ui->Connect->setEnabled(true);
+                update();
+            }
+        } else {
+            if(!ahp_gt_connect(ui->MotorPort->currentText().toUtf8())) {
+                settings->setValue("motor_connection", ui->MotorPort->currentText());
+            }
+        }
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
@@ -358,13 +420,22 @@ end_free:
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
    QMainWindow::resizeEvent(event);
-   int starty = 15+ui->ComPort->y()+ui->ComPort->height();
+   int starty = 15+ui->XCPort->y()+ui->XCPort->height();
    ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
    starty += 5+ui->Lines->height();
    getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
 }
 
-MainWindow::~MainWindow()
+void MainWindow::startThreads()
+{
+    readThread->setTimer(ahp_xc_get_packettime()/1000);
+    readThread->start();
+    uiThread->start();
+    vlbiThread->start();
+    motorThread->start();
+}
+
+void MainWindow::stopThreads()
 {
     uiThread->requestInterruption();
     uiThread->wait();
@@ -382,11 +453,14 @@ MainWindow::~MainWindow()
     motorThread->wait();
     motorThread->unlock();
     motorThread->~Thread();
+}
+
+MainWindow::~MainWindow()
+{
     for(int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }
     if(connected) {
-        ahp_xc_clear_capture_flag(CAP_ENABLE);
         ui->Disconnect->clicked(false);
     }
     getGraph()->~Graph();
