@@ -82,8 +82,6 @@ public:
     Thread *vlbiThread;
     Thread *motorThread;
 
-    inline bool initMotor(QString port) { return !ahp_gt_connect(port.toStdString().c_str()); }
-    inline void deinitMotor() { ahp_gt_disconnect(); }
     inline int getMotorHandle() { return motorFD; }
     inline void setMotorHandle(int fd) { motorFD = fd; }
     inline QList<double> getMotorPositionMultipliers() { return position_multipliers; }
@@ -100,6 +98,8 @@ public:
     inline void stopMotorAxis(int index, int axis) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_stop_motion(axis); }
 
 private:
+    void stopThreads();
+    void startThreads();
     int motorFD;
     double lastpackettime;
     QMutex vlbi_mutex;
@@ -108,7 +108,9 @@ private:
     void* vlbi_context;
     ahp_xc_packet *packet;
     QSettings *settings;
-    QTcpSocket socket;
+    QTcpSocket xc_socket;
+    QTcpSocket motor_socket;
+    QTcpSocket gps_socket;
     QSerialPort serial;
     QFile file;
     Mode mode;
