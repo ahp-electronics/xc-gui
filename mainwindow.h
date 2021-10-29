@@ -101,6 +101,8 @@ private:
     void stopThreads();
     void startThreads();
     int motorFD;
+    int gpsFD;
+    int xcFD;
     double lastpackettime;
     QMutex vlbi_mutex;
     double Ra, Dec;

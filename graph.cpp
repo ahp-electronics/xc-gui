@@ -146,9 +146,9 @@ bool Graph::initGPS()
         cmd.msg.freqPeriod = 1;
         cmd.msg.freqPeriodLock = 10000000;
         cmd.msg.pulseLenRatio = 0;
-        cmd.msg.pulseLenRatioLock = 50;
+        cmd.msg.pulseLenRatioLock = 0;
         cmd.msg.userConfigDelay = 0;
-        cmd.msg.flags = 0x2f;
+        cmd.msg.flags = 0x3f;
         cmd.blocks.Checksum[0] = 0, cmd.blocks.Checksum[1] = 0;
         for(int i=0;i<36;i++)
         {
@@ -204,6 +204,7 @@ void Graph::paint()
         coverageView->setPixmap(QPixmap::fromImage(coverage.scaled(coverageView->geometry().size())));
         rawView->setPixmap(QPixmap::fromImage(raw.scaled(rawView->geometry().size())));
         idftView->setPixmap(QPixmap::fromImage(idft.scaled(idftView->geometry().size())));
+        this->update();
     } else {
         if(chart == nullptr)
             return;
@@ -250,6 +251,7 @@ void Graph::paint()
         if(axis == nullptr)
             return;
         axis->setRange(mn-diff*0.2, mx+diff*0.2);
+        this->update();
     }
 }
 

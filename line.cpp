@@ -337,6 +337,7 @@ void Line::paint()
             if(percent>ui->Progress->minimum() && percent<ui->Progress->maximum())
                 ui->Progress->setValue(percent);
         }
+        this->update();
     }
 }
 

@@ -14,7 +14,7 @@ private:
     int timer_ms;
     int loop_ms;
 public:
-    Thread(int timer = 20, int loop = 10) : QThread() { timer_ms = 20; loop_ms = loop; }
+    Thread(int timer = 20, int loop = 10) : QThread() { timer_ms = timer; loop_ms = loop; }
     void run() {
         while(!isInterruptionRequested()) {
             if(lock())

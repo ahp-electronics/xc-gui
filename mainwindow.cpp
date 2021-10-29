@@ -2,6 +2,10 @@
 #include <cmath>
 #include <ctime>
 #include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
 #include <QIODevice>
 #include <QStandardPaths>
 #include <QSerialPort>
@@ -97,6 +101,12 @@ MainWindow::MainWindow(QWidget *parent)
         settings->setValue("Timerange", value);
         TimeRange = ui->Range->value();
     });
+    connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
+            [=](int value) {
+        unsigned char v = value|0x80;
+        ui->voltageLabel->setText("Voltage: "+QString::number(value*150/127)+" V~");
+        write(motorFD, &v, 1);
+    });
     connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [=](int value) {
         settings->setValue("Timescale", value);
@@ -127,17 +137,16 @@ MainWindow::MainWindow(QWidget *parent)
             gps_socket.disconnectFromHost();
         }
         ahp_xc_disconnect();
-        ahp_gt_disconnect();
         getGraph()->deinitGPS();
         settings->endGroup();
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
-        int fd = -1;
         int port = 5760;
         QString address = "localhost";
         bool ttyconn = false;
+        gpsFD = -1;
         if(ui->GpsPort->currentText().contains(':')) {
             address = ui->GpsPort->currentText().split(":")[0];
             port = ui->GpsPort->currentText().split(":")[1].toInt();
@@ -147,23 +156,23 @@ MainWindow::MainWindow(QWidget *parent)
             gps_socket.waitForConnected();
             if(gps_socket.isValid()) {
                 gps_socket.setReadBufferSize(4096);
-                fd = gps_socket.socketDescriptor();
-                if(fd > -1){
-                    getGraph()->setGnssPortFD(fd);
+                gpsFD = gps_socket.socketDescriptor();
+                if(gpsFD > -1){
+                    getGraph()->setGnssPortFD(gpsFD);
                 }
             } else {
                 ui->Connect->setEnabled(true);
                 update();
             }
         } else {
-            fd = open(ui->GpsPort->currentText().toUtf8(), O_RDWR);
-            if(fd > -1) {
-                getGraph()->setGnssPortFD(fd);
+            gpsFD = open(ui->GpsPort->currentText().toUtf8(), O_RDWR);
+            if(gpsFD > -1) {
+                getGraph()->setGnssPortFD(gpsFD);
             }
         }
         if(getGraph()->initGPS())
             settings->setValue("gps_connection", ui->GpsPort->currentText());
-        fd = -1;
+        xcFD = -1;
         if(ui->XCPort->currentText().contains(':')) {
             address = ui->XCPort->currentText().split(":")[0];
             port = ui->XCPort->currentText().split(":")[1].toInt();
@@ -173,9 +182,9 @@ MainWindow::MainWindow(QWidget *parent)
             xc_socket.waitForConnected();
             if(xc_socket.isValid()) {
                 xc_socket.setReadBufferSize(4096);
-                fd = xc_socket.socketDescriptor();
-                if(fd > -1)
-                    ahp_xc_connect_fd(fd);
+                xcFD = xc_socket.socketDescriptor();
+                if(xcFD > -1)
+                    ahp_xc_connect_fd(xcFD);
             } else {
                 ui->Connect->setEnabled(true);
                 update();
@@ -232,7 +241,7 @@ MainWindow::MainWindow(QWidget *parent)
                 ahp_xc_disconnect();
         } else
             ahp_xc_disconnect();
-        fd = -1;
+        motorFD = -1;
         if(ui->MotorPort->currentText().contains(':')) {
             address = ui->MotorPort->currentText().split(":")[0];
             port = ui->MotorPort->currentText().split(":")[1].toInt();
@@ -242,9 +251,9 @@ MainWindow::MainWindow(QWidget *parent)
             motor_socket.waitForConnected();
             if(motor_socket.isValid()) {
                 motor_socket.setReadBufferSize(4096);
-                fd = motor_socket.socketDescriptor();
-                if(fd > -1) {
-                    if(!ahp_gt_connect_fd(fd)) {
+                motorFD = motor_socket.socketDescriptor();
+                if(motorFD > -1) {
+                    if(!ahp_gt_connect_fd(motorFD)) {
                         settings->setValue("motor_connection", ui->MotorPort->currentText());
                     }
                 }
@@ -253,7 +262,8 @@ MainWindow::MainWindow(QWidget *parent)
                 update();
             }
         } else {
-            if(!ahp_gt_connect(ui->MotorPort->currentText().toUtf8())) {
+            motorFD = open(ui->MotorPort->currentText().toUtf8(), O_RDWR);
+            if(!ahp_gt_connect_fd(motorFD)) {
                 settings->setValue("motor_connection", ui->MotorPort->currentText());
             }
         }
@@ -371,8 +381,10 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=](Thread* thread)
     {
-        if(getMode() != Crosscorrelator)
+        if(getMode() != Crosscorrelator) {
+            vlbi_mutex.unlock();
             return;
+        }
         for(int i  = 0; i < Baselines.count(); i++) {
             Baseline* line = Baselines[i];
             if(line->getValues()->count() > 0)
@@ -421,7 +433,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 {
    QMainWindow::resizeEvent(event);
    int starty = 15+ui->XCPort->y()+ui->XCPort->height();
-   ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
+   ui->Lines->setGeometry(5, starty+35, this->width()-10, ui->Lines->height());
    starty += 5+ui->Lines->height();
    getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
 }
