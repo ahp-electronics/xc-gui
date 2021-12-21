@@ -37,6 +37,7 @@
 #include <QValueAxis>
 #include <QVBoxLayout>
 #include "threads.h"
+#include "types.h"
 
 using namespace QtCharts;
 

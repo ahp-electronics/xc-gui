@@ -70,7 +70,8 @@ class Line : public QWidget
             if(!running)
             {
                 getCounts()->clear();
-                getAutocorrelations()->clear();
+                getMagnitudes()->clear();
+                getPhases()->clear();
             }
             emit activeStateChanged(this);
         }
@@ -164,9 +165,13 @@ class Line : public QWidget
         {
             return counts;
         }
-        inline QLineSeries* getAutocorrelations()
+        inline QLineSeries* getMagnitudes()
         {
-            return autocorrelations;
+            return magnitudes;
+        }
+        inline QLineSeries* getPhases()
+        {
+            return phases;
         }
         inline QLineSeries* getMagnitude()
         {
@@ -236,7 +241,8 @@ class Line : public QWidget
         QLineSeries* magnitude;
         QLineSeries* phase;
         QLineSeries* counts;
-        QLineSeries* autocorrelations;
+        QLineSeries* magnitudes;
+        QLineSeries* phases;
         QList<double*> crosscorrelations;
         unsigned int line;
         int flags;

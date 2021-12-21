@@ -50,12 +50,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     phase = new QLineSeries();
     spectrum = new QScatterSeries();
     counts = new QLineSeries();
-    autocorrelations = new QLineSeries();
+    magnitudes = new QLineSeries();
+    phases = new QLineSeries();
     spectrum->setMarkerSize(7);
     getMagnitude()->setName(name + " magnitude");
     getPhase()->setName(name + " phase");
     getCounts()->setName(name + " (counts)");
-    getAutocorrelations()->setName(name + " (autocorrelations)");
+    getPhases()->setName(name + " (magnitudes)");
+    getMagnitudes()->setName(name + " (phases)");
     stream = dsp_stream_new();
     dsp_stream_add_dim(stream, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
@@ -65,7 +67,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Delay->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
-    ui->EndLine->setRange(5, ahp_xc_get_delaysize() * 2 - 1);
+    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
     ui->x_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->y_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->z_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
@@ -407,7 +409,8 @@ void Line::setMode(Mode m)
     getPhase()->clear();
     getAverage()->clear();
     getCounts()->clear();
-    getAutocorrelations()->clear();
+    getMagnitudes()->clear();
+    getPhases()->clear();
     if(mode == Autocorrelator || mode == Spectrograph)
     {
         stack = 0.0;
@@ -439,8 +442,7 @@ void Line::insertValue(double x, double y)
     y += getAverage()->value(x, 0) * (stack - 1);
     y /= stack;
     getAverage()->insert(x, y);
-    getMagnitude()->append(x, y - getDark()->value(x, 0));
-    getPhase()->append(x, y - getDark()->value(x, 0));
+    getMagnitude()->append(x, y);
 }
 
 void Line::getMinMax()
@@ -491,43 +493,40 @@ void Line::stackCorrelations()
     int start = ui->StartLine->value();
     int end = ui->EndLine->value();
     int len = end - start;
-    if(!isActive())
-        return;
     stop = 0;
-    int nread = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &percent);
-    if(nread != len)
-        return;
-    if(spectrum != nullptr)
-    {
-        double timespan = pow(2, ahp_xc_get_frequency_divider()) * 1000000000.0 / (((ahp_xc_get_test(
-                              line)&TEST_SIGNAL) ? AHP_XC_PLL_FREQUENCY : 0) + ahp_xc_get_frequency());
-        double value;
+    int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &percent);
+    if(spectrum != nullptr && npackets > 0) {
+        double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
         stack += 1.0;
         getMagnitude()->clear();
         getPhase()->clear();
         if(ui->IDFT->isChecked())
         {
-            for (int x = 0, z = 3; x < len && z < len; x++, z++)
+            for (int x = 0, z = 0; x < len && z < len; x++, z++)
             {
-                dft[x][0] = spectrum[z].correlations[0].real;
-                dft[x][1] = spectrum[z].correlations[0].imaginary;
+                dft[x][0] = spectrum[z].correlations[0].real/spectrum[z].correlations[0].counts;
+                dft[x][1] = spectrum[z].correlations[0].imaginary/spectrum[z].correlations[0].counts;
             }
             fftw_execute(plan);
         }
-        for (int x = start, z = 3; x < end && z < len; x++, z++)
+        double mx = 0.0;
+        for (int z = 0; z < len; z++)
+            mx = fmax(spectrum[z].correlations[0].magnitude, mx);
+        for (int x = start, z = 0; x < end && z < len; x++, z++)
         {
             double y;
             y = (double)x * timespan;
             if(ui->IDFT->isChecked())
             {
-                value = ac[z];
+                getMagnitude()->append(y, ac[z]);
             }
             else
             {
-                value = fmax(0.0, getFlag(2) ? 1.0 - spectrum[z].correlations[0].magnitude : spectrum[z].correlations[0].magnitude);
+                insertValue(y, spectrum[z].correlations[0].magnitude/mx);
+                getPhase()->append(y, spectrum[z].correlations[0].phase/M_PI/2.0);
             }
-            insertValue(y, value);
         }
+        free(spectrum);
     }
     scanning = false;
 }

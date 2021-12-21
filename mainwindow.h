@@ -130,10 +130,8 @@ class MainWindow : public QMainWindow
                     Baselines[i]->getMagnitude()->clear();
                     Baselines[i]->getPhase()->clear();
                 }
-                if(mode != Autocorrelator)
-                {
+                if(mode != Autocorrelator && mode != Spectrograph)
                     ahp_xc_set_capture_flag(CAP_ENABLE);
-                }
             }
         }
         inline void resetTimestamp()
@@ -217,10 +215,12 @@ class MainWindow : public QMainWindow
         double Ra, Dec;
         double wavelength;
         void* vlbi_context;
+        int motorFD;
         ahp_xc_packet *packet;
         QSettings *settings;
         QTcpSocket socket;
         QSerialPort serial;
+        QTcpSocket motor_socket;
         QFile file;
         Mode mode;
         bool connected;

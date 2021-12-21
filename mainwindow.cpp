@@ -69,20 +69,19 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
     ui->setupUi(this);
-    uiThread = new Thread(100);
-    readThread = new Thread(500);
+    uiThread = new Thread();
+    readThread = new Thread(1,1);
     vlbiThread = new Thread(500);
-    motorThread = new Thread(500);
+    motorThread = new Thread(1000);
     graph = new Graph(this);
-    setMode(Counter);
     int starty = ui->Lines->y() + ui->Lines->height() + 5;
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
     getGraph()->setUpdatesEnabled(true);
     getGraph()->setVisible(true);
 
     settings->beginGroup("Connection");
-    ui->ComPort->clear();
-    ui->ComPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
+    ui->XCPort->clear();
+    ui->XCPort->addItem(settings->value("lastconnected", "localhost:5760").toString());
     QStringList devices = settings->value("devices", "").toString().split(",");
     settings->endGroup();
     for (int i = 0; i < devices.length(); i++)
@@ -90,17 +89,17 @@ MainWindow::MainWindow(QWidget *parent)
         settings->beginGroup(devices[i]);
         QString connection = settings->value("connection", "").toString();
         if(!connection.isEmpty())
-            ui->ComPort->addItem(connection);
+            ui->XCPort->addItem(connection);
         settings->endGroup();
     }
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (int i = 0; i < ports.length(); i++)
-        ui->ComPort->addItem(
+        ui->XCPort->addItem(
 #ifndef _WIN32
             "/dev/" +
 #endif
             ports[i].portName());
-    ui->ComPort->setCurrentIndex(0);
+    ui->XCPort->setCurrentIndex(0);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
     {
@@ -127,7 +126,6 @@ MainWindow::MainWindow(QWidget *parent)
     {
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
-        ui->BaudRate->setEnabled(false);
         ui->Scale->setEnabled(false);
         if(!connected)
             return;
@@ -147,11 +145,6 @@ MainWindow::MainWindow(QWidget *parent)
         settings->endGroup();
         connected = false;
     });
-    connect(ui->BaudRate, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-            [ = ](int currentIndex)
-    {
-        ahp_xc_set_baudrate((baud_rate)currentIndex);
-    });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [ = ](bool checked)
     {
@@ -159,10 +152,10 @@ MainWindow::MainWindow(QWidget *parent)
         int port = 5760;
         QString address = "localhost";
         bool ttyconn = false;
-        if(ui->ComPort->currentText().contains(':'))
+        if(ui->XCPort->currentText().contains(':'))
         {
-            address = ui->ComPort->currentText().split(":")[0];
-            port = ui->ComPort->currentText().split(":")[1].toInt();
+            address = ui->XCPort->currentText().split(":")[0];
+            port = ui->XCPort->currentText().split(":")[1].toInt();
             ui->Connect->setEnabled(false);
             update();
             socket.connectToHost(address, port);
@@ -182,15 +175,17 @@ MainWindow::MainWindow(QWidget *parent)
         }
         else
         {
-            ahp_xc_connect(ui->ComPort->currentText().toUtf8(), false);
+            ahp_xc_connect(ui->XCPort->currentText().toUtf8(), false);
         }
         if(ahp_xc_is_connected())
         {
             if(!ahp_xc_get_properties())
             {
                 connected = true;
+                createPacket();
+                setMode(Counter);
                 settings->beginGroup("Connection");
-                settings->setValue("lastconnected", ui->ComPort->currentText());
+                settings->setValue("lastconnected", ui->XCPort->currentText());
                 QString header = ahp_xc_get_header();
                 settings->setValue("lastdevice", header);
                 QString devices = settings->value("devices", "").toString();
@@ -203,7 +198,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 settings->endGroup();
                 settings->beginGroup(header);
-                settings->setValue("connection", ui->ComPort->currentText());
+                settings->setValue("connection", ui->XCPort->currentText());
                 vlbi_context = vlbi_init();
                 vlbi_max_threads(QThreadPool::globalInstance()->maxThreadCount());
                 for(int l = 0; l < ahp_xc_get_nlines(); l++)
@@ -214,7 +209,8 @@ MainWindow::MainWindow(QWidget *parent)
                     getGraph()->addSeries(Lines[l]->getMagnitude());
                     getGraph()->addSeries(Lines[l]->getPhase());
                     getGraph()->addSeries(Lines[l]->getCounts());
-                    getGraph()->addSeries(Lines[l]->getAutocorrelations());
+                    getGraph()->addSeries(Lines[l]->getMagnitudes());
+                    getGraph()->addSeries(Lines[l]->getPhases());
                     vlbi_add_node(getVLBIContext(), Lines[l]->getStream(), (char*)name.toStdString().c_str(), 0);
                     ui->Lines->addTab(Lines[l], name);
                 }
@@ -227,10 +223,6 @@ MainWindow::MainWindow(QWidget *parent)
                         Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                     }
                 }
-                createPacket();
-                setMode(Counter);
-                ui->BaudRate->setEnabled(true);
-                readThread->setTimer(ahp_xc_get_packettime() / 1000);
                 readThread->start();
                 uiThread->start();
                 vlbiThread->start();
@@ -241,12 +233,36 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
                 ui->Scale->setEnabled(true);
                 ui->Range->setEnabled(true);
-            }
-            else
+            } else
                 ahp_xc_disconnect();
-        }
-        else
+        } else
             ahp_xc_disconnect();
+        motorFD = -1;/*
+        if(ui->MotorPort->currentText().contains(':')) {
+            address = ui->MotorPort->currentText().split(":")[0];
+            port = ui->MotorPort->currentText().split(":")[1].toInt();
+            ui->Connect->setEnabled(false);
+            update();
+            motor_socket.connectToHost(address, port);
+            motor_socket.waitForConnected();
+            if(motor_socket.isValid()) {
+                motor_socket.setReadBufferSize(4096);
+                motorFD = motor_socket.socketDescriptor();
+                if(motorFD > -1) {
+                    if(!ahp_gt_connect_fd(motorFD)) {
+                        settings->setValue("motor_connection", ui->MotorPort->currentText());
+                    }
+                }
+            } else {
+                ui->Connect->setEnabled(true);
+                update();
+            }
+        } else {
+            motorFD = open(ui->MotorPort->currentText().toUtf8(), O_RDWR);
+            if(!ahp_gt_connect_fd(motorFD)) {
+                settings->setValue("motor_connection", ui->MotorPort->currentText());
+            }
+        }*/
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
@@ -256,7 +272,7 @@ MainWindow::MainWindow(QWidget *parent)
             case Crosscorrelator:
                 if(!ahp_xc_get_packet(packet))
                 {
-                    double offs_time = (double)packet->timestamp / 10000000.0;
+                    double offs_time = (double)packet->timestamp / 1000000000.0;
                     offs_time += getStartTime();
                     double offset1 = 0, offset2 = 0;
                     for(int x = 0; x < Lines.count(); x++)
@@ -291,23 +307,24 @@ MainWindow::MainWindow(QWidget *parent)
             case Counter:
                 if(!ahp_xc_get_packet(packet))
                 {
-                    double packettime = (double)packet->timestamp / 10.0;
+                    double packettime = (double)packet->timestamp;
                     double diff = packettime - lastpackettime;
-                    if(diff < 0 || diff > 10000000)
+                    if(diff < 0 || diff > 1000000000)
                     {
                         resetTimestamp();
                         break;
                     }
                     lastpackettime = packettime;
-                    packettime /= 1000000.0;
+                    packettime /= 1000000000.0;
                     packettime += J2000_starttime;
                     for(int x = 0; x < Lines.count(); x++)
                     {
                         Line * line = Lines[x];
-                        QLineSeries *counts[2] =
+                        QLineSeries *counts[3] =
                         {
                             Lines[x]->getCounts(),
-                            Lines[x]->getAutocorrelations()
+                            Lines[x]->getMagnitudes(),
+                            Lines[x]->getPhases(),
                         };
                         for (int y = 0; y < 2; y++)
                         {
@@ -328,8 +345,10 @@ MainWindow::MainWindow(QWidget *parent)
                                             counts[y]->append(packettime, packet->counts[x] * 1000000 / ahp_xc_get_packettime());
                                         break;
                                     case 1:
-                                        if(Lines[x]->showAutocorrelations())
+                                        if(Lines[x]->showAutocorrelations()) {
                                             counts[y]->append(packettime, packet->autocorrelations[x].correlations[0].magnitude * 1000000 / ahp_xc_get_packettime());
+                                            counts[y+1]->append(packettime, packet->autocorrelations[x].correlations[0].phase * packet->autocorrelations[x].correlations[0].magnitude / M_PI*2);
+                                        }
                                         break;
                                     default:
                                         break;
@@ -383,11 +402,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
-        if(vlbi_mutex.tryLock())
-        {
-            getGraph()->paint();
-            vlbi_mutex.unlock();
-        }
+        getGraph()->paint();
         settings->sync();
         thread->unlock();
     });
@@ -428,20 +443,12 @@ MainWindow::MainWindow(QWidget *parent)
         dsp_buffer_stretch(idft_stream->buf, idft_stream->len, 0.0, 255.0);
         dsp_buffer_stretch(magnitude_stream->buf, idft_stream->len, 0.0, 255.0);
         dsp_buffer_stretch(phase_stream->buf, idft_stream->len, 0.0, 255.0);
-        while(!vlbi_mutex.tryLock())
-        {
-            if(thread->isInterruptionRequested())
-                goto end_free;
-            QThread::msleep(10);
-        }
         dsp_buffer_1sub(idft_stream, 255.0);
         dsp_buffer_1sub(magnitude_stream, 255.0);
         dsp_buffer_1sub(phase_stream, 255.0);
         dsp_buffer_copy(magnitude_stream->buf, coverage->bits(), magnitude_stream->len);
         dsp_buffer_copy(phase_stream->buf, raw->bits(), phase_stream->len);
         dsp_buffer_copy(idft_stream->buf, idft->bits(), idft_stream->len);
-        vlbi_mutex.unlock();
-end_free:
         dsp_stream_free_buffer(magnitude_stream);
         dsp_stream_free(magnitude_stream);
         dsp_stream_free_buffer(phase_stream);
@@ -457,11 +464,11 @@ end_free:
 
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
-    QMainWindow::resizeEvent(event);
-    int starty = 15 + ui->ComPort->y() + ui->ComPort->height();
-    ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
-    starty += 5 + ui->Lines->height();
-    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
+   QMainWindow::resizeEvent(event);
+   int starty = 35+ui->XCPort->y()+ui->XCPort->height();
+   ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
+   starty += 5+ui->Lines->height();
+   getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
 }
 
 MainWindow::~MainWindow()
