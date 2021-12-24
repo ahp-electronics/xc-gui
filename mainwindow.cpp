@@ -291,8 +291,8 @@ MainWindow::MainWindow(QWidget *parent)
                         {
                             vlbi_get_offsets(getVLBIContext(), offs_time, (char*)line->getLine1()->getName().toStdString().c_str(),
                                              (char*)line->getLine2()->getName().toStdString().c_str(), getRa(), getDec(), &offset1, &offset2);
-                            ahp_xc_set_lag_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()));
-                            ahp_xc_set_lag_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()));
+                            ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()));
+                            ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()));
                             line->getMagnitude()->append(packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].magnitude);
                             line->getPhase()->append(packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].phase);
                         }

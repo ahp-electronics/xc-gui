@@ -57,7 +57,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
 
 void Baseline::setDelay(double s)
 {
-    ahp_xc_set_lag_cross((uint32_t)Index, (off_t)s * (ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider()));
+    ahp_xc_set_channel_cross((uint32_t)Index, (off_t)s * (ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider()));
 }
 
 void Baseline::setMode(Mode m)

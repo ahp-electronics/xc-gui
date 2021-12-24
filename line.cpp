@@ -268,7 +268,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->Delay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_lag_auto(line, value);
+        ahp_xc_set_channel_auto(line, value);
         saveSetting("Delay", value);
     });
     connect(ui->Divider, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -283,12 +283,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_lag_auto(line, value);
+        ahp_xc_set_channel_auto(line, value);
         saveSetting("SpectralLine", value);
     });
     connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_lag_cross(line, value);
+        ahp_xc_set_channel_cross(line, value);
         saveSetting("LineDelay", value);
     });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
