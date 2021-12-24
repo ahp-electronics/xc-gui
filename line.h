@@ -149,6 +149,14 @@ class Line : public QWidget
         {
             return divider;
         }
+        inline QMap<double, double>* getMagnitudeStack()
+        {
+            return magnitudeStack;
+        }
+        inline QMap<double, double>* getPhaseStack()
+        {
+            return phaseStack;
+        }
         inline QMap<double, double>* getAverage()
         {
             return average;
@@ -208,10 +216,11 @@ class Line : public QWidget
         void setLocation(dsp_location location);
         double percent;
         void setPercent();
-        void insertValue(double x, double y);
+        void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
         void sumValue(double x, double y);
 
     private:
+        double mx;
         int buffersize { 3 };
         int divider;
         Ui::Line *ui;
@@ -236,6 +245,8 @@ class Line : public QWidget
         QMap<double, double>* autodark;
         QMap<double, double>* crossdark;
         QMap<double, double>* average;
+        QMap<double, double>* magnitudeStack;
+        QMap<double, double>* phaseStack;
         QScatterSeries* spectrum;
         QLineSeries* series;
         QLineSeries* magnitude;

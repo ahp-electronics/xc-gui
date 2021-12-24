@@ -121,25 +121,29 @@ class MainWindow : public QMainWindow
             if(connected)
             {
                 getGraph()->setMode(m);
-                ahp_xc_set_capture_flag(CAP_ENABLE);
-                for(int i = 0; i < Lines.count(); i++)
+                xc_capture_flags cur = ahp_xc_get_capture_flags();
+                ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
+                for(int i = 0; i < Lines.count(); i++) {
                     ahp_xc_set_lag_cross(i, 0);
-                ahp_xc_clear_capture_flag(CAP_ENABLE);
+                    ahp_xc_set_lag_auto(i, 0);
+                }
+                ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_ENABLE));
                 for(int i = 0; i < Baselines.count(); i++)
                 {
                     Baselines[i]->getMagnitude()->clear();
                     Baselines[i]->getPhase()->clear();
                 }
                 if(mode != Autocorrelator && mode != Spectrograph)
-                    ahp_xc_set_capture_flag(CAP_ENABLE);
+                    ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
             }
         }
         inline void resetTimestamp()
         {
-            ahp_xc_set_capture_flag(CAP_RESET_TIMESTAMP);
+            xc_capture_flags cur = ahp_xc_get_capture_flags();
+            ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_RESET_TIMESTAMP));
             start = QDateTime::currentDateTimeUtc();
             lastpackettime = 0;
-            ahp_xc_clear_capture_flag(CAP_RESET_TIMESTAMP);
+            ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_RESET_TIMESTAMP));
             timespec ts = vlbi_time_string_to_timespec((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
             J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
             for(int i = 0; i < Lines.count(); i++)

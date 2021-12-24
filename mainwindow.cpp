@@ -183,7 +183,6 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 connected = true;
                 createPacket();
-                setMode(Counter);
                 settings->beginGroup("Connection");
                 settings->setValue("lastconnected", ui->XCPort->currentText());
                 QString header = ahp_xc_get_header();
@@ -223,16 +222,17 @@ MainWindow::MainWindow(QWidget *parent)
                         Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                     }
                 }
-                readThread->start();
-                uiThread->start();
-                vlbiThread->start();
-                motorThread->start();
                 ui->Connect->setEnabled(false);
                 ui->Disconnect->setEnabled(true);
                 ui->Range->setValue(settings->value("Timerange", 0).toInt());
                 ui->Scale->setValue(settings->value("Timescale", 0).toInt());
                 ui->Scale->setEnabled(true);
                 ui->Range->setEnabled(true);
+                readThread->start();
+                uiThread->start();
+                vlbiThread->start();
+                motorThread->start();
+                setMode(Counter);
             } else
                 ahp_xc_disconnect();
         } else
@@ -495,7 +495,8 @@ MainWindow::~MainWindow()
     }
     if(connected)
     {
-        ahp_xc_clear_capture_flag(CAP_ENABLE);
+        xc_capture_flags cur = ahp_xc_get_capture_flags();
+        ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_ENABLE));
         ui->Disconnect->clicked(false);
     }
     getGraph()->~Graph();

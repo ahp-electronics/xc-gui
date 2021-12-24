@@ -42,6 +42,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     parents = p;
     name = ln;
     average = new QMap<double, double>();
+    magnitudeStack = new QMap<double, double>();
+    phaseStack = new QMap<double, double>();
     dark = new QMap<double, double>();
     autodark = new QMap<double, double>();
     crossdark = new QMap<double, double>();
@@ -64,6 +66,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     line = n;
     flags = 0;
     ui->setupUi(this);
+    setMode(Counter);
     ui->Delay->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
@@ -112,11 +115,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag3->text(), ui->flag3->isChecked());
     });
-    connect(ui->test, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
-    {
-        ui->test->isChecked() ? ahp_xc_set_test(line, TEST_SIGNAL) : ahp_xc_clear_test(line, TEST_SIGNAL);
-        saveSetting(ui->test->text(), ui->test->isChecked());
-    });
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         if(ui->Run->text() == "Run")
@@ -150,8 +148,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         if(data.open(QFile::WriteOnly | QFile::Truncate))
         {
             QTextStream output(&data);
-            double timespan = pow(2, ahp_xc_get_frequency_divider()) * 1000000000.0 / (((ahp_xc_get_test(
-                                  line)&TEST_SIGNAL) ? AHP_XC_PLL_FREQUENCY : 0) + ahp_xc_get_frequency());
+            double timespan = pow(2, ahp_xc_get_frequency_divider()) * 1000000000.0 / ahp_xc_get_frequency();
             if(mode == Autocorrelator || mode == Crosscorrelator)
             {
                 output << "'notes:';'" << ui->Notes->toPlainText() << "'\n";
@@ -243,12 +240,21 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getMagnitude()->clear();
         getPhase()->clear();
         getAverage()->clear();
+        getMagnitudeStack()->clear();
+        getPhaseStack()->clear();
+        if(mode == Autocorrelator || mode == Spectrograph)
+        {
+            stack = 0.0;
+            mx = 0.0;
+        }
         emit activeStateChanged(this);
     });
     connect(ui->Clear_1, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         getSpectrum()->clear();
         getAverage()->clear();
+        getMagnitudeStack()->clear();
+        getPhaseStack()->clear();
         getBuffer()->clear();
         emit activeStateChanged(this);
     });
@@ -304,7 +310,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
     setFlag(3, readBool(ui->flag3->text(), false));
-    ui->test->setChecked(readBool(ui->test->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
     if(haveSetting("Dark"))
@@ -322,12 +327,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             getMagnitude()->setName(name + " magnitude (residuals)");
         }
     }
+    getDark()->clear();
+    getMagnitudeStack()->clear();
+    getPhaseStack()->clear();
+    setActive(false);
     ui->BufferSize->setValue(readInt("BufferSize", ui->BufferSize->minimum()));
     ui->Delay->setValue(readInt("Delay", ui->Delay->minimum()));
     ui->Divider->setValue(readInt("Divider", ui->Divider->minimum()));
-    getDark()->clear();
-    setActive(false);
-    setMode(Counter);
 }
 
 bool Line::haveSetting(QString setting)
@@ -411,9 +417,12 @@ void Line::setMode(Mode m)
     getCounts()->clear();
     getMagnitudes()->clear();
     getPhases()->clear();
+    getMagnitudeStack()->clear();
+    getPhaseStack()->clear();
     if(mode == Autocorrelator || mode == Spectrograph)
     {
         stack = 0.0;
+        mx = 0.0;
     }
     ui->Counter->setEnabled(mode == Counter);
     ui->Spectrograph->setEnabled(mode == Spectrograph);
@@ -435,14 +444,7 @@ void Line::paint()
                 ui->Progress->setValue(percent);
         }
     }
-}
-
-void Line::insertValue(double x, double y)
-{
-    y += getAverage()->value(x, 0) * (stack - 1);
-    y /= stack;
-    getAverage()->insert(x, y);
-    getMagnitude()->append(x, y);
+    update(rect());
 }
 
 void Line::getMinMax()
@@ -479,6 +481,16 @@ void Line::sumValue(double x, double y)
     getSpectrum()->remove(x, v - y);
 }
 
+void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
+{
+    y /= stack;
+    y += stacked->value(x, 0) * (stack - 1) / stack;
+    if(stacked->contains(x))
+        stacked->remove(x);
+    stacked->insert(x, y);
+    series->append(x, y);
+}
+
 void Line::setLocation(dsp_location location)
 {
     ui->x_location->setValue(location.xyz.x);
@@ -495,36 +507,42 @@ void Line::stackCorrelations()
     int len = end - start;
     stop = 0;
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &percent);
-    if(spectrum != nullptr && npackets > 0) {
-        double timespan = pow(2, ahp_xc_get_frequency_divider())*1000000000.0/(((ahp_xc_get_test(line)&TEST_SIGNAL)?AHP_XC_PLL_FREQUENCY:0)+ahp_xc_get_frequency());
+    if(spectrum != nullptr && npackets == len) {
         stack += 1.0;
+        double timespan = 1000000000.0/(ahp_xc_get_frequency()>>ahp_xc_get_frequency_divider());
         getMagnitude()->clear();
         getPhase()->clear();
         if(ui->IDFT->isChecked())
         {
-            for (int x = 0, z = 0; x < len && z < len; x++, z++)
+            for (int x = 0; x < npackets; x++)
             {
-                dft[x][0] = spectrum[z].correlations[0].real/spectrum[z].correlations[0].counts;
-                dft[x][1] = spectrum[z].correlations[0].imaginary/spectrum[z].correlations[0].counts;
+                if(spectrum[x].correlations[0].magnitude > 0) {
+                    dft[x][0] = spectrum[x].correlations[0].real;
+                    dft[x][1] = spectrum[x].correlations[0].imaginary;
+                }
             }
             fftw_execute(plan);
         }
-        double mx = 0.0;
-        for (int z = 0; z < len; z++)
-            mx = fmax(spectrum[z].correlations[0].magnitude, mx);
-        for (int x = start, z = 0; x < end && z < len; x++, z++)
+        for (int x = 0; x < npackets; x++)
         {
-            double y;
-            y = (double)x * timespan;
+            double y = x*timespan;
             if(ui->IDFT->isChecked())
             {
-                getMagnitude()->append(y, ac[z]);
+                stackValue(getMagnitude(), getMagnitudeStack(), y, ac[x]);
             }
             else
             {
-                insertValue(y, spectrum[z].correlations[0].magnitude/mx);
-                getPhase()->append(y, spectrum[z].correlations[0].phase/M_PI/2.0);
+                stackValue(getMagnitude(), getMagnitudeStack(), y, (double)spectrum[x].correlations[0].magnitude);
+                stackValue(getPhase(), getPhaseStack(), y, (double)spectrum[x].correlations[0].phase);
             }
+        }
+        double mx = 0.0;
+        for (int x = 0; x < getMagnitude()->count(); x++)
+            mx = fmax(getMagnitude()->at(x).y(), mx);
+        mx /= M_PI * 2.0;
+        for (int x = 0; x < getMagnitude()->count(); x++) {
+            QPointF p = getMagnitude()->at(x);
+            getMagnitude()->replace(x, p.x(), p.y()/mx);
         }
         free(spectrum);
     }

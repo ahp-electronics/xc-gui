@@ -170,6 +170,7 @@ void Graph::paint()
             return;
         axis->setRange(mn - diff * 0.2, mx + diff * 0.2);
     }
+    update(rect());
 }
 
 void Graph::resizeEvent(QResizeEvent *event)
