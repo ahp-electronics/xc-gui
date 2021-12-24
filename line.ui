@@ -74,20 +74,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Cumulative</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="test">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>110</y>
-      <width>121</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Test signal</string>
+     <string>Differential</string>
     </property>
    </widget>
   </widget>
