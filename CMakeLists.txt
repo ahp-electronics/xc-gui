@@ -59,6 +59,8 @@ if(ANDROID)
     line.ui
     graph.cpp
     graph.h
+    elemental.cpp
+    elemental.h
     types.h
     threads.h
   )
@@ -75,6 +77,8 @@ else(ANDROID)
     line.ui
     graph.cpp
     graph.h
+    elemental.cpp
+    elemental.h
     types.h
     threads.h
     resource.qrc

@@ -36,13 +36,14 @@ class Thread : public QThread
 {
         Q_OBJECT
     private:
-        QWidget* parent;
+        QObject* parent;
         QMutex mutex;
         int timer_ms;
         int loop_ms;
     public:
-        Thread(int timer = 20, int loop = 20) : QThread()
+        Thread(QObject* p, int timer = 20, int loop = 20) : QThread()
         {
+            parent = p;
             timer_ms = timer;
             loop_ms = loop;
         }
@@ -72,6 +73,7 @@ class Thread : public QThread
         {
             timer_ms = timer;
         }
+        QObject *getParent() { return parent; }
     private:
         QDateTime lastPollTime;
     signals:

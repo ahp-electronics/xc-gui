@@ -54,6 +54,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     counts = new QLineSeries();
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
+    elemental = new Elemental(this);
     spectrum->setMarkerSize(7);
     getMagnitude()->setName(name + " magnitude");
     getPhase()->setName(name + " phase");
@@ -78,9 +79,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->IDFT->setChecked(readBool("IDFT", false));
-    ui->x_location->setValue(readDouble("x_location", 0) / 1000.0);
-    ui->y_location->setValue(readDouble("y_location", 0) / 1000.0);
-    ui->z_location->setValue(readDouble("z_location", 0) / 1000.0);
+    setLocation((dsp_location){.xyz = {
+                    .x = readDouble("location_x", 0.0) / 1000.0,
+                    .y = readDouble("location_y", 0.0) / 1000.0,
+                    .z = readDouble("location_z", 0.0) / 1000.0
+                }});
     int start = ui->StartLine->value();
     int end = ui->EndLine->value();
     int len = end - start;
@@ -443,7 +446,6 @@ void Line::paint()
             if(percent > ui->Progress->minimum() && percent < ui->Progress->maximum())
                 ui->Progress->setValue(percent);
         }
-        this->update();
     }
     update(rect());
 }
@@ -494,9 +496,12 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double
 
 void Line::setLocation(dsp_location location)
 {
-    ui->x_location->setValue(location.xyz.x);
+    ui->x_location->setValue(getLocation()->xyz.x);
+    saveSetting("location_x", location.xyz.x);
     ui->y_location->setValue(location.xyz.y);
+    saveSetting("location_y", location.xyz.y);
     ui->z_location->setValue(location.xyz.z);
+    saveSetting("location_z", location.xyz.z);
 }
 
 void Line::stackCorrelations()
@@ -534,9 +539,9 @@ void Line::stackCorrelations()
             else
             {
                 stackValue(getMagnitude(), getMagnitudeStack(), y, (double)spectrum[x].correlations[0].magnitude);
-                stackValue(getPhase(), getPhaseStack(), y, (double)spectrum[x].correlations[0].phase);
             }
         }
+        elemental->setBuffer(getMagnitudeStack()->values().toVector().data(), getMagnitudeStack()->count());
         double mx = 0.0;
         for (int x = 0; x < getMagnitude()->count(); x++)
             mx = fmax(getMagnitude()->at(x).y(), mx);
@@ -554,5 +559,6 @@ Line::~Line()
 {
     fftw_destroy_plan(plan);
     setActive(false);
+    elemental->~Elemental();
     delete ui;
 }

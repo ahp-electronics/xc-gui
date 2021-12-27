@@ -227,12 +227,14 @@ void Graph::clearSeries()
 
 void Graph::paint()
 {
-    if(mode == Crosscorrelator) {
-        updateInfo();
+    if(mode == Crosscorrelator)
+    {
         coverageView->setPixmap(QPixmap::fromImage(coverage.scaled(coverageView->geometry().size())));
         rawView->setPixmap(QPixmap::fromImage(raw.scaled(rawView->geometry().size())));
         idftView->setPixmap(QPixmap::fromImage(idft.scaled(idftView->geometry().size())));
-    } else {
+    }
+    else
+    {
         if(chart == nullptr)
             return;
         if(chart->series().length() == 0)

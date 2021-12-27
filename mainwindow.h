@@ -160,16 +160,6 @@ class MainWindow : public QMainWindow
         inline void setMotorHandle(int fd) { motorFD = fd; }
         inline QList<double> getMotorPositionMultipliers() { return position_multipliers; }
         inline QList<int> getMotorAddresses() { return gt_addresses; }
-        inline void setMotorAddress(int index, int address) { if(index < getMotorAddresses().count()) getMotorAddresses()[index] = address; }
-        inline int getMotorAddress(int index) { if(index < getMotorAddresses().count()) return getMotorAddresses()[index]; return 0; }
-        inline void setMotorPositionMultiplier(int index, double value) { if(index < getMotorPositionMultipliers().count()) getMotorPositionMultipliers()[index] = value; }
-        inline double getMotorPositionMultiplier(int index) { if(index < getMotorPositionMultipliers().count()) return getMotorPositionMultipliers()[index]; return 0.0; }
-        inline double getMotorAxisPosition(int index, int axis) { ahp_gt_select_device(getMotorAddress(index)); return ahp_gt_get_position(axis) * getMotorPositionMultiplier(index); }
-        inline void setMotorAxisPosition(int index, int axis, double value) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_set_position(axis, value / getMotorPositionMultiplier(index)); }
-        inline void setMotorAxisVelocity(int index, int axis, double speed) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_start_motion(axis, speed); }
-        inline void moveMotorAxisBy(int index, int axis, double value, double speed) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_goto_relative(axis, value / getMotorPositionMultiplier(index), speed); }
-        inline void moveMotorAxisTo(int index, int axis, double value, double speed) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_goto_absolute(axis, value / getMotorPositionMultiplier(index), speed); }
-        inline void stopMotorAxis(int index, int axis) { ahp_gt_select_device(getMotorAddress(index)); ahp_gt_stop_motion(axis, true); }
 
     private:
         void stopThreads();
