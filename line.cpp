@@ -50,12 +50,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     series = new QLineSeries();
     magnitude = new QLineSeries();
     phase = new QLineSeries();
-    spectrum = new QScatterSeries();
     counts = new QLineSeries();
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
     elemental = new Elemental(this);
-    spectrum->setMarkerSize(7);
     getMagnitude()->setName(name + " magnitude");
     getPhase()->setName(name + " phase");
     getCounts()->setName(name + " (counts)");
@@ -68,7 +66,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     flags = 0;
     ui->setupUi(this);
     setMode(Counter);
-    ui->Delay->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
     ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
@@ -111,13 +108,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag2->text(), ui->flag2->isChecked());
     });
-    connect(ui->flag3, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
-    {
-        flags &= ~(1 << 3);
-        flags |= ui->flag3->isChecked() << 3;
-        ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag3->text(), ui->flag3->isChecked());
-    });
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         if(ui->Run->text() == "Run")
@@ -131,10 +121,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             ui->Run->setText("Run");
         }
         ui->Counter->setEnabled(mode == Counter);
-        ui->Spectrograph->setEnabled(mode == Spectrograph);
         ui->Autocorrelator->setEnabled(false);
         ui->Crosscorrelator->setEnabled(false);
-        if(mode == Autocorrelator)
+        if(mode == Autocorrelator || mode == Spectrograph)
         {
             ui->Autocorrelator->setEnabled(!isActive());
         }
@@ -252,15 +241,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
         emit activeStateChanged(this);
     });
-    connect(ui->Clear_1, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
-    {
-        getSpectrum()->clear();
-        getAverage()->clear();
-        getMagnitudeStack()->clear();
-        getPhaseStack()->clear();
-        getBuffer()->clear();
-        emit activeStateChanged(this);
-    });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         saveSetting(ui->Counts->text(), ui->Counts->isChecked());
@@ -268,21 +248,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     connect(ui->Autocorrelations, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         saveSetting(ui->Autocorrelations->text(), ui->Autocorrelations->isChecked());
-    });
-    connect(ui->Delay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        ahp_xc_set_channel_auto(line, value);
-        saveSetting("Delay", value);
-    });
-    connect(ui->Divider, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        divider = value;
-        saveSetting("Divider", value);
-    });
-    connect(ui->BufferSize, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        buffersize = value;
-        saveSetting("BufferSize", value);
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -312,7 +277,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
-    setFlag(3, readBool(ui->flag3->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
     if(haveSetting("Dark"))
@@ -334,9 +298,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
     setActive(false);
-    ui->BufferSize->setValue(readInt("BufferSize", ui->BufferSize->minimum()));
-    ui->Delay->setValue(readInt("Delay", ui->Delay->minimum()));
-    ui->Divider->setValue(readInt("Divider", ui->Divider->minimum()));
 }
 
 bool Line::haveSetting(QString setting)
@@ -373,9 +334,6 @@ void Line::setFlag(int flag, bool value)
         case 2:
             ui->flag2->setChecked(value);
             break;
-        case 3:
-            ui->flag3->setChecked(value);
-            break;
         default:
             break;
     }
@@ -391,8 +349,6 @@ bool Line::getFlag(int flag)
             return ui->flag1->isChecked();
         case 2:
             return ui->flag2->isChecked();
-        case 3:
-            return ui->flag3->isChecked();
         default:
             return false;
     }
@@ -412,8 +368,6 @@ void Line::setMode(Mode m)
 {
     mode = m;
     getDark()->clear();
-    getSpectrum()->clear();
-    getBuffer()->clear();
     getMagnitude()->clear();
     getPhase()->clear();
     getAverage()->clear();
@@ -428,10 +382,9 @@ void Line::setMode(Mode m)
         mx = 0.0;
     }
     ui->Counter->setEnabled(mode == Counter);
-    ui->Spectrograph->setEnabled(mode == Spectrograph);
     if(!isActive())
     {
-        ui->Autocorrelator->setEnabled(mode == Autocorrelator);
+        ui->Autocorrelator->setEnabled(mode == Autocorrelator || mode == Spectrograph);
         ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
     }
 }
@@ -441,47 +394,13 @@ void Line::paint()
     stop = !isActive();
     if(ui->Progress != nullptr)
     {
-        if(mode == Autocorrelator)
+        if(mode == Autocorrelator || mode == Spectrograph)
         {
             if(percent > ui->Progress->minimum() && percent < ui->Progress->maximum())
                 ui->Progress->setValue(percent);
         }
     }
     update(rect());
-}
-
-void Line::getMinMax()
-{
-    if(getBuffer()->count() < buffersize)
-        return;
-    averageBottom = DBL_MAX;
-    averageTop = -DBL_MAX;
-    for(int x = 1; x < (int)getBuffer()->count() - 1; x++)
-    {
-        averageBottom = fmin(averageBottom, getBuffer()->at(getBuffer()->count() - x));
-        averageTop = fmax(averageTop, getBuffer()->at(getBuffer()->count() - x));
-    }
-    if(fabs(averageBottom) == fabs(averageTop))
-    {
-        averageBottom = 0;
-        averageTop = 1;
-    }
-}
-
-void Line::sumValue(double x, double y)
-{
-    getBuffer()->append(x);
-    getMinMax();
-    if(getBuffer()->count() < buffersize)
-        return;
-    x = floor((x - getAverageBottom()) * getDivider() / (getAverageTop() - getAverageBottom())) / getDivider();
-    if(x == 1.0 || x == 0.0)
-        return;
-    double v = y;
-    v += getAverage()->value(x, 0);
-    getAverage()->insert(x, v);
-    getSpectrum()->append(x, v);
-    getSpectrum()->remove(x, v - y);
 }
 
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
@@ -512,6 +431,11 @@ void Line::stackCorrelations()
     int end = ui->EndLine->value();
     int len = end - start;
     stop = 0;
+    if(mode == Autocorrelator)
+        flags &= 7;
+    if(mode == Spectrograph)
+        flags |= 8;
+    ahp_xc_set_leds(line, flags);
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &percent);
     if(spectrum != nullptr && npackets == len) {
         stack += 1.0;

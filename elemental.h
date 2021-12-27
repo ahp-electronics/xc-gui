@@ -24,6 +24,7 @@ public:
     explicit Elemental(QObject *parent = nullptr);
     ~Elemental();
 
+    static dsp_stream_p reference;
     static QList <dsp_stream_p> elements;
 
     inline void setCatalogPath(QString path) { catalogPath.append(path); }

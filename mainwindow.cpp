@@ -44,11 +44,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
-static double coverage_delegate(double x, double y)
-{
-    return 1;
-}
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -77,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
     readThread = new Thread(this, 1);
     vlbiThread = new Thread(this, 500);
     motorThread = new Thread(this, 1000);
-    Elemental::loadCatalog();
+    Elemental::loadCatalog("/usr/share/OpenVLBI/cat/nist/index.txt");
     graph = new Graph(this);
     int starty = ui->Lines->y() + ui->Lines->height() + 5;
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
@@ -145,6 +140,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(ui->Disconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
+        (void)checked;
         stopThreads();
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
@@ -153,7 +149,7 @@ MainWindow::MainWindow(QWidget *parent)
             return;
         freePacket();
         vlbi_exit(vlbi_context);
-        for(int l = 0; l < ahp_xc_get_nlines(); l++)
+        for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
         {
             Lines[l]->~Line();
         }
@@ -175,6 +171,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [=](bool checked) {
+        (void)checked;
         int port = 5760;
         QString address = "localhost";
         QString xcport, motorport, gpsport;
@@ -285,23 +282,22 @@ MainWindow::MainWindow(QWidget *parent)
                     settings->beginGroup(header);
                     vlbi_context = vlbi_init();
                     vlbi_max_threads(QThreadPool::globalInstance()->maxThreadCount());
-                    for(int l = 0; l < ahp_xc_get_nlines(); l++)
+                    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
                         QString name = "Line " + QString::number(l + 1);
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
-                        getGraph()->addSeries(Lines[l]->getSpectrum());
                         getGraph()->addSeries(Lines[l]->getMagnitude());
                         getGraph()->addSeries(Lines[l]->getPhase());
                         getGraph()->addSeries(Lines[l]->getCounts());
                         getGraph()->addSeries(Lines[l]->getMagnitudes());
                         getGraph()->addSeries(Lines[l]->getPhases());
-                        vlbi_add_node(getVLBIContext(), Lines[l]->getStream(), (char*)name.toStdString().c_str(), 0);
+                        vlbi_add_node(getVLBIContext(), Lines[l]->getStream(), name.toStdString().c_str(), 0);
                         ui->Lines->addTab(Lines[l], name);
                     }
                     int idx = 0;
-                    for(int l = 0; l < ahp_xc_get_nlines(); l++)
+                    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
-                        for(int i = l + 1; i < ahp_xc_get_nlines(); i++)
+                        for(unsigned int i = l + 1; i < ahp_xc_get_nlines(); i++)
                         {
                             QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
@@ -348,8 +344,8 @@ MainWindow::MainWindow(QWidget *parent)
                         Baseline * line = Baselines[x];
                         if(line->isActive())
                         {
-                            vlbi_get_offsets(getVLBIContext(), offs_time, (char*)line->getLine1()->getName().toStdString().c_str(),
-                                             (char*)line->getLine2()->getName().toStdString().c_str(), getRa(), getDec(), &offset1, &offset2);
+                            vlbi_get_offsets(getVLBIContext(), offs_time, line->getLine1()->getName().toStdString().c_str(),
+                                             line->getLine2()->getName().toStdString().c_str(), getRa(), getDec(), &offset1, &offset2);
                             ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()));
                             ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()));
                             line->getMagnitude()->append(packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].magnitude);
@@ -422,6 +418,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 break;
             case Autocorrelator:
+            case Spectrograph:
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line * line = Lines[x];
@@ -430,28 +427,7 @@ MainWindow::MainWindow(QWidget *parent)
                         line->stackCorrelations();
                     }
                 }
-                break;
-            case Spectrograph:
-                if(!ahp_xc_get_packet(packet))
-                {
-                    for(int x = 0; x < Lines.count(); x++)
-                    {
-                        Line * line = Lines[x];
-                        if(line->isActive())
-                        {
-                            if(packet->autocorrelations[x].correlations[0].magnitude > 0
-                                    && packet->autocorrelations[x].correlations[0].magnitude < 1.0)
-                            {
-                                line->sumValue(packet->autocorrelations[x].correlations[0].magnitude, 1);
-                            }
-                        }
-                        else
-                        {
-                            line->getAverage()->clear();
-                        }
-                    }
-                }
-                break;
+            break;
             default:
                 break;
         }
@@ -462,7 +438,6 @@ MainWindow::MainWindow(QWidget *parent)
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
         getGraph()->paint();
-        settings->sync();
         thread->unlock();
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
@@ -473,8 +448,8 @@ MainWindow::MainWindow(QWidget *parent)
         for(int i  = 0; i < Baselines.count(); i++) {
             Baseline* line = Baselines[i];
             if(line->getMagnitude()->count() > 0)
-                vlbi_set_baseline_buffer(getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(),
-                                         (char*)line->getLine2()->getName().toStdString().c_str(), line->getMagnitude()->toVector().data(),
+                vlbi_set_baseline_buffer(getVLBIContext(), line->getLine1()->getName().toStdString().c_str(),
+                                         line->getLine2()->getName().toStdString().c_str(), line->getMagnitude()->toVector().data(),
                                          line->getMagnitude()->count());
         }
         double radec[3] = { Ra, Dec, 0.0};
@@ -485,8 +460,8 @@ MainWindow::MainWindow(QWidget *parent)
         {
             Baseline* line = Baselines[i];
             if(line->getPhase()->count() > 0)
-                vlbi_set_baseline_buffer(getVLBIContext(), (char*)line->getLine1()->getName().toStdString().c_str(),
-                                         (char*)line->getLine2()->getName().toStdString().c_str(), line->getPhase()->toVector().data(),
+                vlbi_set_baseline_buffer(getVLBIContext(), line->getLine1()->getName().toStdString().c_str(),
+                                         line->getLine2()->getName().toStdString().c_str(), line->getPhase()->toVector().data(),
                                          line->getPhase()->count());
         }
         vlbi_get_uv_plot(getVLBIContext(), "phase", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
@@ -564,7 +539,7 @@ void MainWindow::stopThreads()
 
 MainWindow::~MainWindow()
 {
-    for(int l = 0; l < ahp_xc_get_nlines(); l++) {
+    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }
     if(connected) {

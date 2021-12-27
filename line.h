@@ -146,10 +146,6 @@ class Line : public QWidget
             return running;
         }
 
-        inline int getDivider()
-        {
-            return divider;
-        }
         inline QMap<double, double>* getMagnitudeStack()
         {
             return magnitudeStack;
@@ -161,10 +157,6 @@ class Line : public QWidget
         inline QMap<double, double>* getAverage()
         {
             return average;
-        }
-        inline QList<double>* getBuffer()
-        {
-            return &buffer;
         }
         inline QMap<double, double>* getDark()
         {
@@ -190,10 +182,6 @@ class Line : public QWidget
         {
             return phase;
         }
-        inline QScatterSeries* getSpectrum()
-        {
-            return spectrum;
-        }
         inline QList<double*> getCrosscorrelations()
         {
             return crosscorrelations;
@@ -218,7 +206,6 @@ class Line : public QWidget
         double percent;
         void setPercent();
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
-        void sumValue(double x, double y);
 
 
         inline bool hasMotorbBus()
@@ -263,8 +250,6 @@ class Line : public QWidget
         QList<int> Motors;
         int motorIndex {0};
         double mx;
-        int buffersize { 3 };
-        int divider;
         Ui::Line *ui;
         bool applysigmaclipping;
         bool applymedian;
@@ -278,7 +263,6 @@ class Line : public QWidget
         QSettings *settings;
         QList<Line*> *parents;
         QList<Baseline*> nodes;
-        QList<double> buffer;
         bool scanning;
         int stop;
         double stack;
@@ -289,7 +273,6 @@ class Line : public QWidget
         QMap<double, double>* average;
         QMap<double, double>* magnitudeStack;
         QMap<double, double>* phaseStack;
-        QScatterSeries* spectrum;
         QLineSeries* series;
         QLineSeries* magnitude;
         QLineSeries* phase;

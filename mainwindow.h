@@ -133,7 +133,7 @@ class MainWindow : public QMainWindow
                     Baselines[i]->getMagnitude()->clear();
                     Baselines[i]->getPhase()->clear();
                 }
-                if(mode != Autocorrelator && mode != Spectrograph)
+                if(mode == Counter)
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
             }
         }
