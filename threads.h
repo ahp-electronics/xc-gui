@@ -56,10 +56,9 @@ class Thread : public QThread
                 {
                     emit threadLoop(this);
                 }
-                QThread::msleep(fmax(1, timer_ms - fabs(lastPollTime.msecsTo(QDateTime::currentDateTimeUtc()))));
+                QThread::msleep(fmax(1, timer_ms - abs(lastPollTime.msecsTo(QDateTime::currentDateTimeUtc()))));
                 QThread::msleep(loop_ms);
             }
-            disconnect(this, 0, 0, 0);
         }
         bool lock()
         {

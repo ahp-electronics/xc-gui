@@ -72,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
     readThread = new Thread(this, 1);
     vlbiThread = new Thread(this, 500);
     motorThread = new Thread(this, 1000);
-    Elemental::loadCatalog("/usr/share/OpenVLBI/cat/nist/index.txt");
+    Elemental::loadCatalog();
     graph = new Graph(this);
     int starty = ui->Lines->y() + ui->Lines->height() + 5;
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);

@@ -41,6 +41,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     percent = 0;
     parents = p;
     name = ln;
+    buf = (double*)malloc(sizeof(double));
     average = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     phaseStack = new QMap<double, double>();
@@ -140,7 +141,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         if(data.open(QFile::WriteOnly | QFile::Truncate))
         {
             QTextStream output(&data);
-            double timespan = pow(2, ahp_xc_get_frequency_divider()) * 1000000000.0 / ahp_xc_get_frequency();
             if(mode == Autocorrelator || mode == Crosscorrelator)
             {
                 output << "'notes:';'" << ui->Notes->toPlainText() << "'\n";
@@ -274,6 +274,21 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("z_location", value);
     });
+    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), [ = ](bool success, double o, double s)
+    {
+        if(!success) {
+            timespan = pow(2, ahp_xc_get_frequency_divider()) * ahp_xc_get_sampletime();
+            offset = 0;
+            getMagnitudeStack()->clear();
+            getPhaseStack()->clear();
+        } else {
+            timespan = 1000000000.0/s;
+            offset = o * timespan;
+        }
+        for (int x = 0; x < elemental->getStream()->len; x++)
+            stackValue(getMagnitude(), getMagnitudeStack(), (x + offset) * timespan, (double)elemental->getStream()->buf[x]);
+        stretch(getMagnitude());
+    });
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
@@ -387,6 +402,11 @@ void Line::setMode(Mode m)
         ui->Autocorrelator->setEnabled(mode == Autocorrelator || mode == Spectrograph);
         ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
     }
+    if(mode == Spectrograph)
+        flags |= 8;
+    else
+        flags &= 7;
+    ahp_xc_set_leds(line, flags);
 }
 
 void Line::paint()
@@ -423,6 +443,20 @@ void Line::setLocation(dsp_location location)
     saveSetting("location_z", location.xyz.z);
 }
 
+void Line::stretch(QLineSeries* series)
+{
+    double mx = DBL_MIN;
+    double mn = DBL_MAX;
+    for (int x = 0; x < series->count(); x++) {
+        mn = fmin(series->at(x).y(), mn);
+        mx = fmax(series->at(x).y(), mx);
+    }
+    for (int x = 0; x < series->count(); x++) {
+        QPointF p = series->at(x);
+        series->replace(x, p.x(), (p.y()-mn) * M_PI * 2.0/(mx-mn));
+    }
+}
+
 void Line::stackCorrelations()
 {
     scanning = true;
@@ -431,15 +465,9 @@ void Line::stackCorrelations()
     int end = ui->EndLine->value();
     int len = end - start;
     stop = 0;
-    if(mode == Autocorrelator)
-        flags &= 7;
-    if(mode == Spectrograph)
-        flags |= 8;
-    ahp_xc_set_leds(line, flags);
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &percent);
     if(spectrum != nullptr && npackets == len) {
         stack += 1.0;
-        double timespan = 1000000000.0/(ahp_xc_get_frequency()>>ahp_xc_get_frequency_divider());
         getMagnitude()->clear();
         getPhase()->clear();
         if(ui->IDFT->isChecked())
@@ -452,27 +480,17 @@ void Line::stackCorrelations()
                 }
             }
             fftw_execute(plan);
-        }
-        for (int x = 0; x < npackets; x++)
-        {
-            double y = x*timespan;
-            if(ui->IDFT->isChecked())
+            for (int x = 0; x < npackets; x++)
             {
+                double y = x * timespan + offset;
                 stackValue(getMagnitude(), getMagnitudeStack(), y, ac[x]);
-            }
-            else
-            {
-                stackValue(getMagnitude(), getMagnitudeStack(), y, (double)spectrum[x].correlations[0].magnitude);
-            }
-        }
-        elemental->setBuffer(getMagnitudeStack()->values().toVector().data(), getMagnitudeStack()->count());
-        double mx = 0.0;
-        for (int x = 0; x < getMagnitude()->count(); x++)
-            mx = fmax(getMagnitude()->at(x).y(), mx);
-        mx /= M_PI * 2.0;
-        for (int x = 0; x < getMagnitude()->count(); x++) {
-            QPointF p = getMagnitude()->at(x);
-            getMagnitude()->replace(x, p.x(), p.y()/mx);
+            };
+            stretch(getMagnitude());
+        } else {
+            buf = (double*)realloc(buf, sizeof(double)*npackets);
+            for(int x = 0; x < npackets; x++)
+                buf[x] = (double)spectrum[x].correlations[0].magnitude;
+            elemental->setBuffer(buf, npackets);
         }
         free(spectrum);
     }

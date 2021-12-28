@@ -205,6 +205,7 @@ class Line : public QWidget
         void setLocation(dsp_location location);
         double percent;
         void setPercent();
+        void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
 
 
@@ -246,6 +247,10 @@ class Line : public QWidget
         inline void stopMotorAxis(int axis, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_stop_motion(axis, false); }
 
     private:
+        double *buf;
+        double offset { 0.0 };
+        double timespan { 1.0 };
+        bool scalingDone { false };
         Elemental *elemental;
         QList<int> Motors;
         int motorIndex {0};
