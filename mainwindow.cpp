@@ -74,7 +74,10 @@ MainWindow::MainWindow(QWidget *parent)
     motorThread = new Thread(this, 1000);
     Elemental::loadCatalog();
     graph = new Graph(this);
-    int starty = ui->Lines->y() + ui->Lines->height() + 5;
+    int starty = 35+ui->XCPort->y()+ui->XCPort->height();
+    ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
+    starty += 5+ui->Lines->height();
+    getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
     getGraph()->setUpdatesEnabled(true);
     getGraph()->setVisible(true);
@@ -503,8 +506,8 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
    QMainWindow::resizeEvent(event);
-   int starty = 15+ui->XCPort->y()+ui->XCPort->height();
-   ui->Lines->setGeometry(5, starty+35, this->width()-10, ui->Lines->height());
+   int starty = 35+ui->XCPort->y()+ui->XCPort->height();
+   ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
    starty += 5+ui->Lines->height();
    getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
 }
@@ -542,6 +545,7 @@ MainWindow::~MainWindow()
     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++) {
         ahp_xc_set_leds(l, 0);
     }
+    ahp_xc_set_capture_flags(CAP_NONE);
     if(connected) {
         ui->Disconnect->clicked(false);
     }
