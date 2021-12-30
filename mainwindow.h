@@ -124,8 +124,8 @@ class MainWindow : public QMainWindow
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
                 ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
                 for(int i = 0; i < Lines.count(); i++) {
-                    ahp_xc_set_channel_cross(i, 0);
-                    ahp_xc_set_channel_auto(i, 0);
+                    ahp_xc_set_channel_cross(i, 0, 0);
+                    ahp_xc_set_channel_auto(i, 0, 0);
                 }
                 ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_ENABLE));
                 for(int i = 0; i < Baselines.count(); i++)

@@ -67,16 +67,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     flags = 0;
     ui->setupUi(this);
     setMode(Counter);
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
-    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
-    ui->x_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
+    /*ui->x_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->y_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->z_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
-    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
-    ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
-    ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
-    ui->IDFT->setChecked(readBool("IDFT", false));
+    */
     setLocation((dsp_location){.xyz = {
                     .x = readDouble("location_x", 0.0) / 1000.0,
                     .y = readDouble("location_y", 0.0) / 1000.0,
@@ -123,14 +117,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         }
         ui->Counter->setEnabled(mode == Counter);
         ui->Autocorrelator->setEnabled(false);
-        ui->Crosscorrelator->setEnabled(false);
+        //ui->Crosscorrelator->setEnabled(false);
         if(mode == Autocorrelator || mode == Spectrograph)
         {
             ui->Autocorrelator->setEnabled(!isActive());
         }
         else if(mode == Crosscorrelator)
         {
-            ui->Crosscorrelator->setEnabled(!isActive());
+            //ui->Crosscorrelator->setEnabled(!isActive());
         }
     });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -211,6 +205,21 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         plan = fftw_plan_dft_c2r_1d(len, dft, ac, FFTW_ESTIMATE);
         saveSetting("StartLine", ui->StartLine->value());
     });
+    connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        elemental->setDecimals(value);
+        saveSetting("Decimals", ui->Decimals->value());
+    });
+    connect(ui->MinScore, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        elemental->setMinScore(value);
+        saveSetting("MinScore", ui->MinScore->value());
+    });
+    connect(ui->MaxDots, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        elemental->setMaxDots(value);
+        saveSetting("MaxDots", ui->MaxDots->value());
+    });
     connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         if(ui->StartLine->value() >= ui->EndLine->value() - 5)
@@ -251,14 +260,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_channel_auto(line, value);
+        ahp_xc_set_channel_auto(line, value, 0);
         saveSetting("SpectralLine", value);
     });
     connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_channel_cross(line, value);
+        ahp_xc_set_channel_cross(line, value, 0);
         saveSetting("LineDelay", value);
-    });
+    });/*
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.x = (double)value / 1000.0;
@@ -273,15 +282,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("z_location", value);
-    });
+    });*/
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), [ = ](bool success, double o, double s)
     {
         if(!success) {
             timespan = pow(2, ahp_xc_get_frequency_divider()) * ahp_xc_get_sampletime();
             offset = 0;
+        } else {
             getMagnitudeStack()->clear();
             getPhaseStack()->clear();
-        } else {
             timespan = 1000000000.0/s;
             offset = o * timespan;
         }
@@ -289,6 +298,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             stackValue(getMagnitude(), getMagnitudeStack(), (x + offset) * timespan, (double)elemental->getStream()->buf[x]);
         stretch(getMagnitude());
     });
+    ui->MinScore->setValue(readInt("MinScore", 50));
+    ui->Decimals->setValue(readInt("Decimals", 0));
+    ui->MaxDots->setValue(readInt("MaxDots", 10));
+    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
+    ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
+    ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
+    ui->IDFT->setChecked(readBool("IDFT", false));
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
+    ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
+    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
@@ -400,7 +419,7 @@ void Line::setMode(Mode m)
     if(!isActive())
     {
         ui->Autocorrelator->setEnabled(mode == Autocorrelator || mode == Spectrograph);
-        ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
+        //ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
     }
     if(mode == Spectrograph)
         flags |= 8;
@@ -435,12 +454,12 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double
 
 void Line::setLocation(dsp_location location)
 {
-    ui->x_location->setValue(getLocation()->xyz.x);
+    /*ui->x_location->setValue(getLocation()->xyz.x);
     saveSetting("location_x", location.xyz.x);
     ui->y_location->setValue(location.xyz.y);
     saveSetting("location_y", location.xyz.y);
     ui->z_location->setValue(location.xyz.z);
-    saveSetting("location_z", location.xyz.z);
+    saveSetting("location_z", location.xyz.z);*/
 }
 
 void Line::stretch(QLineSeries* series)
@@ -487,9 +506,15 @@ void Line::stackCorrelations()
             };
             stretch(getMagnitude());
         } else {
+            npackets--;
             buf = (double*)realloc(buf, sizeof(double)*npackets);
-            for(int x = 0; x < npackets; x++)
-                buf[x] = (double)spectrum[x].correlations[0].magnitude;
+            if(mode==Spectrograph) {
+                for(int x = 0; x < npackets; x++)
+                    buf[x] = (double)spectrum[x+1].correlations[0].magnitude/pow((double)spectrum[x+1].correlations[0].real+(double)spectrum[x+1].correlations[0].imaginary, 2);
+            } else  {
+                for(int x = 0; x < npackets; x++)
+                    buf[x] = (double)spectrum[x+1].correlations[0].magnitude/pow((double)spectrum[x+1].correlations[0].real+(double)spectrum[x+1].correlations[0].imaginary, 2);
+            }
             elemental->setBuffer(buf, npackets);
         }
         free(spectrum);

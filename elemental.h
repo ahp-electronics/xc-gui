@@ -21,6 +21,9 @@ class Elemental : public QObject
         double offset;
         double scale;
         int sample {5};
+        int maxDots {10};
+        int decimals { 0 };
+        int minScore { 50 };
 
     public:
         explicit Elemental(QObject *parent = nullptr);
@@ -29,8 +32,14 @@ class Elemental : public QObject
         static dsp_stream_p reference;
         static QList <dsp_stream_p> elements;
 
-        double getOffset() { return offset; }
-        double getScale() { return scale; }
+        inline void setMaxDots(int value) { maxDots = value; }
+        inline void setDecimals(int value) { decimals = value; }
+        inline void setMinScore(int value) { minScore = value; }
+        inline int getMaxDots() { return maxDots; }
+        inline int getDecimals() { return decimals; }
+        inline int getMinScore() { return minScore; }
+        inline double getOffset() { return offset; }
+        inline double getScale() { return scale; }
         inline void setCatalogPath(QString path) { catalogPath.append(path); }
         void setBuffer(double * buf, int len);
         inline void setSampleSize(int value) { sample = value; }

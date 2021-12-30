@@ -17,7 +17,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
         offset = 0.0;
         scale = 1.0;
         if(stream->stars_count > 2 && reference->stars_count > 2) {
-            dsp_align_info info = vlbi_astro_align_spectra(stream, reference, 20, 1.0, 50.0);
+            dsp_align_info info = vlbi_astro_align_spectra(stream, reference, parent->getMaxDots(), parent->getDecimals(), parent->getMinScore());
             success = (info.err & DSP_ALIGN_NO_MATCH) == 0;
             if(success) {
                 offset = info.offset[0];

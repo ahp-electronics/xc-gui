@@ -349,8 +349,8 @@ MainWindow::MainWindow(QWidget *parent)
                         {
                             vlbi_get_offsets(getVLBIContext(), offs_time, line->getLine1()->getName().toStdString().c_str(),
                                              line->getLine2()->getName().toStdString().c_str(), getRa(), getDec(), &offset1, &offset2);
-                            ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()));
-                            ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()));
+                            ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()), 0);
+                            ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()), 0);
                             line->getMagnitude()->append(packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].magnitude);
                             line->getPhase()->append(packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].phase);
                         }
@@ -400,12 +400,12 @@ MainWindow::MainWindow(QWidget *parent)
                                 {
                                     case 0:
                                         if(Lines[x]->showCounts())
-                                            counts[y]->append(packettime, packet->counts[x] * 1000000 / ahp_xc_get_packettime());
+                                            counts[y]->append(packettime, (double)packet->counts[x] * 1000000.0 / ahp_xc_get_packettime());
                                         break;
                                     case 1:
                                         if(Lines[x]->showAutocorrelations()) {
-                                            counts[y]->append(packettime, packet->autocorrelations[x].correlations[0].magnitude * 1000000 / ahp_xc_get_packettime());
-                                            counts[y+1]->append(packettime, packet->autocorrelations[x].correlations[0].phase * packet->autocorrelations[x].correlations[0].magnitude / M_PI*2);
+                                            counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].imaginary / packet->autocorrelations[x].correlations[0].counts);
+                                            counts[y+1]->append(packettime, packet->autocorrelations[x].correlations[0].phase);
                                         }
                                         break;
                                     default:
