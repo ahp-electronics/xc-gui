@@ -20,6 +20,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
             dsp_align_info info = vlbi_astro_align_spectra(stream, reference, parent->getMaxDots(), parent->getDecimals(), parent->getMinScore());
             success = (info.err & DSP_ALIGN_NO_MATCH) == 0;
             if(success) {
+                pwarn("Match found - score: %lf%%\n offset: %lf\n scale: %lf\n", 100.0-info.score*100.0, info.offset[0], info.factor[0]);
                 offset = info.offset[0];
                 scale = info.factor[0];
                 matches++;
@@ -94,6 +95,7 @@ void Elemental::setBuffer(double * buf, int len)
     dsp_stream_alloc_buffer(stream, stream->len);
     dsp_buffer_copy(buf, stream->buf, stream->len);
     vlbi_astro_scan_spectrum(stream, getSampleSize());
+    pwarn("Found %d lines\n", stream->stars_count);
     if(!scanThread->isRunning())
         scanThread->start();
 }

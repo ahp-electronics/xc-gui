@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
 #endif
     dsp_app_name = "xc-gui";
-    dsp_debug = 1;
+    dsp_debug = 5;
     MainWindow w;
     w.show();
     a.setWindowIcon(QIcon(":/icons/icon.ico"));

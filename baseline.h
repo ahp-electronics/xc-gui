@@ -28,11 +28,13 @@
 
 #include <thread>
 #include <QThread>
+#include <QList>
 #include <QWidget>
 #include <QSettings>
 #include <QLineSeries>
 #include <QSplineSeries>
 #include <ahp_xc.h>
+#include <fftw3.h>
 #include <cmath>
 #include "types.h"
 #include "threads.h"
@@ -56,25 +58,53 @@ class Baseline : public QWidget
         {
             return name;
         }
-        inline QList<double>* getDark()
-        {
-            return &dark;
-        }
         inline QLineSeries* getDots()
         {
             return series;
         }
-        inline QLineSeries* getAverage()
+        inline QLineSeries* getMagnitudes()
+        {
+            return magnitudes;
+        }
+        inline QLineSeries* getPhases()
+        {
+            return phases;
+        }
+        inline QLineSeries* getMagnitude()
+        {
+            return magnitude;
+        }
+        inline QLineSeries* getPhase()
+        {
+            return phase;
+        }
+        inline QList<double>* getBuffer()
+        {
+            return NULL;
+        }
+        inline QMap<double, double>* getMagnitudeStack()
+        {
+            return magnitudeStack;
+        }
+        inline QMap<double, double>* getPhaseStack()
+        {
+            return phaseStack;
+        }
+        inline QMap<double, double>* getAverage()
         {
             return average;
         }
-        inline QList<double> *getMagnitude()
+        inline QMap<double, double>* getDark()
         {
-            return &magnitude;
+            return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark);
         }
-        inline QList<double> *getPhase()
+        inline QLineSeries* getCounts()
         {
-            return &phase;
+            return counts;
+        }
+        inline QList<double*> getCrosscorrelations()
+        {
+            return crosscorrelations;
         }
         void setMode(Mode m);
         inline void setDelay(double s);
@@ -99,8 +129,21 @@ class Baseline : public QWidget
             return line2;
         }
 
+        void stackCorrelations();
+
     private:
+        fftw_plan plan;
+        fftw_complex *dft;
+        void stretch(QLineSeries* series);
+        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
+
+        double *buf;
+        double offset { 0.0 };
+        double timespan { 1.0 };
+        double stack {0.0};
         int Index;
+        int start1 {0};
+        int start2 {0};
         QSettings *settings;
         QString name;
         int active;
@@ -108,12 +151,21 @@ class Baseline : public QWidget
         bool threadRunning;
         int stop;
         double percent;
+        double *correlations;
         Mode mode;
-        QList<double> dark;
-        QList<double> magnitude;
-        QList<double> phase;
-        QLineSeries *series;
-        QLineSeries *average;
+        QMap<double, double>* dark;
+        QMap<double, double>* autodark;
+        QMap<double, double>* crossdark;
+        QMap<double, double>* average;
+        QMap<double, double>* magnitudeStack;
+        QMap<double, double>* phaseStack;
+        QLineSeries* series;
+        QLineSeries* magnitude;
+        QLineSeries* phase;
+        QLineSeries* counts;
+        QLineSeries* magnitudes;
+        QLineSeries* phases;
+        QList<double*> crosscorrelations;
         Line* line1;
         Line* line2;
 };

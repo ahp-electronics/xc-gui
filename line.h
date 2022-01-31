@@ -39,6 +39,7 @@
 #include <cmath>
 #include <vlbi.h>
 #include <ahp_gt.h>
+#include <ahp_xc.h>
 #include "types.h"
 #include "threads.h"
 #include "baseline.h"
@@ -60,7 +61,6 @@ class Line : public QWidget
         ~Line();
 
         void paint();
-
         inline bool isActive()
         {
             return running;
@@ -71,8 +71,8 @@ class Line : public QWidget
             if(!running)
             {
                 getCounts()->clear();
-                getMagnitudes()->clear();
-                getPhases()->clear();
+                getMagnitude()->clear();
+                getPhase()->clear();
             }
             emit activeStateChanged(this);
         }
@@ -80,6 +80,7 @@ class Line : public QWidget
         {
             return flags;
         }
+        inline double getOffset() { return offset; }
         void setFlag(int flag, bool value);
         bool getFlag(int flag);
         bool showCounts();
@@ -146,6 +147,23 @@ class Line : public QWidget
             return running;
         }
 
+        inline QLineSeries* getMagnitude()
+        {
+            return magnitude;
+        }
+        inline QLineSeries* getPhase()
+        {
+            return phase;
+        }
+
+        inline QLineSeries* getMagnitudes()
+        {
+            return magnitudes;
+        }
+        inline QLineSeries* getPhases()
+        {
+            return phases;
+        }
         inline QMap<double, double>* getMagnitudeStack()
         {
             return magnitudeStack;
@@ -165,22 +183,6 @@ class Line : public QWidget
         inline QLineSeries* getCounts()
         {
             return counts;
-        }
-        inline QLineSeries* getMagnitudes()
-        {
-            return magnitudes;
-        }
-        inline QLineSeries* getPhases()
-        {
-            return phases;
-        }
-        inline QLineSeries* getMagnitude()
-        {
-            return magnitude;
-        }
-        inline QLineSeries* getPhase()
-        {
-            return phase;
         }
         inline QList<double*> getCrosscorrelations()
         {
@@ -205,8 +207,6 @@ class Line : public QWidget
         void setLocation(dsp_location location);
         double percent;
         void setPercent();
-        void stretch(QLineSeries* series);
-        void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
 
 
         inline bool hasMotorbBus()
@@ -247,10 +247,15 @@ class Line : public QWidget
         inline void stopMotorAxis(int axis, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_stop_motion(axis, false); }
 
     private:
+        void stretch(QLineSeries* series);
+        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
+
+        double stack;
         double *buf;
         double offset { 0.0 };
         double timespan { 1.0 };
         bool scalingDone { false };
+
         Elemental *elemental;
         QList<int> Motors;
         int motorIndex {0};
@@ -260,7 +265,7 @@ class Line : public QWidget
         bool applymedian;
         dsp_stream_p stream;
         dsp_location location;
-        double *ac;
+        double *correlations;
         fftw_plan plan;
         fftw_complex *dft;
         bool running;
@@ -270,7 +275,6 @@ class Line : public QWidget
         QList<Baseline*> nodes;
         bool scanning;
         int stop;
-        double stack;
         Mode mode;
         QMap<double, double>* dark;
         QMap<double, double>* autodark;
@@ -286,7 +290,7 @@ class Line : public QWidget
         QLineSeries* phases;
         QList<double*> crosscorrelations;
         unsigned int line;
-        int flags;
+        int flags { 0x8 };
         double averageBottom { 0 };
         double averageTop { 1.0 };
         void getMinMax();

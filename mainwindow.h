@@ -122,19 +122,23 @@ class MainWindow : public QMainWindow
             {
                 getGraph()->setMode(m);
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
-                ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
-                for(int i = 0; i < Lines.count(); i++) {
-                    ahp_xc_set_channel_cross(i, 0, 0);
-                    ahp_xc_set_channel_auto(i, 0, 0);
-                }
                 ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_ENABLE));
                 for(int i = 0; i < Baselines.count(); i++)
                 {
                     Baselines[i]->getMagnitude()->clear();
                     Baselines[i]->getPhase()->clear();
                 }
-                if(mode == Counter)
+                for(int x = 0; x < Lines.count(); x++)
+                {
+                    Lines[x]->setMode(mode);
+                }
+                if(mode == Counter) {
+                    for(int i = 0; i < Lines.count(); i++) {
+                        ahp_xc_set_channel_cross(i, 0, 0);
+                        ahp_xc_set_channel_auto(i, 0, 0);
+                    }
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
+                }
             }
         }
         inline void resetTimestamp()
@@ -161,6 +165,9 @@ class MainWindow : public QMainWindow
         inline QList<double> getMotorPositionMultipliers() { return position_multipliers; }
         inline QList<int> getMotorAddresses() { return gt_addresses; }
 
+        inline int getMotorFD() { return motorFD; }
+        inline int getGpsFD() { return gpsFD; }
+        inline int getXcFD() { return xcFD; }
     private:
         void stopThreads();
         void startThreads();
