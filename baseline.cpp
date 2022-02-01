@@ -35,6 +35,20 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     series = new QLineSeries();
     series->setName(name);
     average = new QMap<double, double>();
+    series = new QLineSeries();
+    magnitude = new QLineSeries();
+    phase = new QLineSeries();
+    counts = new QLineSeries();
+    magnitudes = new QLineSeries();
+    phases = new QLineSeries();
+    dark = new QMap<double, double>();
+    autodark = new QMap<double, double>();
+    crossdark = new QMap<double, double>();
+    average = new QMap<double, double>();
+    magnitudeStack = new QMap<double, double>();
+    phaseStack = new QMap<double, double>();
+    crosscorrelations = QList<double*>();
+    complex = new QList<double>();
     line1 = n1;
     line2 = n2;
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged), this,
@@ -125,9 +139,11 @@ void Baseline::stackCorrelations()
         } else {
             npackets--;
             buf = (double*)realloc(buf, sizeof(double)*npackets);
-            if(mode==Spectrograph) {
-                for(int x = 0; x < npackets; x++)
-                    buf[x] = (double)spectrum[x+1].correlations[0].magnitude;
+            if(mode==TCSPC) {
+                for(int x = 0; x < npackets; x++) {
+                    complex->append(spectrum[x].correlations[0].real);
+                    complex->append(spectrum[x].correlations[0].imaginary);
+                }
             } else  {
                 for(int x = 0; x < npackets; x++) {
                     double m = fmax(spectrum[x+1].correlations[0].real, spectrum[x+1].correlations[0].imaginary) / 2.0;
@@ -135,6 +151,7 @@ void Baseline::stackCorrelations()
                     spectrum[x+1].correlations[0].imaginary = spectrum[x+1].correlations[0].imaginary - m;
                     spectrum[x+1].correlations[0].magnitude = sqrt(pow(spectrum[x+1].correlations[0].real, 2.0)+pow(spectrum[x+1].correlations[0].imaginary, 2.0));
                     buf[x] = (double)spectrum[x+1].correlations[0].magnitude/pow((double)spectrum[x+1].correlations[0].real+(double)spectrum[x+1].correlations[0].imaginary, 2);
+
                 }
             }
         }

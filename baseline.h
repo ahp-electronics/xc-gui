@@ -80,7 +80,7 @@ class Baseline : public QWidget
         }
         inline QList<double>* getBuffer()
         {
-            return NULL;
+            return complex;
         }
         inline QMap<double, double>* getMagnitudeStack()
         {
@@ -165,6 +165,7 @@ class Baseline : public QWidget
         QLineSeries* counts;
         QLineSeries* magnitudes;
         QLineSeries* phases;
+        QList<double>* complex;
         QList<double*> crosscorrelations;
         Line* line1;
         Line* line2;

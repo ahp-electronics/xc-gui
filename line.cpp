@@ -85,28 +85,28 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         flags &= ~(1 << 0);
         flags |= ui->flag0->isChecked() << 0;
-        ahp_xc_set_leds(line, (xc_led_flags)flags);
+        ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag0->text(), ui->flag0->isChecked());
     });
     connect(ui->flag1, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
         flags &= ~(1 << 1);
         flags |= ui->flag1->isChecked() << 1;
-        ahp_xc_set_leds(line, (xc_led_flags)flags);
+        ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag1->text(), ui->flag1->isChecked());
     });
     connect(ui->flag2, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
         flags &= ~(1 << 2);
         flags |= ui->flag2->isChecked() << 2;
-        ahp_xc_set_leds(line, (xc_led_flags)flags);
+        ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag2->text(), ui->flag2->isChecked());
     });
     connect(ui->flag3, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
         flags &= ~(1 << 3);
         flags |= !ui->flag3->isChecked() << 3;
-        ahp_xc_set_leds(line, (xc_led_flags)flags);
+        ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag3->text(), ui->flag3->isChecked());
     });
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -316,7 +316,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
     ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
     ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
-    ahp_xc_set_leds(line, (xc_led_flags)flags);
+    ahp_xc_set_leds(line, flags);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
@@ -440,7 +440,7 @@ void Line::setMode(Mode m)
         flags |= 0x10;
     else
         flags &= ~0x10;
-    ahp_xc_set_leds(line, (xc_led_flags)flags);
+    ahp_xc_set_leds(line, flags);
 }
 
 void Line::paint()

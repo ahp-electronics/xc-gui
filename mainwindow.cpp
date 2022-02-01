@@ -559,7 +559,7 @@ MainWindow::~MainWindow()
            ahp_gt_disconnect();
     }
     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++) {
-        ahp_xc_set_leds(l, LEDS_NONE);
+        ahp_xc_set_leds(l, 0);
     }
     ahp_xc_set_capture_flags(CAP_NONE);
     if(connected) {

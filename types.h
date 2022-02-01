@@ -37,6 +37,7 @@ enum Mode
     Spectrograph,
     Autocorrelator,
     Crosscorrelator,
+    TCSPC
 };
 
 enum Scale
