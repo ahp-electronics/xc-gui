@@ -363,13 +363,13 @@ MainWindow::MainWindow(QWidget *parent)
                             offset2 /= ahp_xc_get_sampletime();
                             ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()), offset1);
                             ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()), offset2);
-                            line->getMagnitudes()->append(packettime, (double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].magnitude);
-                            line->getPhases()->append(packettime, (double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].phase);
+                            line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
+                            line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
                         }
                         else
                         {
-                            line->getMagnitude()->append(packettime, 0.0);
-                            line->getPhase()->append(packettime, 0.0);
+                            line->getBuffer()->append(0.0);
+                            line->getBuffer()->append(0.0);
                         }
                     }
                 }
@@ -431,6 +431,16 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
                 }
+                break;
+            case TCSPC:
+                    for(int x = 0; x < Baselines.count(); x++)
+                    {
+                        Baseline * line = Baselines[x];
+                        if(line->isActive())
+                        {
+                            line->stackCorrelations();
+                        }
+                    }
                 break;
             case Autocorrelator:
             case Spectrograph:

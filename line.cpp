@@ -66,7 +66,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     line = n;
     flags = 0;
     ui->setupUi(this);
-    /*ui->x_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
+    ui->x_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->y_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->z_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
 
@@ -74,7 +74,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
                     .x = readDouble("location_x", 0.0) / 1000.0,
                     .y = readDouble("location_y", 0.0) / 1000.0,
                     .z = readDouble("location_z", 0.0) / 1000.0
-                }});*/
+                }});
     int start = ui->StartLine->value();
     int end = ui->EndLine->value();
     int len = end - start;
@@ -122,15 +122,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             ui->Run->setText("Run");
         }
         ui->Counter->setEnabled(mode == Counter);
-        ui->Autocorrelator->setEnabled(false);
-        //ui->Crosscorrelator->setEnabled(false);
-        if(mode == Autocorrelator || mode == Spectrograph)
+        ui->Correlator->setEnabled(false);
+        if(mode != Counter)
         {
-            ui->Autocorrelator->setEnabled(!isActive());
-        }
-        else if(mode == Crosscorrelator)
-        {
-            //ui->Crosscorrelator->setEnabled(!isActive());
+            ui->Correlator->setEnabled(!isActive());
         }
     });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -278,7 +273,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         ahp_xc_set_channel_cross(line, value, 0);
         saveSetting("LineDelay", value);
-    });/*
+    });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.x = (double)value / 1000.0;
@@ -293,7 +288,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("z_location", value);
-    });*/
+    });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), [ = ](bool success, double o, double s)
     {
         double timespan = ahp_xc_get_sampletime();
@@ -425,7 +420,7 @@ void Line::setMode(Mode m)
     getPhases()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
-    if(mode == Autocorrelator || mode == Spectrograph)
+    if(mode != Counter)
     {
         stack = 0.0;
         mx = 0.0;
@@ -433,8 +428,7 @@ void Line::setMode(Mode m)
     ui->Counter->setEnabled(mode == Counter);
     if(!isActive())
     {
-        ui->Autocorrelator->setEnabled(mode == Autocorrelator || mode == Spectrograph);
-        //ui->Crosscorrelator->setEnabled(mode == Crosscorrelator);
+        ui->Correlator->setEnabled(mode != Counter);
     }
     if(mode == Spectrograph)
         flags |= 0x10;
@@ -448,7 +442,7 @@ void Line::paint()
     stop = !isActive();
     if(ui->Progress != nullptr)
     {
-        if(mode == Autocorrelator || mode == Spectrograph)
+        if(mode != Counter)
         {
             if(percent > ui->Progress->minimum() && percent < ui->Progress->maximum())
                 ui->Progress->setValue(percent);
@@ -472,9 +466,9 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int id
 
 void Line::setLocation(dsp_location location)
 {
-    /*ui->x_location->setValue(getLocation()->xyz.x);
+    ui->x_location->setValue(getLocation()->xyz.x);
     ui->y_location->setValue(location.xyz.y);
-    ui->z_location->setValue(location.xyz.z);*/
+    ui->z_location->setValue(location.xyz.z);
     saveSetting("location_x", location.xyz.x);
     saveSetting("location_y", location.xyz.y);
     saveSetting("location_z", location.xyz.z);

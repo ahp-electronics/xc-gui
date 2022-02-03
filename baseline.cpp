@@ -141,17 +141,16 @@ void Baseline::stackCorrelations()
             buf = (double*)realloc(buf, sizeof(double)*npackets);
             if(mode==TCSPC) {
                 for(int x = 0; x < npackets; x++) {
-                    complex->append(spectrum[x].correlations[0].real);
-                    complex->append(spectrum[x].correlations[0].imaginary);
-                }
-            } else  {
-                for(int x = 0; x < npackets; x++) {
                     double m = fmax(spectrum[x+1].correlations[0].real, spectrum[x+1].correlations[0].imaginary) / 2.0;
                     spectrum[x+1].correlations[0].real = spectrum[x+1].correlations[0].real - m;
                     spectrum[x+1].correlations[0].imaginary = spectrum[x+1].correlations[0].imaginary - m;
                     spectrum[x+1].correlations[0].magnitude = sqrt(pow(spectrum[x+1].correlations[0].real, 2.0)+pow(spectrum[x+1].correlations[0].imaginary, 2.0));
                     buf[x] = (double)spectrum[x+1].correlations[0].magnitude/pow((double)spectrum[x+1].correlations[0].real+(double)spectrum[x+1].correlations[0].imaginary, 2);
-
+                }
+            } else  {
+                for(int x = 0; x < npackets; x++) {
+                    complex->append(spectrum[x].correlations[0].real);
+                    complex->append(spectrum[x].correlations[0].imaginary);
                 }
             }
         }

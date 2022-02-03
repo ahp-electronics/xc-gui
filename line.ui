@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>992</width>
+    <width>1211</width>
     <height>150</height>
    </rect>
   </property>
@@ -78,7 +78,7 @@
     </property>
    </widget>
   </widget>
-  <widget class="QGroupBox" name="Autocorrelator">
+  <widget class="QGroupBox" name="Correlator">
    <property name="enabled">
     <bool>false</bool>
    </property>
@@ -86,12 +86,12 @@
     <rect>
      <x>330</x>
      <y>0</y>
-     <width>381</width>
+     <width>591</width>
      <height>141</height>
     </rect>
    </property>
    <property name="title">
-    <string>Autocorrelator</string>
+    <string>Correlator</string>
    </property>
    <widget class="QPushButton" name="TakeDark">
     <property name="geometry">
@@ -295,6 +295,111 @@
      <string>Sampling</string>
     </property>
    </widget>
+   <widget class="QSpinBox" name="z_location">
+    <property name="geometry">
+     <rect>
+      <x>500</x>
+      <y>70</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_11">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>70</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Z offset (mm):</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_10">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>50</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Y offset (mm):</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="x_location">
+    <property name="geometry">
+     <rect>
+      <x>500</x>
+      <y>30</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="y_location">
+    <property name="geometry">
+     <rect>
+      <x>500</x>
+      <y>50</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_9">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>30</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>X offset (mm):</string>
+    </property>
+   </widget>
+   <widget class="Line" name="line_2">
+    <property name="geometry">
+     <rect>
+      <x>370</x>
+      <y>30</y>
+      <width>21</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Vertical</enum>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="z_location_2">
+    <property name="geometry">
+     <rect>
+      <x>500</x>
+      <y>90</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_12">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>90</y>
+      <width>111</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Frequency (Hz):</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="Counter">
    <property name="enabled">
@@ -396,7 +501,7 @@
   <widget class="QPushButton" name="Run">
    <property name="geometry">
     <rect>
-     <x>890</x>
+     <x>1100</x>
      <y>20</y>
      <width>91</width>
      <height>81</height>
@@ -409,7 +514,7 @@
   <widget class="QPushButton" name="Save">
    <property name="geometry">
     <rect>
-     <x>890</x>
+     <x>1100</x>
      <y>110</y>
      <width>91</width>
      <height>31</height>
@@ -422,7 +527,7 @@
   <widget class="QPlainTextEdit" name="Notes">
    <property name="geometry">
     <rect>
-     <x>720</x>
+     <x>930</x>
      <y>20</y>
      <width>161</width>
      <height>121</height>
@@ -432,7 +537,7 @@
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>720</x>
+     <x>930</x>
      <y>0</y>
      <width>67</width>
      <height>17</height>
