@@ -70,11 +70,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->y_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
     ui->z_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
 
-    setLocation((dsp_location){.xyz = {
-                    .x = readDouble("location_x", 0.0) / 1000.0,
-                    .y = readDouble("location_y", 0.0) / 1000.0,
-                    .z = readDouble("location_z", 0.0) / 1000.0
-                }});
+    setLocation((dsp_location)
+    {
+        .xyz =
+        {
+            .x = readDouble("location_x", 0.0) / 1000.0,
+            .y = readDouble("location_y", 0.0) / 1000.0,
+            .z = readDouble("location_z", 0.0) / 1000.0
+        }
+    });
     int start = ui->StartLine->value();
     int end = ui->EndLine->value();
     int len = end - start;
@@ -206,6 +210,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         plan = fftw_plan_dft_c2r_1d(len, dft, correlations, FFTW_ESTIMATE);
         saveSetting("StartLine", ui->StartLine->value());
     });
+    connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
+    {
+        saveSetting("ElementalAlign", ui->ElementalAlign->isChecked());
+    });
     connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         elemental->setDecimals(value);
@@ -289,11 +297,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("z_location", value);
     });
-    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), [ = ](bool success, double o, double s)
+    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), [ = ](bool success,
+            double o, double s)
     {
         double timespan = ahp_xc_get_sampletime();
-        if(success) {
-            timespan = ahp_xc_get_sampletime()*1000000000.0/s;
+        if(success)
+        {
+            timespan = ahp_xc_get_sampletime() * 1000000000.0 / s;
             offset = o * timespan;
         }
         for (int x = 0; x < elemental->getStream()->len; x++)
@@ -425,6 +435,32 @@ void Line::setMode(Mode m)
         stack = 0.0;
         mx = 0.0;
     }
+    if(mode == Spectrograph)
+    {
+        ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
+        ui->ElementalAlign->setEnabled(true);
+        ui->maxdots->setEnabled(true);
+        ui->decimals->setEnabled(true);
+        ui->minscore->setEnabled(true);
+        ui->samplesize->setEnabled(true);
+        ui->MaxDots->setEnabled(true);
+        ui->Decimals->setEnabled(true);
+        ui->MinScore->setEnabled(true);
+        ui->SampleSize->setEnabled(true);
+    }
+    else
+    {
+        ui->ElementalAlign->setChecked(false);
+        ui->ElementalAlign->setEnabled(false);
+        ui->maxdots->setEnabled(false);
+        ui->decimals->setEnabled(false);
+        ui->minscore->setEnabled(false);
+        ui->samplesize->setEnabled(false);
+        ui->MaxDots->setEnabled(false);
+        ui->Decimals->setEnabled(false);
+        ui->MinScore->setEnabled(false);
+        ui->SampleSize->setEnabled(false);
+    }
     ui->Counter->setEnabled(mode == Counter);
     if(!isActive())
     {
@@ -454,11 +490,14 @@ void Line::paint()
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
     y /= stack;
-    if(stacked->count() > idx) {
+    if(stacked->count() > idx)
+    {
         y += stacked->values().at(idx) * (stack - 1) / stack;
         stacked->keys().replace(idx, x);
         stacked->values().replace(idx, x);
-    } else {
+    }
+    else
+    {
         stacked->insert(x, y);
     }
     series->append(x, y);
@@ -478,13 +517,15 @@ void Line::stretch(QLineSeries* series)
 {
     double mx = DBL_MIN;
     double mn = DBL_MAX;
-    for (int x = 0; x < series->count(); x++) {
+    for (int x = 0; x < series->count(); x++)
+    {
         mn = fmin(series->at(x).y(), mn);
         mx = fmax(series->at(x).y(), mx);
     }
-    for (int x = 0; x < series->count(); x++) {
+    for (int x = 0; x < series->count(); x++)
+    {
         QPointF p = series->at(x);
-        series->replace(x, p.x(), (p.y()-mn) * M_PI * 2.0/(mx-mn));
+        series->replace(x, p.x(), (p.y() - mn) * M_PI * 2.0 / (mx - mn));
     }
 }
 
@@ -497,7 +538,8 @@ void Line::stackCorrelations()
     int len = end - start;
     stop = 0;
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &percent);
-    if(spectrum != nullptr && npackets == len) {
+    if(spectrum != nullptr && npackets == len)
+    {
         stack += 1.0;
         getMagnitude()->clear();
         getPhase()->clear();
@@ -505,7 +547,8 @@ void Line::stackCorrelations()
         {
             for (int x = 0; x < npackets; x++)
             {
-                if(spectrum[x].correlations[0].magnitude > 0) {
+                if(spectrum[x].correlations[0].magnitude > 0)
+                {
                     dft[x][0] = spectrum[x].correlations[0].real;
                     dft[x][1] = spectrum[x].correlations[0].imaginary;
                 }
@@ -517,22 +560,31 @@ void Line::stackCorrelations()
                 stackValue(getMagnitude(), getMagnitudeStack(), x, y, correlations[x]);
             };
             stretch(getMagnitude());
-        } else {
+        }
+        else
+        {
             npackets--;
-            buf = (double*)realloc(buf, sizeof(double)*npackets);
-            if(mode==Spectrograph) {
+            buf = (double*)realloc(buf, sizeof(double) * npackets);
+            if(mode == Spectrograph)
+            {
                 for(int x = 0; x < npackets; x++)
-                    buf[x] = (double)spectrum[x+1].correlations[0].magnitude;
-            } else  {
-                for(int x = 0; x < npackets; x++) {
-                    double m = fmax(spectrum[x+1].correlations[0].real, spectrum[x+1].correlations[0].imaginary) / 2.0;
-                    spectrum[x+1].correlations[0].real = spectrum[x+1].correlations[0].real - m;
-                    spectrum[x+1].correlations[0].imaginary = spectrum[x+1].correlations[0].imaginary - m;
-                    spectrum[x+1].correlations[0].magnitude = sqrt(pow(spectrum[x+1].correlations[0].real, 2.0)+pow(spectrum[x+1].correlations[0].imaginary, 2.0));
-                    buf[x] = (double)spectrum[x+1].correlations[0].magnitude/pow((double)spectrum[x+1].correlations[0].real+(double)spectrum[x+1].correlations[0].imaginary, 2);
+                    buf[x] = (double)spectrum[x + 1].correlations[0].magnitude;
+            }
+            else
+            {
+                for(int x = 0; x < npackets; x++)
+                {
+                    double m = fmax(spectrum[x + 1].correlations[0].real, spectrum[x + 1].correlations[0].imaginary) / 2.0;
+                    spectrum[x + 1].correlations[0].real = spectrum[x + 1].correlations[0].real - m;
+                    spectrum[x + 1].correlations[0].imaginary = spectrum[x + 1].correlations[0].imaginary - m;
+                    spectrum[x + 1].correlations[0].magnitude = sqrt(pow(spectrum[x + 1].correlations[0].real,
+                            2.0) + pow(spectrum[x + 1].correlations[0].imaginary, 2.0));
+                    buf[x] = (double)spectrum[x + 1].correlations[0].magnitude / pow((double)spectrum[x + 1].correlations[0].real +
+                             (double)spectrum[x + 1].correlations[0].imaginary, 2);
                 }
             }
-            elemental->setBuffer(buf, npackets);
+            if(ui->ElementalAlign->isChecked())
+                elemental->setBuffer(buf, npackets);
         }
         free(spectrum);
     }
