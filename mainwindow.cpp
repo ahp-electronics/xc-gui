@@ -74,10 +74,10 @@ MainWindow::MainWindow(QWidget *parent)
     motorThread = new Thread(this, 1000);
     Elemental::loadCatalog();
     graph = new Graph(this);
-    int starty = 35+ui->XCPort->y()+ui->XCPort->height();
-    ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
-    starty += 5+ui->Lines->height();
-    getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
+    int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
+    ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
+    starty += 5 + ui->Lines->height();
+    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
     getGraph()->setUpdatesEnabled(true);
     getGraph()->setVisible(true);
@@ -92,12 +92,13 @@ MainWindow::MainWindow(QWidget *parent)
     QList<QSerialPortInfo> devices = QSerialPortInfo::availablePorts();
     settings->endGroup();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-    for (int i = 0; i < ports.length(); i++) {
+    for (int i = 0; i < ports.length(); i++)
+    {
         QString portname =
-        #ifndef _WIN32
-        "/dev/"+
-        #endif
-                            ports[i].portName();
+#ifndef _WIN32
+            "/dev/" +
+#endif
+            ports[i].portName();
         if(portname != ui->XCPort->itemText(0))
             ui->XCPort->addItem(portname);
         if(portname != ui->GpsPort->itemText(0))
@@ -126,9 +127,10 @@ MainWindow::MainWindow(QWidget *parent)
         TimeRange = ui->Range->value();
     });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
-            [=](int value) {
-        unsigned char v = value|0x80;
-        ui->voltageLabel->setText("Voltage: "+QString::number(value*150/127)+" V~");
+            [ = ](int value)
+    {
+        unsigned char v = value | 0x80;
+        ui->voltageLabel->setText("Voltage: " + QString::number(value * 150 / 127) + " V~");
         settings->setValue("Voltage", value);
         write(motorFD, &v, 1);
     });
@@ -139,7 +141,8 @@ MainWindow::MainWindow(QWidget *parent)
         ahp_xc_set_frequency_divider((char)value);
     });
     connect(ui->Disconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
-            [=](bool checked) {
+            [ = ](bool checked)
+    {
         (void)checked;
         stopThreads();
         ui->Connect->setEnabled(true);
@@ -155,13 +158,16 @@ MainWindow::MainWindow(QWidget *parent)
         }
         Lines.clear();
         getGraph()->clearSeries();
-        if(xc_socket.isOpen()) {
+        if(xc_socket.isOpen())
+        {
             xc_socket.disconnectFromHost();
         }
-        if(motor_socket.isOpen()) {
+        if(motor_socket.isOpen())
+        {
             motor_socket.disconnectFromHost();
         }
-        if(gps_socket.isOpen()) {
+        if(gps_socket.isOpen())
+        {
             gps_socket.disconnectFromHost();
         }
         ahp_xc_disconnect();
@@ -170,7 +176,8 @@ MainWindow::MainWindow(QWidget *parent)
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
-            [=](bool checked) {
+            [ = ](bool checked)
+    {
         (void)checked;
         int port = 5760;
         QString address = "localhost";
@@ -180,29 +187,40 @@ MainWindow::MainWindow(QWidget *parent)
         gpsport = ui->GpsPort->currentText();
         settings->beginGroup("Connection");
         motorFD = -1;
-        if(motorport == "no connection") {
+        if(motorport == "no connection")
+        {
             settings->setValue("motor_connection", motorport);
-        } else {
-            if(motorport.contains(':')) {
+        }
+        else
+        {
+            if(motorport.contains(':'))
+            {
                 address = motorport.split(":")[0];
                 port = motorport.split(":")[1].toInt();
                 ui->Connect->setEnabled(false);
                 update();
                 motor_socket.connectToHost(address, port);
                 motor_socket.waitForConnected();
-                if(motor_socket.isValid()) {
+                if(motor_socket.isValid())
+                {
                     motor_socket.setReadBufferSize(4096);
                     motorFD = motor_socket.socketDescriptor();
-                    if(motorFD > -1) {
-                        if(!ahp_gt_connect_fd(motorFD)) {
+                    if(motorFD > -1)
+                    {
+                        if(!ahp_gt_connect_fd(motorFD))
+                        {
                             settings->setValue("motor_connection", motorport);
                         }
                     }
-                } else {
+                }
+                else
+                {
                     ui->Connect->setEnabled(true);
                     update();
                 }
-            } else {
+            }
+            else
+            {
                 ahp_gt_connect(motorport.toUtf8());
                 motorFD = ahp_xc_get_fd();
                 if(motorFD == -1)
@@ -212,29 +230,40 @@ MainWindow::MainWindow(QWidget *parent)
             }
         }
         gpsFD = -1;
-        if(gpsport == "no connection") {
+        if(gpsport == "no connection")
+        {
             settings->setValue("gps_connection", gpsport);
-        } else {
-            if(gpsport.contains(':')) {
+        }
+        else
+        {
+            if(gpsport.contains(':'))
+            {
                 address = gpsport.split(":")[0];
                 port = gpsport.split(":")[1].toInt();
                 ui->Connect->setEnabled(false);
                 update();
                 gps_socket.connectToHost(address, port);
                 gps_socket.waitForConnected();
-                if(gps_socket.isValid()) {
+                if(gps_socket.isValid())
+                {
                     gps_socket.setReadBufferSize(4096);
                     gpsFD = gps_socket.socketDescriptor();
-                    if(gpsFD > -1){
+                    if(gpsFD > -1)
+                    {
                         getGraph()->setGnssPortFD(gpsFD);
                     }
-                } else {
+                }
+                else
+                {
                     ui->Connect->setEnabled(true);
                     update();
                 }
-            } else {
+            }
+            else
+            {
                 gpsFD = open(gpsport.toUtf8(), O_RDWR);
-                if(gpsFD > -1) {
+                if(gpsFD > -1)
+                {
                     getGraph()->setGnssPortFD(gpsFD);
                 }
             }
@@ -242,26 +271,35 @@ MainWindow::MainWindow(QWidget *parent)
                 settings->setValue("gps_connection", gpsport);
         }
         xcFD = -1;
-        if(xcport == "no connection") {
+        if(xcport == "no connection")
+        {
             settings->setValue("xc_connection", xcport);
-        } else {
-            if(xcport.contains(':')) {
+        }
+        else
+        {
+            if(xcport.contains(':'))
+            {
                 address = xcport.split(":")[0];
                 port = xcport.split(":")[1].toInt();
                 ui->Connect->setEnabled(false);
                 update();
                 xc_socket.connectToHost(address, port);
                 xc_socket.waitForConnected();
-                if(xc_socket.isValid()) {
+                if(xc_socket.isValid())
+                {
                     xc_socket.setReadBufferSize(4096);
                     xcFD = xc_socket.socketDescriptor();
                     if(xcFD > -1)
                         ahp_xc_connect_fd(xcFD);
-                } else {
+                }
+                else
+                {
                     ui->Connect->setEnabled(true);
                     update();
                 }
-            } else {
+            }
+            else
+            {
                 ahp_xc_connect(xcport.toUtf8(), false);
                 xcFD = ahp_xc_get_fd();
             }
@@ -315,12 +353,15 @@ MainWindow::MainWindow(QWidget *parent)
                     ui->Scale->setEnabled(true);
                     ui->Range->setEnabled(true);
                     setMode(Counter);
-                    if(motorFD >= 0) {
+                    if(motorFD >= 0)
+                    {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
-                } else
+                }
+                else
                     ahp_xc_disconnect();
-            } else
+            }
+            else
                 ahp_xc_disconnect();
         }
     });
@@ -364,7 +405,8 @@ MainWindow::MainWindow(QWidget *parent)
                             ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()), offset1);
                             ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()), offset2);
                             line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
-                            line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
+                            line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() /
+                                                      2].imaginary);
                         }
                         else
                         {
@@ -415,9 +457,11 @@ MainWindow::MainWindow(QWidget *parent)
                                             counts[y]->append(packettime, (double)packet->counts[x] * 1000000.0 / ahp_xc_get_packettime());
                                         break;
                                     case 1:
-                                        if(Lines[x]->showAutocorrelations()) {
-                                            counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].imaginary / packet->autocorrelations[x].correlations[0].counts);
-                                            counts[y+1]->append(packettime, packet->autocorrelations[x].correlations[0].phase);
+                                        if(Lines[x]->showAutocorrelations())
+                                        {
+                                            counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].imaginary /
+                                                              packet->autocorrelations[x].correlations[0].counts);
+                                            counts[y + 1]->append(packettime, packet->autocorrelations[x].correlations[0].phase);
                                         }
                                         break;
                                     default:
@@ -433,14 +477,14 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 break;
             case TCSPC:
-                    for(int x = 0; x < Baselines.count(); x++)
+                for(int x = 0; x < Baselines.count(); x++)
+                {
+                    Baseline * line = Baselines[x];
+                    if(line->isActive())
                     {
-                        Baseline * line = Baselines[x];
-                        if(line->isActive())
-                        {
-                            line->stackCorrelations();
-                        }
+                        line->stackCorrelations();
                     }
+                }
                 break;
             case Autocorrelator:
             case Spectrograph:
@@ -452,7 +496,7 @@ MainWindow::MainWindow(QWidget *parent)
                         line->stackCorrelations();
                     }
                 }
-            break;
+                break;
             default:
                 break;
         }
@@ -467,7 +511,8 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
-        if(getMode() != Crosscorrelator) {
+        if(getMode() != Crosscorrelator)
+        {
             return;
         }
         double radec[3] = { Ra, Dec, 0.0};
@@ -511,10 +556,13 @@ MainWindow::MainWindow(QWidget *parent)
     {
         MainWindow* main = (MainWindow*)thread->getParent();
         int fd = main->getMotorFD();
-        if(fd >= 0) {
-            if(ahp_gt_is_connected()) {
+        if(fd >= 0)
+        {
+            if(ahp_gt_is_connected())
+            {
                 dsp_location location;
-                for(int x = 0; x < Lines.count(); x++) {
+                for(int x = 0; x < Lines.count(); x++)
+                {
                     Lines[x]->setLocation(location);
                 }
             }
@@ -525,11 +573,11 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
-   QMainWindow::resizeEvent(event);
-   int starty = 35+ui->XCPort->y()+ui->XCPort->height();
-   ui->Lines->setGeometry(5, starty+5, this->width()-10, ui->Lines->height());
-   starty += 5+ui->Lines->height();
-   getGraph()->setGeometry(5, starty+5, this->width()-10, this->height()-starty-10);
+    QMainWindow::resizeEvent(event);
+    int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
+    ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
+    starty += 5 + ui->Lines->height();
+    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
 }
 
 void MainWindow::startThreads()
@@ -563,16 +611,19 @@ void MainWindow::stopThreads()
 MainWindow::~MainWindow()
 {
     unsigned char v = 0x80;
-    if(motorFD >= 0) {
+    if(motorFD >= 0)
+    {
         write(motorFD, &v, 1);
         if(ahp_gt_is_connected())
-           ahp_gt_disconnect();
+            ahp_gt_disconnect();
     }
-    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++) {
+    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
+    {
         ahp_xc_set_leds(l, 0);
     }
     ahp_xc_set_capture_flags(CAP_NONE);
-    if(connected) {
+    if(connected)
+    {
         ui->Disconnect->clicked(false);
     }
     getGraph()->~Graph();
