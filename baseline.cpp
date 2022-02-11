@@ -32,25 +32,30 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     settings = s;
     name = n;
     Index = index;
-    series = new QLineSeries();
-    series->setName(name);
-    average = new QMap<double, double>();
-    series = new QLineSeries();
+    magnitude_buf = (double*)malloc(sizeof(double));
+    phase_buf = (double*)malloc(sizeof(double));
+    magnitudeStack = new QMap<double, double>();
+    phaseStack = new QMap<double, double>();
     magnitude = new QLineSeries();
     phase = new QLineSeries();
-    counts = new QLineSeries();
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
     dark = new QMap<double, double>();
-    autodark = new QMap<double, double>();
-    crossdark = new QMap<double, double>();
-    average = new QMap<double, double>();
-    magnitudeStack = new QMap<double, double>();
-    phaseStack = new QMap<double, double>();
-    crosscorrelations = QList<double*>();
     complex = new QList<double>();
     line1 = n1;
     line2 = n2;
+    connect(line1, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations), this,
+            [ = ]()
+    {
+        getMagnitude()->clear();
+        getPhase()->clear();
+    });
+    connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations), this,
+            [ = ]()
+    {
+        getMagnitude()->clear();
+        getPhase()->clear();
+    });
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged), this,
             [ = ](Line * sender)
     {
@@ -68,6 +73,27 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
 
 }
 
+bool Baseline::haveSetting(QString setting)
+{
+    return settings->contains(QString(name + "_" + setting).replace(' ', ""));
+}
+
+void Baseline::removeSetting(QString setting)
+{
+    settings->remove(QString(name + "_" + setting).replace(' ', ""));
+}
+
+void Baseline::saveSetting(QString setting, QVariant value)
+{
+    settings->setValue(QString(name + "_" + setting).replace(' ', ""), value);
+    settings->sync();
+}
+
+QVariant Baseline::readSetting(QString setting, QVariant defaultValue)
+{
+    return settings->value(QString(name + "_" + setting).replace(' ', ""), defaultValue);
+}
+
 void Baseline::setDelay(double s)
 {
     ahp_xc_set_channel_cross((uint32_t)Index, (off_t)s * (ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider()), 0);
@@ -76,8 +102,18 @@ void Baseline::setDelay(double s)
 void Baseline::setMode(Mode m)
 {
     mode = m;
-    series->clear();
-    average->clear();
+    if(mode == Crosscorrelator)
+    {
+        connect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
+        connect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
+        connect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+        connect(getLine2(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+    } else {
+        disconnect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
+        disconnect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
+        disconnect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+        disconnect(getLine2(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+    }
 }
 
 void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
@@ -107,56 +143,111 @@ void Baseline::stretch(QLineSeries* series)
     }
 }
 
+bool Baseline::isActive()
+{
+    return getLine1()->isActive() && getLine2()->isActive();
+}
+
+void Baseline::TakeDark(Line* sender)
+{
+    if(sender->DarkTaken())
+    {
+        getDark()->clear();
+        for(int x = 0; x < getMagnitude()->count(); x++)
+        {
+            getDark()->insert(getMagnitude()->at(x).x(), getMagnitude()->at(x).y());
+            QString darkstring = readString("Dark", "");
+            if(!darkstring.isEmpty())
+                saveSetting("Dark", darkstring + ";");
+            darkstring = readString("Dark", "");
+            saveSetting("Dark", darkstring + QString::number(getMagnitude()->at(x).x()) + "," + QString::number(getMagnitude()->at(
+                            x).y()));
+        }
+        getMagnitude()->setName(name + " magnitude (residuals)");
+    }
+    else
+    {
+        removeSetting("Dark");
+        getDark()->clear();
+        getMagnitude()->setName(name + " magnitude");
+    }
+}
+
+void Baseline::SavePlot()
+{
+    if(!isActive())
+        return;
+    QString filename = QFileDialog::getSaveFileName(this, "DialogTitle", "filename.csv",
+                       "CSV files (.csv);;Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)
+    QFile data(filename);
+    if(data.open(QFile::WriteOnly | QFile::Truncate))
+    {
+        QTextStream output(&data);
+        output << "'lag (ns)';'magnitude';'phase'\n";
+        for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
+        {
+            output << "'" + QString::number(getMagnitude()->at(y).x()) + "';'" + QString::number(getMagnitude()->at(y).y()) + "';'"
+            + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
+        }
+    }
+    data.close();
+}
+
 void Baseline::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
-    int start = getLine1()->getOffset();
-    int end = getLine2()->getOffset();
-    int len = end - start;
+    start1 = getLine1()->getEndLine();
+    start2 = getLine2()->getEndLine();
+    getLine1()->setPercentPtr(&percent);
+    getLine2()->setPercentPtr(&percent);
+
+    len = start1 + start2 - 1;
     stop = 0;
-    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, start2, start2-start1, &stop, &percent);
-    if(spectrum != nullptr && npackets == len) {
+    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, start2, len, &stop, &percent);
+    if(spectrum != nullptr && npackets == len)
+    {
         stack += 1.0;
         getMagnitude()->clear();
         getPhase()->clear();
-        if(false)
+        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * npackets);
+        phase_buf = (double*)realloc(phase_buf, sizeof(double) * npackets);
+        int lag = 0;
+        for (int x = 0; x < npackets; x++)
         {
-            for (int x = 0; x < npackets; x++)
-            {
-                if(spectrum[x].correlations[0].magnitude > 0) {
-                    dft[x][0] = spectrum[x].correlations[0].real;
-                    dft[x][1] = spectrum[x].correlations[0].imaginary;
-                }
+            int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() + start1;
+            for(int y = lag+1; y < _lag && y < len; y++) {
+                magnitude_buf[y] = magnitude_buf[lag];
+                phase_buf[y] = phase_buf[lag];
             }
-            fftw_execute(plan);
-            for (int x = 0; x < npackets; x++)
-            {
-                double y = x * timespan + offset;
-                stackValue(getMagnitude(), getMagnitudeStack(), x, y, correlations[x]);
-            };
-            stretch(getMagnitude());
-        } else {
-            npackets--;
-            buf = (double*)realloc(buf, sizeof(double)*npackets);
-            if(mode==TCSPC) {
-                for(int x = 0; x < npackets; x++) {
-                    double m = fmax(spectrum[x+1].correlations[0].real, spectrum[x+1].correlations[0].imaginary) / 2.0;
-                    spectrum[x+1].correlations[0].real = spectrum[x+1].correlations[0].real - m;
-                    spectrum[x+1].correlations[0].imaginary = spectrum[x+1].correlations[0].imaginary - m;
-                    spectrum[x+1].correlations[0].magnitude = sqrt(pow(spectrum[x+1].correlations[0].real, 2.0)+pow(spectrum[x+1].correlations[0].imaginary, 2.0));
-                    buf[x] = (double)spectrum[x+1].correlations[0].magnitude/pow((double)spectrum[x+1].correlations[0].real+(double)spectrum[x+1].correlations[0].imaginary, 2);
-                }
-            } else  {
-                for(int x = 0; x < npackets; x++) {
-                    complex->append(spectrum[x].correlations[0].real);
-                    complex->append(spectrum[x].correlations[0].imaginary);
-                }
+            lag = _lag;
+            if(lag < len) {
+                magnitude_buf[lag] = (double)spectrum[x].correlations[0].magnitude / pow(spectrum[x].correlations[0].real + spectrum[x].correlations[0].imaginary, 2);
+                phase_buf[lag] = (double)spectrum[x].correlations[0].phase;
             }
         }
+        plot(false, -start1, 1.0);
         free(spectrum);
     }
+    getLine1()->resetPercentPtr();
+    getLine2()->resetPercentPtr();
     scanning = false;
+}
+
+void Baseline::plot(bool success, double o, double s)
+{
+    double timespan = ahp_xc_get_sampletime();
+    offset = o * timespan;
+    if(success)
+    {
+        timespan = ahp_xc_get_sampletime() / s;
+        offset = o * timespan;
+    }
+    for (int x = 0; x < len - o; x++) {
+        stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, magnitude_buf[x]);
+        stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);
+    }
+    stretch(getMagnitude());
 }
 
 Baseline::~Baseline()

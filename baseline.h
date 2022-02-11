@@ -33,6 +33,10 @@
 #include <QSettings>
 #include <QLineSeries>
 #include <QSplineSeries>
+#include <QMapNode>
+#include <QFile>
+#include <QFileDialog>
+#include <QTextStream>
 #include <ahp_xc.h>
 #include <fftw3.h>
 #include <cmath>
@@ -52,15 +56,10 @@ class Baseline : public QWidget
         inline void setName(QString n)
         {
             name = n;
-            series->setName(n);
         }
         inline QString getName()
         {
             return name;
-        }
-        inline QLineSeries* getDots()
-        {
-            return series;
         }
         inline QLineSeries* getMagnitudes()
         {
@@ -90,28 +89,12 @@ class Baseline : public QWidget
         {
             return phaseStack;
         }
-        inline QMap<double, double>* getAverage()
-        {
-            return average;
-        }
         inline QMap<double, double>* getDark()
         {
-            return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark);
-        }
-        inline QLineSeries* getCounts()
-        {
-            return counts;
-        }
-        inline QList<double*> getCrosscorrelations()
-        {
-            return crosscorrelations;
+            return dark;
         }
         void setMode(Mode m);
         inline void setDelay(double s);
-        inline bool isActive()
-        {
-            return (active == 3);
-        }
         inline double getPercent()
         {
             return percent;
@@ -129,21 +112,46 @@ class Baseline : public QWidget
             return line2;
         }
 
+        bool isActive();
+
         void stackCorrelations();
+        void plot(bool success, double o, double s);
+        void SavePlot();
+        void TakeDark(Line* sender);
+        bool haveSetting(QString setting);
+        void removeSetting(QString setting);
+        void saveSetting(QString name, QVariant value);
+        QVariant readSetting(QString name, QVariant defaultValue);
+        inline QString readString(QString setting, QString defaultValue)
+        {
+            return readSetting(setting, defaultValue).toString();
+        }
+        inline double readDouble(QString setting, double defaultValue)
+        {
+            return readSetting(setting, defaultValue).toDouble();
+        }
+        inline int readInt(QString setting, int defaultValue)
+        {
+            return readSetting(setting, defaultValue).toInt();
+        }
+        inline bool readBool(QString setting, bool defaultValue)
+        {
+            return readSetting(setting, defaultValue).toBool();
+        }
 
     private:
-        fftw_plan plan;
-        fftw_complex *dft;
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        double *buf;
+        double *magnitude_buf;
+        double *phase_buf;
         double offset { 0.0 };
         double timespan { 1.0 };
         double stack {0.0};
         int Index;
         int start1 {0};
         int start2 {0};
+        int len {1};
         QSettings *settings;
         QString name;
         int active;
@@ -151,22 +159,15 @@ class Baseline : public QWidget
         bool threadRunning;
         int stop;
         double percent;
-        double *correlations;
         Mode mode;
         QMap<double, double>* dark;
-        QMap<double, double>* autodark;
-        QMap<double, double>* crossdark;
-        QMap<double, double>* average;
         QMap<double, double>* magnitudeStack;
         QMap<double, double>* phaseStack;
-        QLineSeries* series;
         QLineSeries* magnitude;
         QLineSeries* phase;
-        QLineSeries* counts;
         QLineSeries* magnitudes;
         QLineSeries* phases;
         QList<double>* complex;
-        QList<double*> crosscorrelations;
         Line* line1;
         Line* line2;
 };

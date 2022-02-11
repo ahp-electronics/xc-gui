@@ -108,7 +108,15 @@ class Line : public QWidget
         }
         inline double getPercent()
         {
-            return percent;
+            return *percent;
+        }
+        inline void setPercentPtr(double *ptr)
+        {
+            percent = ptr;
+        }
+        inline void resetPercentPtr()
+        {
+            percent = &localpercent;
         }
         inline double isScanning()
         {
@@ -172,21 +180,13 @@ class Line : public QWidget
         {
             return phaseStack;
         }
-        inline QMap<double, double>* getAverage()
-        {
-            return average;
-        }
         inline QMap<double, double>* getDark()
         {
-            return mode == Crosscorrelator ? (crossdark) : (mode == Autocorrelator ? (autodark) : dark);
+            return dark;
         }
         inline QLineSeries* getCounts()
         {
             return counts;
-        }
-        inline QList<double*> getCrosscorrelations()
-        {
-            return crosscorrelations;
         }
         inline dsp_stream_p getStream()
         {
@@ -205,7 +205,8 @@ class Line : public QWidget
             return &location;
         }
         void setLocation(dsp_location location);
-        double percent;
+        double *percent;
+        double localpercent;
         void setPercent();
 
 
@@ -246,15 +247,24 @@ class Line : public QWidget
         inline void moveMotorAxisTo(int axis, double value, double speed, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_goto_absolute(axis, value, speed); }
         inline void stopMotorAxis(int axis, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_stop_motion(axis, false); }
 
+        inline int getStartLine() { return start; }
+        inline int getEndLine() { return end; }
+        void TakeDark(Line* sender);
+        bool DarkTaken();
+
     private:
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
         double stack;
-        double *buf;
+        double *magnitude_buf;
+        double *phase_buf;
         double offset { 0.0 };
         double timespan { 1.0 };
         bool scalingDone { false };
+        int start { 0 };
+        int end { 1 };
+        int len { 1 };
 
         Elemental *elemental;
         QList<int> Motors;
@@ -265,7 +275,6 @@ class Line : public QWidget
         bool applymedian;
         dsp_stream_p stream;
         dsp_location location;
-        double *correlations;
         fftw_plan plan;
         fftw_complex *dft;
         bool running;
@@ -277,25 +286,24 @@ class Line : public QWidget
         int stop;
         Mode mode;
         QMap<double, double>* dark;
-        QMap<double, double>* autodark;
-        QMap<double, double>* crossdark;
-        QMap<double, double>* average;
         QMap<double, double>* magnitudeStack;
         QMap<double, double>* phaseStack;
-        QLineSeries* series;
         QLineSeries* magnitude;
         QLineSeries* phase;
-        QLineSeries* counts;
         QLineSeries* magnitudes;
         QLineSeries* phases;
-        QList<double*> crosscorrelations;
+        QLineSeries* counts;
         unsigned int line;
         int flags { 0x8 };
         double averageBottom { 0 };
         double averageTop { 1.0 };
         void getMinMax();
-
+        void plot(bool success, double o, double s);
+        void SavePlot();
     signals:
+        void savePlot();
+        void takeDark(Line* sender);
+        void clearCrosscorrelations();
         void activeStateChanged(Line* line);
 };
 

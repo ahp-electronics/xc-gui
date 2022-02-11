@@ -49,15 +49,16 @@ class Thread : public QThread
         }
         void run()
         {
+            lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
-                lastPollTime = QDateTime::currentDateTimeUtc();
                 if(lock())
                 {
+                    timer_ms = loop_ms;
+                    lastPollTime = QDateTime::currentDateTimeUtc();
                     emit threadLoop(this);
                 }
-                QThread::msleep(fmax(1, timer_ms - abs(lastPollTime.msecsTo(QDateTime::currentDateTimeUtc()))));
-                QThread::msleep(loop_ms);
+                QThread::msleep(timer_ms);
             }
         }
         bool lock()
@@ -71,6 +72,10 @@ class Thread : public QThread
         void setTimer(int timer)
         {
             timer_ms = timer;
+        }
+        void setLoop(int loop)
+        {
+            loop_ms = loop;
         }
         QObject *getParent() { return parent; }
     private:

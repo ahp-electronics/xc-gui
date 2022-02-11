@@ -44,6 +44,12 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
+static double coverage_delegate(double x, double y) {
+    (void)x;
+    (void)y;
+    return 1.0;
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -69,9 +75,9 @@ MainWindow::MainWindow(QWidget *parent)
     TimeRange = 10;
     ui->setupUi(this);
     uiThread = new Thread(this);
-    readThread = new Thread(this, 1);
-    vlbiThread = new Thread(this, 500);
-    motorThread = new Thread(this, 1000);
+    readThread = new Thread(this, 100, 100);
+    vlbiThread = new Thread(this, 4000, 1000);
+    motorThread = new Thread(this, 1000, 1000);
     Elemental::loadCatalog();
     graph = new Graph(this);
     int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
@@ -329,9 +335,9 @@ MainWindow::MainWindow(QWidget *parent)
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         getGraph()->addSeries(Lines[l]->getMagnitude());
                         getGraph()->addSeries(Lines[l]->getPhase());
+                        getGraph()->addSeries(Lines[l]->getMagnitudes());
+                        getGraph()->addSeries(Lines[l]->getPhases());
                         getGraph()->addSeries(Lines[l]->getCounts());
-                        getGraph()->addSeries(Lines[l]->getMagnitude());
-                        getGraph()->addSeries(Lines[l]->getPhase());
                         vlbi_add_node(getVLBIContext(), Lines[l]->getStream(), name.toStdString().c_str(), 0);
                         ui->Lines->addTab(Lines[l], name);
                     }
@@ -342,6 +348,8 @@ MainWindow::MainWindow(QWidget *parent)
                         {
                             QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
+                            getGraph()->addSeries(Baselines[idx]->getMagnitude());
+                            getGraph()->addSeries(Baselines[idx]->getPhase());
                         }
                     }
                     createPacket();
@@ -370,7 +378,7 @@ MainWindow::MainWindow(QWidget *parent)
         ahp_xc_packet* packet = getPacket();
         switch (getMode())
         {
-            case Crosscorrelator:
+            case Interferometer:
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = (double)packet->timestamp;
@@ -383,7 +391,6 @@ MainWindow::MainWindow(QWidget *parent)
                     lastpackettime = packettime;
                     packettime /= 1000000000.0;
                     packettime += J2000_starttime;
-                    double offset1 = 0, offset2 = 0;
                     for(int x = 0; x < Lines.count(); x++)
                     {
                         Line * line = Lines[x];
@@ -398,15 +405,15 @@ MainWindow::MainWindow(QWidget *parent)
                         Baseline * line = Baselines[x];
                         if(line->isActive())
                         {
+                            double offset1 = 0, offset2 = 0;
                             vlbi_get_offsets(getVLBIContext(), packettime, line->getLine1()->getName().toStdString().c_str(),
                                              line->getLine2()->getName().toStdString().c_str(), getRa(), getDec(), &offset1, &offset2);
-                            offset1 /= ahp_xc_get_sampletime();
-                            offset2 /= ahp_xc_get_sampletime();
-                            ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), (off_t)(offset1 * getFrequency()), offset1);
-                            ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), (off_t)(offset2 * getFrequency()), offset2);
+                            offset1 /= ahp_xc_get_packettime();
+                            offset2 /= ahp_xc_get_packettime();
+                            ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), offset1, 0);
+                            ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), offset2, 0);
                             line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
-                            line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() /
-                                                      2].imaginary);
+                            line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
                         }
                         else
                         {
@@ -452,20 +459,20 @@ MainWindow::MainWindow(QWidget *parent)
                                 }
                                 switch (y)
                                 {
-                                    case 0:
-                                        if(Lines[x]->showCounts())
-                                            counts[y]->append(packettime, (double)packet->counts[x] * 1000000.0 / ahp_xc_get_packettime());
-                                        break;
-                                    case 1:
-                                        if(Lines[x]->showAutocorrelations())
-                                        {
-                                            counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].imaginary /
-                                                              packet->autocorrelations[x].correlations[0].counts);
-                                            counts[y + 1]->append(packettime, packet->autocorrelations[x].correlations[0].phase);
-                                        }
-                                        break;
-                                    default:
-                                        break;
+                                case 0:
+                                    if(Lines[x]->showCounts())
+                                        counts[y]->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
+                                    break;
+                                case 1:
+                                    if(Lines[x]->showAutocorrelations())
+                                        counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude * M_PI * 2 / pow(packet->autocorrelations[x].correlations[0].real+packet->autocorrelations[x].correlations[0].imaginary, 2));
+                                    break;
+                                case 2:
+                                    if(Lines[x]->showAutocorrelations())
+                                        counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].phase);
+                                    break;
+                                default:
+                                    break;
                                 }
                             }
                             else
@@ -476,7 +483,7 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                 }
                 break;
-            case TCSPC:
+            case Crosscorrelator:
                 for(int x = 0; x < Baselines.count(); x++)
                 {
                     Baseline * line = Baselines[x];
@@ -487,7 +494,6 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 break;
             case Autocorrelator:
-            case Spectrograph:
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line * line = Lines[x];
@@ -511,10 +517,8 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
-        if(getMode() != Crosscorrelator)
-        {
+        if(getMode() != Interferometer)
             return;
-        }
         double radec[3] = { Ra, Dec, 0.0};
         for(int i  = 0; i < Baselines.count(); i++)
         {
@@ -522,8 +526,10 @@ MainWindow::MainWindow(QWidget *parent)
             if(line->getBuffer()->count() > 0)
                 vlbi_set_baseline_buffer(getVLBIContext(), line->getLine1()->getName().toStdString().c_str(),
                                          line->getLine2()->getName().toStdString().c_str(), (fftw_complex*)line->getBuffer()->toVector().data(),
-                                         line->getBuffer()->count());
+                                         line->getBuffer()->count() / 2);
         }
+        vlbi_get_uv_plot(getVLBIContext(), "coverage", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
+                         getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, coverage_delegate);
         vlbi_get_uv_plot(getVLBIContext(), "phase", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
                          getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate);
         vlbi_get_uv_plot(getVLBIContext(), "magnitude", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
@@ -532,18 +538,25 @@ MainWindow::MainWindow(QWidget *parent)
         dsp_stream_p idft_stream = vlbi_get_model(getVLBIContext(), "idft");
         dsp_stream_p magnitude_stream = vlbi_get_model(getVLBIContext(), "magnitude");
         dsp_stream_p phase_stream = vlbi_get_model(getVLBIContext(), "phase");
+        dsp_stream_p coverage_stream = vlbi_get_model(getVLBIContext(), "coverage");
         QImage *coverage = getGraph()->getCoverage();
         QImage *idft = getGraph()->getIdft();
-        QImage *raw = getGraph()->getRaw();
+        QImage *magnitude = getGraph()->getMagnitude();
+        QImage *phase = getGraph()->getPhase();
         dsp_buffer_stretch(idft_stream->buf, idft_stream->len, 0.0, 255.0);
-        dsp_buffer_stretch(magnitude_stream->buf, idft_stream->len, 0.0, 255.0);
-        dsp_buffer_stretch(phase_stream->buf, idft_stream->len, 0.0, 255.0);
+        dsp_buffer_stretch(coverage_stream->buf, coverage_stream->len, 0.0, 255.0);
+        dsp_buffer_stretch(magnitude_stream->buf, magnitude_stream->len, 0.0, 255.0);
+        dsp_buffer_stretch(phase_stream->buf, phase_stream->len, 0.0, 255.0);
         dsp_buffer_1sub(idft_stream, 255.0);
+        dsp_buffer_1sub(coverage_stream, 255.0);
         dsp_buffer_1sub(magnitude_stream, 255.0);
         dsp_buffer_1sub(phase_stream, 255.0);
-        dsp_buffer_copy(magnitude_stream->buf, coverage->bits(), magnitude_stream->len);
-        dsp_buffer_copy(phase_stream->buf, raw->bits(), phase_stream->len);
+        dsp_buffer_copy(coverage_stream->buf, coverage->bits(), coverage_stream->len);
+        dsp_buffer_copy(magnitude_stream->buf, magnitude->bits(), magnitude_stream->len);
+        dsp_buffer_copy(phase_stream->buf, phase->bits(), phase_stream->len);
         dsp_buffer_copy(idft_stream->buf, idft->bits(), idft_stream->len);
+        dsp_stream_free_buffer(coverage_stream);
+        dsp_stream_free(coverage_stream);
         dsp_stream_free_buffer(magnitude_stream);
         dsp_stream_free(magnitude_stream);
         dsp_stream_free_buffer(phase_stream);
@@ -569,6 +582,7 @@ MainWindow::MainWindow(QWidget *parent)
         }
         thread->unlock();
     });
+    resize(1280, 720);
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)

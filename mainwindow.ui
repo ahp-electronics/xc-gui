@@ -98,11 +98,6 @@
     </item>
     <item>
      <property name="text">
-      <string>Spectrograph</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
       <string>Autocorrelator</string>
      </property>
     </item>
@@ -113,7 +108,7 @@
     </item>
     <item>
      <property name="text">
-      <string>TCSPC</string>
+      <string>Interferometer</string>
      </property>
     </item>
    </widget>

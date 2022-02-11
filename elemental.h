@@ -18,8 +18,10 @@ class Elemental : public QObject
         Thread *scanThread;
         dsp_stream_p stream;
         QStringList catalogPath {QStringList(VLBI_CATALOG_PATH)};
-        double offset;
-        double scale;
+
+        bool success { false };
+        double offset { 0.0 };
+        double scale { 1.0 };
         int sample {5};
         int maxDots {10};
         int decimals { 0 };
@@ -29,6 +31,8 @@ class Elemental : public QObject
         explicit Elemental(QObject *parent = nullptr);
         ~Elemental();
 
+        void run();
+        void finish();
         static dsp_stream_p reference;
         static QList <dsp_stream_p> elements;
 

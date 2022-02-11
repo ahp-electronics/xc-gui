@@ -34,10 +34,9 @@
 enum Mode
 {
     Counter = 0,
-    Spectrograph,
     Autocorrelator,
     Crosscorrelator,
-    TCSPC
+    Interferometer
 };
 
 enum Scale

@@ -78,7 +78,8 @@ class Graph : public QWidget
         inline int getPlotHeight() { return plot_h; }
         inline void setPlotWidth(int value) {  plot_w = value; }
         inline void setPlotHeight(int value) { plot_h = value; }
-        inline QImage *getRaw() { return &raw; }
+        inline QImage *getMagnitude() { return &magnitude; }
+        inline QImage *getPhase() { return &phase; }
         inline QImage *getCoverage() { return &coverage; }
         inline QImage *getIdft() { return &idft; }
         inline void setGnssPortFD(int fd) { gnssFD.uart = fd; }
@@ -126,15 +127,18 @@ class Graph : public QWidget
         double Longitude, Latitude, Elevation;
         double Ra, Dec;
         QImage idft;
-        QImage raw;
+        QImage magnitude;
+        QImage phase;
         QImage coverage;
         QGroupBox *correlator;
         QLabel *infoLabel;
         QLabel *idftLabel;
-        QLabel *rawLabel;
+        QLabel *magnitudeLabel;
+        QLabel *phaseLabel;
         QLabel *coverageLabel;
         QLabel *idftView;
-        QLabel *rawView;
+        QLabel *magnitudeView;
+        QLabel *phaseView;
         QLabel *coverageView;
         int plot_w, plot_h;
         QValueAxis *axisX;

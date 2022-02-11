@@ -47,18 +47,24 @@ Graph::Graph(QWidget *parent, QString name) :
     coverage = initGrayPicture(getPlotWidth(), getPlotHeight());
     coverageView = new QLabel(correlator);
     coverageView->setVisible(true);
-    raw = initGrayPicture(getPlotWidth(), getPlotHeight());
-    rawView = new QLabel(correlator);
-    rawView->setVisible(true);
+    magnitude = initGrayPicture(getPlotWidth(), getPlotHeight());
+    magnitudeView = new QLabel(correlator);
+    magnitudeView->setVisible(true);
+    phase = initGrayPicture(getPlotWidth(), getPlotHeight());
+    phaseView = new QLabel(correlator);
+    phaseView->setVisible(true);
     idft = initGrayPicture(getPlotWidth(), getPlotHeight());
     idftView = new QLabel(correlator);
     idftView->setVisible(true);
     coverageLabel = new QLabel(coverageView);
     coverageLabel->setVisible(true);
     coverageLabel->setText("Coverage");
-    rawLabel = new QLabel(rawView);
-    rawLabel->setVisible(true);
-    rawLabel->setText("Raw");
+    magnitudeLabel = new QLabel(magnitudeView);
+    magnitudeLabel->setVisible(true);
+    magnitudeLabel->setText("Raw");
+    phaseLabel = new QLabel(phaseView);
+    phaseLabel->setVisible(true);
+    phaseLabel->setText("Raw");
     idftLabel = new QLabel(idftView);
     idftLabel->setVisible(true);
     idftLabel->setText("IDFT");
@@ -195,7 +201,7 @@ void Graph::deinitGPS()
 void Graph::setMode(Mode m)
 {
     mode = m;
-    if(mode == Crosscorrelator)
+    if(mode == Interferometer)
     {
         correlator->setVisible(true);
         chart->setVisible(false);
@@ -227,10 +233,11 @@ void Graph::clearSeries()
 
 void Graph::paint()
 {
-    if(mode == Crosscorrelator)
+    if(mode == Interferometer)
     {
         coverageView->setPixmap(QPixmap::fromImage(coverage.scaled(coverageView->geometry().size())));
-        rawView->setPixmap(QPixmap::fromImage(raw.scaled(rawView->geometry().size())));
+        magnitudeView->setPixmap(QPixmap::fromImage(magnitude.scaled(magnitudeView->geometry().size())));
+        phaseView->setPixmap(QPixmap::fromImage(phase.scaled(phaseView->geometry().size())));
         idftView->setPixmap(QPixmap::fromImage(idft.scaled(idftView->geometry().size())));
     }
     else
@@ -297,10 +304,12 @@ void Graph::resizeEvent(QResizeEvent *event)
     correlator->setGeometry(0, 0, width(), height());
     int size = (correlator->width() - 260) / 3;
     coverageView->setGeometry(5, 40, size, size);
-    rawView->setGeometry(size + 10, 40, size, size);
+    magnitudeView->setGeometry(size + 10, 40, size, size);
+    phaseView->setGeometry(size + 10, 40, size, size);
     idftView->setGeometry(size * 2 + 15, 40, size, size);
     coverageLabel->setGeometry(0,0, size, 30);
-    rawLabel->setGeometry(0,0, size, 30);
+    magnitudeLabel->setGeometry(0,0, size, 30);
+    phaseLabel->setGeometry(0,0, size, 30);
     idftLabel->setGeometry(0,0, size, 30);
     infoLabel->setGeometry(correlator->width() - 240, 40, 230, 150);
 }

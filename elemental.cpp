@@ -13,7 +13,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
     connect(scanThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=] (Thread* thread) {
         Elemental* parent = (Elemental*)thread->getParent();
         dsp_stream_p stream = parent->getStream();
-        bool success = false;
+        success = false;
         offset = 0.0;
         scale = 1.0;
         if(stream->stars_count > 2 && reference->stars_count > 2) {
@@ -88,14 +88,26 @@ dsp_align_info *Elemental::stats(QString name)
     return nullptr;
 }
 
-void Elemental::setBuffer(double * buf, int len)
+void Elemental::run()
 {
-    stream->sizes[0] = len;
-    stream->len = len;
-    dsp_stream_alloc_buffer(stream, stream->len);
-    dsp_buffer_copy(buf, stream->buf, stream->len);
     vlbi_astro_scan_spectrum(stream, getSampleSize());
     pwarn("Found %d lines\n", stream->stars_count);
     if(!scanThread->isRunning())
         scanThread->start();
+}
+
+void Elemental::finish()
+{
+    emit scanFinished(success, offset, scale);
+}
+
+void Elemental::setBuffer(double * buf, int len)
+{
+    success = false;
+    offset = 0.0;
+    scale = 1.0;
+    stream->sizes[0] = len;
+    stream->len = len;
+    dsp_stream_alloc_buffer(stream, stream->len);
+    dsp_buffer_copy(buf, stream->buf, stream->len);
 }

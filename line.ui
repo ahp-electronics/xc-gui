@@ -77,6 +77,19 @@
      <string>Edge count</string>
     </property>
    </widget>
+   <widget class="QCheckBox" name="flag4">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>110</y>
+      <width>121</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Differential</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="Correlator">
    <property name="enabled">
@@ -198,6 +211,9 @@
     </property>
    </widget>
    <widget class="QSpinBox" name="MaxDots">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>300</x>
@@ -211,6 +227,9 @@
     </property>
    </widget>
    <widget class="QSpinBox" name="Decimals">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>300</x>
@@ -224,6 +243,9 @@
     </property>
    </widget>
    <widget class="QSpinBox" name="MinScore">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>300</x>
@@ -234,6 +256,9 @@
     </property>
    </widget>
    <widget class="QLabel" name="maxdots">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -247,6 +272,9 @@
     </property>
    </widget>
    <widget class="QLabel" name="decimals">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -260,6 +288,9 @@
     </property>
    </widget>
    <widget class="QLabel" name="minscore">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -273,6 +304,9 @@
     </property>
    </widget>
    <widget class="QSpinBox" name="SampleSize">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>300</x>
@@ -283,6 +317,9 @@
     </property>
    </widget>
    <widget class="QLabel" name="samplesize">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -401,6 +438,9 @@
     </property>
    </widget>
    <widget class="QCheckBox" name="ElementalAlign">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>230</x>
