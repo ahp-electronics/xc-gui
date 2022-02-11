@@ -37,10 +37,7 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <cmath>
-#include <ahp_gt.h>
-#include <ahp_xc.h>
 #include "types.h"
-#include "threads.h"
 #include "baseline.h"
 #include "elemental.h"
 

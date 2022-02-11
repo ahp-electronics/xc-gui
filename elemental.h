@@ -1,12 +1,10 @@
 #ifndef ELEMENTAL_H
 #define ELEMENTAL_H
 
-#include "types.h"
 #include <QFileInfo>
 #include <QObject>
 #include <QDir>
 #include <QMap>
-#include "threads.h"
 #include "types.h"
 
 class Elemental : public QObject

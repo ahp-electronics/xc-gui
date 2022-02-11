@@ -40,7 +40,6 @@
 #include <QThreadPool>
 #include <QDir>
 #include <fcntl.h>
-#include <vlbi.h>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 

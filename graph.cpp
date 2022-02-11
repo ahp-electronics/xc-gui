@@ -24,7 +24,6 @@
 */
 
 #include "graph.h"
-#include <vlbi.h>
 #include <cfloat>
 #include <QTextFormat>
 #include "ahp_xc.h"
@@ -108,7 +107,7 @@ QString Graph::toHMS(double hms)
 }
 
 void Graph::updateInfo()
-{/*
+{
     if(getGnssHandle() > -1) {
         int32_t latitude, longitude, elevation;
         uGnssPosGet(getGnssHandle(), &latitude, &longitude, &elevation, NULL, NULL, NULL, NULL, NULL);
@@ -133,11 +132,11 @@ void Graph::updateInfo()
     label += "\n";
     label += QString("LST: ") + toHMS(getLST());
     label += "\n";
-    infoLabel->setText(label);*/
+    infoLabel->setText(label);
 }
 
 bool Graph::initGPS()
-{/*
+{
     if(!uGnssInit()) {
         setGnssHandle(uGnssAdd(U_GNSS_MODULE_TYPE_M8, U_GNSS_TRANSPORT_NMEA_UART, getGnssPortHandle(), -1, false));
         uGnssCfgSetDynamic(getGnssHandle(), U_GNSS_DYNAMIC_STATIONARY);
@@ -189,14 +188,14 @@ bool Graph::initGPS()
         }
         if(uGnssUtilUbxTransparentSendReceive(getGnssHandle(), (char*)&cmd, sizeof(cmd), (char*)&cmd, sizeof(cmd)) > -1)
             return true;
-    }*/
+    }
     return false;
 }
 
 void Graph::deinitGPS()
-{/*
+{
     uGnssRemove(getGnssHandle());
-    uGnssDeinit();*/
+    uGnssDeinit();
 }
 
 void Graph::setMode(Mode m)

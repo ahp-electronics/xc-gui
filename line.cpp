@@ -26,7 +26,6 @@
 #include "line.h"
 #include "ui_line.h"
 #include <fftw3.h>
-#include <dsp.h>
 #include <QMapNode>
 #include <QFile>
 #include <QFileDialog>

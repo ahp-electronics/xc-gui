@@ -26,10 +26,13 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <thread>
 #include <QThread>
 #include <QMainWindow>
+#include <ahp_gt.h>
 #include <ahp_xc.h>
+#include <vlbi.h>
+#include "threads.h"
+#include <fftw3.h>
 
 enum Mode
 {

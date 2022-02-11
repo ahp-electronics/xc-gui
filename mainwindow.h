@@ -33,12 +33,10 @@
 #include <QSerialPort>
 #include <QSettings>
 #include <QMutex>
-#include <ahp_xc.h>
 #include "graph.h"
 #include "line.h"
 #include "baseline.h"
 #include "types.h"
-#include "threads.h"
 
 
 QT_BEGIN_NAMESPACE

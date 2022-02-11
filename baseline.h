@@ -37,11 +37,8 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QTextStream>
-#include <ahp_xc.h>
-#include <fftw3.h>
 #include <cmath>
 #include "types.h"
-#include "threads.h"
 
 using namespace QtCharts;
 class Line;
