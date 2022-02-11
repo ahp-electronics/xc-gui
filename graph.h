@@ -35,8 +35,7 @@
 #include <QChartView>
 #include <QLineSeries>
 #include <QValueAxis>
-#include <QVBoxLayout>
-#include <vlbi.h>/*
+#include <QVBoxLayout>/*
 #include <u_gnss_type.h>
 #include <u_gnss_module_type.h>
 #include <u_gnss_util.h>
@@ -88,26 +87,10 @@ class Graph : public QWidget
         inline void setGnssHandle(int handle) { gnssHandle = handle; }
         inline int getGnssHandle() { return gnssHandle; }
 
-        inline double getJ2000Time() {
-            QDateTime now = QDateTime::currentDateTimeUtc();
-            timespec ts = vlbi_time_string_to_timespec ((char*)now.toString(Qt::DateFormat::ISODate).toStdString().c_str());
-            return vlbi_time_timespec_to_J2000time(ts);
-        }
-        inline double getLST() {
-            return vlbi_time_J2000time_to_lst(getJ2000Time(), Longitude);
-        }
-        inline double getAltitude() {
-            double alt, az;
-            double ha = vlbi_astro_get_local_hour_angle(getLST(), Ra);
-            vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
-            return alt;
-        }
-        inline double getAzimuth() {
-            double alt, az;
-            double ha = vlbi_astro_get_local_hour_angle(getLST(), Ra);
-            vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
-            return az;
-        }
+        double getJ2000Time();
+        double getLST();
+        double getAltitude();
+        double getAzimuth();
         inline void setRa(double ra) { Ra = ra; }
         inline void setDec(double dec) { Dec = dec; }
 

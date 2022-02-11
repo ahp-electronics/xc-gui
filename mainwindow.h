@@ -34,7 +34,6 @@
 #include <QSettings>
 #include <QMutex>
 #include <ahp_xc.h>
-#include <vlbi.h>
 #include "graph.h"
 #include "line.h"
 #include "baseline.h"
@@ -142,19 +141,7 @@ class MainWindow : public QMainWindow
                 }
             }
         }
-        inline void resetTimestamp()
-        {
-            xc_capture_flags cur = ahp_xc_get_capture_flags();
-            ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_RESET_TIMESTAMP));
-            start = QDateTime::currentDateTimeUtc();
-            lastpackettime = 0;
-            ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_RESET_TIMESTAMP));
-            timespec ts = vlbi_time_string_to_timespec((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
-            J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
-            for(int i = 0; i < Lines.count(); i++)
-                Lines[i]->getStream()->starttimeutc = ts;
-
-        }
+        void resetTimestamp();
         QDateTime start;
         Thread *readThread;
         Thread *uiThread;

@@ -1,4 +1,5 @@
 #include "elemental.h"
+#include <vlbi.h>
 
 QList <dsp_stream_p> Elemental::elements = QList <dsp_stream_p>();
 dsp_stream_p Elemental::reference = NULL;

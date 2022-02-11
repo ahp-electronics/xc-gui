@@ -37,7 +37,6 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <cmath>
-#include <vlbi.h>
 #include <ahp_gt.h>
 #include <ahp_xc.h>
 #include "types.h"

@@ -6,7 +6,6 @@
 #include <QObject>
 #include <QDir>
 #include <QMap>
-#include <vlbi.h>
 #include "threads.h"
 #include "types.h"
 

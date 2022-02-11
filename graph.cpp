@@ -24,6 +24,7 @@
 */
 
 #include "graph.h"
+#include <vlbi.h>
 #include <cfloat>
 #include <QTextFormat>
 #include "ahp_xc.h"
@@ -295,6 +296,30 @@ void Graph::paint()
         axis->setRange(mn - diff * 0.2, mx + diff * 0.2);
     }
     update(rect());
+}
+
+double Graph::getJ2000Time() {
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    timespec ts = vlbi_time_string_to_timespec ((char*)now.toString(Qt::DateFormat::ISODate).toStdString().c_str());
+    return vlbi_time_timespec_to_J2000time(ts);
+}
+
+double Graph::getLST() {
+    return vlbi_time_J2000time_to_lst(getJ2000Time(), Longitude);
+}
+
+double Graph::getAltitude() {
+    double alt, az;
+    double ha = vlbi_astro_get_local_hour_angle(getLST(), Ra);
+    vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
+    return alt;
+}
+
+double Graph::getAzimuth() {
+    double alt, az;
+    double ha = vlbi_astro_get_local_hour_angle(getLST(), Ra);
+    vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
+    return az;
 }
 
 void Graph::resizeEvent(QResizeEvent *event)
