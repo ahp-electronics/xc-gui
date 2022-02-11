@@ -37,7 +37,7 @@ find_package(AHPXC REQUIRED)
 find_package(AHPGT REQUIRED)
 find_package(VLBI REQUIRED)
 find_package(FFTW3 REQUIRED)
-find_package(UBX REQUIRED)
+#find_package(UBX REQUIRED)
 find_package(M REQUIRED)
 
 include_directories(${VLBI_INCLUDE_DIR})
