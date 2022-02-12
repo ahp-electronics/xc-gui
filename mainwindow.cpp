@@ -255,7 +255,7 @@ MainWindow::MainWindow(QWidget *parent)
                     gpsFD = gps_socket.socketDescriptor();
                     if(gpsFD > -1)
                     {
-                        //getGraph()->setGnssPortFD(gpsFD);
+                        getGraph()->setGnssPortFD(gpsFD);
                     }
                 }
                 else
@@ -269,7 +269,7 @@ MainWindow::MainWindow(QWidget *parent)
                 gpsFD = open(gpsport.toUtf8(), O_RDWR);
                 if(gpsFD > -1)
                 {
-                    //getGraph()->setGnssPortFD(gpsFD);
+                    getGraph()->setGnssPortFD(gpsFD);
                 }
             }
             if(getGraph()->initGPS())

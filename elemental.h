@@ -14,8 +14,6 @@ class Elemental : public QObject
         int matches;
         Thread *scanThread;
         dsp_stream_p stream;
-        QStringList catalogPath {QStringList(VLBI_CATALOG_PATH)};
-
         bool success { false };
         double offset { 0.0 };
         double scale { 1.0 };
@@ -41,7 +39,6 @@ class Elemental : public QObject
         inline int getMinScore() { return minScore; }
         inline double getOffset() { return offset; }
         inline double getScale() { return scale; }
-        inline void setCatalogPath(QString path) { catalogPath.append(path); }
         void setBuffer(double * buf, int len);
         inline void setSampleSize(int value) { sample = value; }
         inline int getSampleSize() { return sample; }
@@ -49,7 +46,7 @@ class Elemental : public QObject
         void scan();
         QStringList getElementNames();
         dsp_align_info *stats(QString name);
-        static void loadCatalog(QString path = VLBI_CATALOG_PATH);
+        static void loadCatalog();
         static void unloadCatalog();
         inline QList <dsp_stream_p> getCatalog() { return Elemental::elements; }
 

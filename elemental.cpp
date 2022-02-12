@@ -76,12 +76,18 @@ QStringList Elemental::getElementNames()
     return names;
 }
 
-void Elemental::loadCatalog(QString path)
+void Elemental::loadCatalog()
 {
     unloadCatalog();
     dsp_stream_p *catalog = nullptr;
     int catalog_size = 0;
-    vlbi_astro_load_spectra_catalog((char*)path.toStdString().c_str(), &catalog, &catalog_size);
+    QString catalogPath =
+#ifdef _WIN32
+    QDir::currentPath().append("/cat/");
+#else
+    VLBI_CATALOG_PATH;
+#endif
+    vlbi_astro_load_spectra_catalog((char*)catalogPath.toStdString().c_str(), &catalog, &catalog_size);
     reference = vlbi_astro_create_reference_catalog(catalog, catalog_size);
     for(int c = 0; c < catalog_size; c++) {
         elements.append(catalog[c]);

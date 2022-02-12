@@ -93,7 +93,7 @@ endif(ANDROID)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_SOURCE_DIR}/xc-gui.iss )
 
-target_link_libraries(xc-gui PRIVATE ${M_LIB} ${CMAKE_THREAD_LIBS_INIT} ${VLBI_LIBRARIES} ${UBX_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${M_LIB} ${CMAKE_THREAD_LIBS_INIT} ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network ${UBX_LIBRARIES})
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
 install(FILES xc-gui.png DESTINATION /usr/share/icons)
 install(FILES xc-gui.desktop DESTINATION /usr/share/applications)
