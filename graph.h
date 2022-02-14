@@ -35,14 +35,14 @@
 #include <QChartView>
 #include <QLineSeries>
 #include <QValueAxis>
-#include <QVBoxLayout>
+#include <QVBoxLayout>/*
 #include <u_error_common.h>
 #include <u_gnss_type.h>
 #include <u_gnss_module_type.h>
 #include <u_gnss_util.h>
 #include <u_gnss_cfg.h>
 #include <u_gnss_pos.h>
-#include <u_gnss.h>
+#include <u_gnss.h>*/
 #include "types.h"
 
 using namespace QtCharts;
@@ -80,9 +80,9 @@ class Graph : public QWidget
         inline QImage *getPhase() { return &phase; }
         inline QImage *getCoverage() { return &coverage; }
         inline QImage *getIdft() { return &idft; }
-        inline void setGnssPortFD(int fd) { gnssFD.uart = fd; }
-        inline int getGnssPortFD() { return gnssFD.uart; }
-        inline uGnssTransportHandle_t getGnssPortHandle() { return gnssFD; }
+        //inline void setGnssPortFD(int fd) { gnssFD.uart = fd; }
+        //inline int getGnssPortFD() { return gnssFD.uart; }
+        //inline uGnssTransportHandle_t getGnssPortHandle() { return gnssFD; }
         inline void setGnssHandle(int handle) { gnssHandle = handle; }
         inline int getGnssHandle() { return gnssHandle; }
 
@@ -97,7 +97,7 @@ class Graph : public QWidget
         QString toDMS(double dms);
 
     private:
-        uGnssTransportHandle_t gnssFD { .uart = -1 };
+        //uGnssTransportHandle_t gnssFD { .uart = -1 };
         int gnssHandle { -1 };
         Mode mode { Counter };
         inline QImage initGrayPicture(int w, int h) {

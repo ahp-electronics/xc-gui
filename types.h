@@ -39,7 +39,7 @@ enum Mode
     Counter = 0,
     Autocorrelator,
     Crosscorrelator,
-    Interferometer
+    Holograph
 };
 
 enum Scale

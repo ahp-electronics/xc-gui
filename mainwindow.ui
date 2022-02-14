@@ -106,11 +106,6 @@
       <string>Crosscorrelator</string>
      </property>
     </item>
-    <item>
-     <property name="text">
-      <string>Interferometer</string>
-     </property>
-    </item>
    </widget>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
