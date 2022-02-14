@@ -201,7 +201,7 @@ void Graph::deinitGPS()
 void Graph::setMode(Mode m)
 {
     mode = m;
-    if(mode == Interferometer)
+    if(mode == Holograph)
     {
         correlator->setVisible(true);
         chart->setVisible(false);
@@ -233,7 +233,7 @@ void Graph::clearSeries()
 
 void Graph::paint()
 {
-    if(mode == Interferometer)
+    if(mode == Holograph)
     {
         coverageView->setPixmap(QPixmap::fromImage(coverage.scaled(coverageView->geometry().size())));
         magnitudeView->setPixmap(QPixmap::fromImage(magnitude.scaled(magnitudeView->geometry().size())));

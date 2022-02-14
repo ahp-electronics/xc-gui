@@ -440,7 +440,7 @@ void Line::paint()
     stop = !isActive();
     if(ui->Progress != nullptr)
     {
-        if(mode != Counter && mode != Interferometer)
+        if(mode != Counter && mode != Holograph)
         {
             if(getPercent() > ui->Progress->minimum() && localpercent < ui->Progress->maximum())
                 ui->Progress->setValue(getPercent());

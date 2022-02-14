@@ -377,7 +377,7 @@ MainWindow::MainWindow(QWidget *parent)
         ahp_xc_packet* packet = getPacket();
         switch (getMode())
         {
-            case Interferometer:
+            case Holograph:
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = (double)packet->timestamp;
@@ -516,7 +516,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
-        if(getMode() != Interferometer)
+        if(getMode() != Holograph)
             return;
         double radec[3] = { Ra, Dec, 0.0};
         for(int i  = 0; i < Baselines.count(); i++)
