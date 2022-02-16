@@ -248,6 +248,9 @@ class Line : public QWidget
         void TakeDark(Line* sender);
         bool DarkTaken();
 
+        void gotoRaDec(double ra, double dec);
+        void startTracking(double ra_rate, double dec_rate);
+
     private:
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);

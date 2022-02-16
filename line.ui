@@ -453,6 +453,35 @@
      <string>Elemental align</string>
     </property>
    </widget>
+   <widget class="QLabel" name="label_13">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>30</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Motor index:</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="motor_index">
+    <property name="geometry">
+     <rect>
+      <x>500</x>
+      <y>30</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>256</number>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="Counter">
    <property name="enabled">

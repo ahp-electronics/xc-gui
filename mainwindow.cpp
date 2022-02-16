@@ -90,8 +90,6 @@ MainWindow::MainWindow(QWidget *parent)
     settings->beginGroup("Connection");
     ui->XCPort->clear();
     ui->XCPort->addItem(settings->value("xc_connection", "no connection").toString());
-    ui->GpsPort->clear();
-    ui->GpsPort->addItem(settings->value("gps_connection", "no connection").toString());
     ui->MotorPort->clear();
     ui->MotorPort->addItem(settings->value("motor_connection", "no connection").toString());
     QList<QSerialPortInfo> devices = QSerialPortInfo::availablePorts();
@@ -106,19 +104,14 @@ MainWindow::MainWindow(QWidget *parent)
             ports[i].portName();
         if(portname != ui->XCPort->itemText(0))
             ui->XCPort->addItem(portname);
-        if(portname != ui->GpsPort->itemText(0))
-            ui->GpsPort->addItem(portname);
         if(portname != ui->MotorPort->itemText(0))
             ui->MotorPort->addItem(portname);
     }
     if(ui->XCPort->itemText(0) != "no connection")
         ui->XCPort->addItem("no connection");
-    if(ui->GpsPort->itemText(0) != "no connection")
-        ui->GpsPort->addItem("no connection");
     if(ui->MotorPort->itemText(0) != "no connection")
         ui->MotorPort->addItem("no connection");
     ui->XCPort->setCurrentIndex(0);
-    ui->GpsPort->setCurrentIndex(0);
     ui->MotorPort->setCurrentIndex(0);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
@@ -176,7 +169,6 @@ MainWindow::MainWindow(QWidget *parent)
             gps_socket.disconnectFromHost();
         }
         ahp_xc_disconnect();
-        getGraph()->deinitGPS();
         settings->endGroup();
         connected = false;
     });
@@ -189,7 +181,6 @@ MainWindow::MainWindow(QWidget *parent)
         QString xcport, motorport, gpsport;
         xcport = ui->XCPort->currentText();
         motorport = ui->MotorPort->currentText();
-        gpsport = ui->GpsPort->currentText();
         settings->beginGroup("Connection");
         motorFD = -1;
         if(motorport == "no connection")
@@ -233,47 +224,6 @@ MainWindow::MainWindow(QWidget *parent)
                 if(motorFD != -1)
                     settings->setValue("motor_connection", motorport);
             }
-        }
-        gpsFD = -1;
-        if(gpsport == "no connection")
-        {
-            settings->setValue("gps_connection", gpsport);
-        }
-        else
-        {
-            if(gpsport.contains(':'))
-            {
-                address = gpsport.split(":")[0];
-                port = gpsport.split(":")[1].toInt();
-                ui->Connect->setEnabled(false);
-                update();
-                gps_socket.connectToHost(address, port);
-                gps_socket.waitForConnected();
-                if(gps_socket.isValid())
-                {
-                    gps_socket.setReadBufferSize(4096);
-                    gpsFD = gps_socket.socketDescriptor();
-                    if(gpsFD > -1)
-                    {
-                        //getGraph()->setGnssPortFD(gpsFD);
-                    }
-                }
-                else
-                {
-                    ui->Connect->setEnabled(true);
-                    update();
-                }
-            }
-            else
-            {
-                gpsFD = open(gpsport.toUtf8(), O_RDWR);
-                if(gpsFD > -1)
-                {
-                    //getGraph()->setGnssPortFD(gpsFD);
-                }
-            }
-            if(getGraph()->initGPS())
-                settings->setValue("gps_connection", gpsport);
         }
         xcFD = -1;
         if(xcport == "no connection")
@@ -370,6 +320,16 @@ MainWindow::MainWindow(QWidget *parent)
             }
             else
                 ahp_xc_disconnect();
+        }
+    });
+    connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec),
+            [ = ](double ra, double dec)
+    {
+        ra *= M_PI / 12.0;
+        dec *= M_PI / 180.0;
+        for(int x = 0; x < Lines.count(); x++)
+        {
+            Lines[x]->gotoRaDec(ra, dec);
         }
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)

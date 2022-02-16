@@ -106,15 +106,19 @@ QString Graph::toHMS(double hms)
     return QString::number(h) + QString(":") + QString::number(m) + QString(":") + QString::number(s);
 }
 
+double Graph::fromHMSorDMS(QString dms)
+{
+    double d;
+    QStringList deg = dms.split("°");
+    d = deg[0].toDouble();
+    deg = deg[1].split("'");
+    d += deg[0].toDouble() / 60.0;
+    d += deg[1].replace("\"", "").toDouble() / 3600.0;
+    return d;
+}
+
 void Graph::updateInfo()
-{/*
-    if(getGnssHandle() > -1) {
-        int32_t latitude, longitude, elevation;
-        uGnssPosGet(getGnssHandle(), &latitude, &longitude, &elevation, NULL, NULL, NULL, NULL, NULL);
-        Latitude = (double)latitude / 10000000.0;
-        Longitude = (double)longitude / 10000000.0;
-        Elevation = (double)elevation / 10000000.0;
-    }
+{
     QString label = "";
     label += QString("UTC: ") + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate);
     label += "\n";
@@ -132,70 +136,7 @@ void Graph::updateInfo()
     label += "\n";
     label += QString("LST: ") + toHMS(getLST());
     label += "\n";
-    infoLabel->setText(label);*/
-}
-
-bool Graph::initGPS()
-{/*
-    if(!uGnssInit()) {
-        setGnssHandle(uGnssAdd(U_GNSS_MODULE_TYPE_M8, U_GNSS_TRANSPORT_NMEA_UART, getGnssPortHandle(), -1, false));
-        uGnssCfgSetDynamic(getGnssHandle(), U_GNSS_DYNAMIC_STATIONARY);
-        uGnssCfgSetFixMode(getGnssHandle(), U_GNSS_FIX_MODE_3D);
-        union {
-            struct {
-                unsigned char Header[2];
-                unsigned char Class;
-                unsigned char Id;
-                unsigned short Length;
-                unsigned char headers;
-                unsigned char tpIdx;
-                unsigned char version;
-                unsigned char reserved1[2];
-                short antCableDelay;
-                short rfGroupDelay;
-                unsigned int freqPeriod;
-                unsigned int freqPeriodLock;
-                unsigned int pulseLenRatio;
-                unsigned int pulseLenRatioLock;
-                int userConfigDelay;
-                unsigned int flags;
-                unsigned char Checksum[2];
-            } msg;
-            struct {
-                unsigned char Header[2];
-                unsigned char Payload[36];
-                unsigned char Checksum[2];
-            } blocks;
-        } cmd;
-        cmd.msg.Header[0] = 0xB5;
-        cmd.msg.Header[1] = 0x62;
-        cmd.msg.Class = 0x06;
-        cmd.msg.Id = 0x31;
-        cmd.msg.Length = 32;
-        cmd.msg.tpIdx = 0;
-        cmd.msg.version = 0;
-        cmd.msg.freqPeriod = 1;
-        cmd.msg.freqPeriodLock = 10000000;
-        cmd.msg.pulseLenRatio = 0;
-        cmd.msg.pulseLenRatioLock = 0;
-        cmd.msg.userConfigDelay = 0;
-        cmd.msg.flags = 0x3f;
-        cmd.blocks.Checksum[0] = 0, cmd.blocks.Checksum[1] = 0;
-        for(int i=0;i<36;i++)
-        {
-            cmd.blocks.Checksum[0] = cmd.blocks.Checksum[0] + cmd.blocks.Payload[i];
-            cmd.blocks.Checksum[1] = cmd.blocks.Checksum[1] + cmd.blocks.Checksum[0];
-        }
-        if(uGnssUtilUbxTransparentSendReceive(getGnssHandle(), (char*)&cmd, sizeof(cmd), (char*)&cmd, sizeof(cmd)) > -1)
-            return true;
-    }*/
-    return false;
-}
-
-void Graph::deinitGPS()
-{/*
-    uGnssRemove(getGnssHandle());
-    uGnssDeinit();*/
+    infoLabel->setText(label);
 }
 
 void Graph::setMode(Mode m)

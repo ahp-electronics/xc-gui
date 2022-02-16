@@ -525,6 +525,22 @@ bool Line::DarkTaken()
     }
 }
 
+void Line::gotoRaDec(double ra, double dec)
+{
+    ahp_gt_set_address(ui->motor_index->value());
+    ahp_gt_goto_absolute(0, ra, 800);
+    ahp_gt_goto_absolute(1, dec, 800);
+}
+
+void Line::startTracking(double ra_rate, double dec_rate)
+{
+    ahp_gt_set_address(ui->motor_index->value());
+    ahp_gt_stop_motion(0, 1);
+    ahp_gt_stop_motion(1, 1);
+    ahp_gt_start_motion(0, ra_rate);
+    ahp_gt_start_motion(1, dec_rate);
+}
+
 void Line::TakeDark(Line *sender)
 {
     if(sender->DarkTaken())

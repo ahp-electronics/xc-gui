@@ -35,14 +35,7 @@
 #include <QChartView>
 #include <QLineSeries>
 #include <QValueAxis>
-#include <QVBoxLayout>/*
-#include <u_error_common.h>
-#include <u_gnss_type.h>
-#include <u_gnss_module_type.h>
-#include <u_gnss_util.h>
-#include <u_gnss_cfg.h>
-#include <u_gnss_pos.h>
-#include <u_gnss.h>*/
+#include <QVBoxLayout>
 #include "types.h"
 
 using namespace QtCharts;
@@ -63,8 +56,6 @@ class Graph : public QWidget
         void resizeEvent(QResizeEvent *event) override;
         void paint();
 
-        bool initGPS();
-        void deinitGPS();
         void updateInfo();
         void clearSeries();
         bool threadRunning;
@@ -80,21 +71,27 @@ class Graph : public QWidget
         inline QImage *getPhase() { return &phase; }
         inline QImage *getCoverage() { return &coverage; }
         inline QImage *getIdft() { return &idft; }
-        //inline void setGnssPortFD(int fd) { gnssFD.uart = fd; }
-        //inline int getGnssPortFD() { return gnssFD.uart; }
-        //inline uGnssTransportHandle_t getGnssPortHandle() { return gnssFD; }
-        inline void setGnssHandle(int handle) { gnssHandle = handle; }
-        inline int getGnssHandle() { return gnssHandle; }
 
         double getJ2000Time();
         double getLST();
         double getAltitude();
         double getAzimuth();
+
+        inline double getRa() { return Ra; }
+        inline double getDec() { return Dec; }
+        inline double getLatitude() { return Latitude; }
+        inline double getLongitude() { return Longitude; }
+        inline double getElevation() { return Elevation; }
+
         inline void setRa(double ra) { Ra = ra; }
         inline void setDec(double dec) { Dec = dec; }
+        inline void setLatitude(double lat) { Latitude = lat; }
+        inline void setLongitude(double lon) { Longitude = lon; }
+        inline void setElevation(double el) { Elevation = el; }
 
         QString toHMS(double hms);
         QString toDMS(double dms);
+        double fromHMSorDMS(QString dms);
 
     private:
         //uGnssTransportHandle_t gnssFD { .uart = -1 };
@@ -106,7 +103,7 @@ class Graph : public QWidget
             image.fill(255);
             return image;
         }
-        double Longitude, Latitude, Elevation;
+        double Latitude, Longitude, Elevation;
         double Ra, Dec;
         QImage idft;
         QImage magnitude;
@@ -127,6 +124,8 @@ class Graph : public QWidget
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
+signals:
+        void gotoRaDec(double, double);
 
 };
 
