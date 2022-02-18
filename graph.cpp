@@ -61,15 +61,57 @@ Graph::Graph(QWidget *parent, QString name) :
     coverageLabel->setText("Coverage");
     magnitudeLabel = new QLabel(magnitudeView);
     magnitudeLabel->setVisible(true);
-    magnitudeLabel->setText("Raw");
+    magnitudeLabel->setText("Magnitude");
     phaseLabel = new QLabel(phaseView);
     phaseLabel->setVisible(true);
-    phaseLabel->setText("Raw");
+    phaseLabel->setText("Phase");
     idftLabel = new QLabel(idftView);
     idftLabel->setVisible(true);
     idftLabel->setText("IDFT");
     infoLabel = new QLabel(correlator);
-    idftLabel->setVisible(true);
+    infoLabel->setVisible(true);
+    editRa = new QLineEdit(correlator);
+    editRa->setVisible(true);
+    connect(editRa, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    {
+        QString str = text;
+        str.replace(":", "");
+        if(str.length() < 6) {
+            str = str.append("000000");
+            str.remove(6, str.length()-6);
+        }
+        editRa->setText(str.remove(2,str.length()-2)+":"+str.remove(0,2).remove(2,str.length()-2)+":"+str.remove(4,str.length()-4));
+        Ra = fromHMSorDMS(editRa->text());
+    });
+    editDec = new QLineEdit(correlator);
+    editDec->setVisible(true);
+    connect(editDec, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    {
+        QString str = text;
+        str.replace(":", "");
+        if(str.length() < 6) {
+            str = str.append("000000");
+            str.remove(6, str.length()-6);
+        }
+        editDec->setText(str.remove(2,str.length()-2)+":"+str.remove(0,2).remove(2,str.length()-2)+":"+str.remove(4,str.length()-4));
+        Dec = fromHMSorDMS(editDec->text());
+    });
+    btnGoto = new QPushButton(correlator);
+    btnGoto->setText("Slew");
+    btnGoto->setVisible(true);
+    connect(btnGoto, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool clicked)
+    {
+        emit gotoRaDec(Ra, Dec);
+    });
+    labelRa = new QLabel(correlator);
+    labelRa->setVisible(true);
+    labelRa->setText("Right Ascension");
+    labelDec = new QLabel(correlator);
+    labelDec->setVisible(true);
+    labelDec->setText("Declination");
+    labelGoto = new QLabel(correlator);
+    labelGoto->setVisible(true);
+    labelGoto->setText("Slew to coordinates");
 }
 
 Graph::~Graph()
@@ -89,7 +131,7 @@ QString Graph::toDMS(double dms)
     dms -= m;
     dms *= 60.0;
     s = floor(dms)/1000.0;
-    return QString::number(d) + QString("°") + QString::number(m) + QString("'") + QString::number(s) + QString("\"");
+    return QString::number(d) + QString(":") + QString::number(m) + QString(":") + QString::number(s);
 }
 
 QString Graph::toHMS(double hms)
@@ -109,11 +151,10 @@ QString Graph::toHMS(double hms)
 double Graph::fromHMSorDMS(QString dms)
 {
     double d;
-    QStringList deg = dms.split("°");
+    QStringList deg = dms.split(":");
     d = deg[0].toDouble();
-    deg = deg[1].split("'");
-    d += deg[0].toDouble() / 60.0;
-    d += deg[1].replace("\"", "").toDouble() / 3600.0;
+    d += deg[1].toDouble() / 60.0;
+    d += deg[2].toDouble() / 3600.0;
     return d;
 }
 
@@ -180,6 +221,7 @@ void Graph::paint()
         magnitudeView->setPixmap(QPixmap::fromImage(magnitude.scaled(magnitudeView->geometry().size())));
         phaseView->setPixmap(QPixmap::fromImage(phase.scaled(phaseView->geometry().size())));
         idftView->setPixmap(QPixmap::fromImage(idft.scaled(idftView->geometry().size())));
+        updateInfo();
     }
     else
     {
@@ -267,14 +309,25 @@ void Graph::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
     view->setGeometry(0, 0, width(), height());
     correlator->setGeometry(0, 0, width(), height());
-    int size = (correlator->width() - 260) / 3;
-    coverageView->setGeometry(5, 40, size, size);
-    magnitudeView->setGeometry(size + 10, 40, size, size);
-    phaseView->setGeometry(size + 10, 40, size, size);
-    idftView->setGeometry(size * 2 + 15, 40, size, size);
+    int size = (correlator->width() - 270) / 4;
+    int n = 0;
+    coverageView->setGeometry   (size * n + 5 + 5 * n, 40, size, size);
+    n++;
+    magnitudeView->setGeometry  (size * n + 5 + 5 * n, 40, size, size);
+    n++;
+    phaseView->setGeometry      (size * n + 5 + 5 * n, 40, size, size);
+    n++;
+    idftView->setGeometry       (size * n + 5 + 5 * n, 40, size, size);
+    n++;
     coverageLabel->setGeometry(0,0, size, 30);
     magnitudeLabel->setGeometry(0,0, size, 30);
     phaseLabel->setGeometry(0,0, size, 30);
     idftLabel->setGeometry(0,0, size, 30);
     infoLabel->setGeometry(correlator->width() - 240, 40, 230, 150);
+    labelRa->setGeometry(correlator->width() - 240, 200, 140, 23);
+    labelDec->setGeometry(correlator->width() - 240, 225, 140, 23);
+    labelGoto->setGeometry(correlator->width() - 240, 250, 140, 23);
+    editRa->setGeometry(correlator->width() - 90, 200, 75, 23);
+    editDec->setGeometry(correlator->width() - 90, 225, 75, 23);
+    btnGoto->setGeometry(correlator->width() - 90, 250, 75, 23);
 }

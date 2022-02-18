@@ -36,11 +36,11 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     phase_buf = (double*)malloc(sizeof(double));
     magnitudeStack = new QMap<double, double>();
     phaseStack = new QMap<double, double>();
+    dark = new QMap<double, double>();
     magnitude = new QLineSeries();
     phase = new QLineSeries();
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
-    dark = new QMap<double, double>();
     complex = new QList<double>();
     line1 = n1;
     line2 = n2;
@@ -210,8 +210,8 @@ void Baseline::stackCorrelations()
         stack += 1.0;
         getMagnitude()->clear();
         getPhase()->clear();
-        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * npackets);
-        phase_buf = (double*)realloc(phase_buf, sizeof(double) * npackets);
+        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * len);
+        phase_buf = (double*)realloc(phase_buf, sizeof(double) * len);
         int lag = 0;
         for (int x = 0; x < npackets; x++)
         {
@@ -237,13 +237,14 @@ void Baseline::stackCorrelations()
 void Baseline::plot(bool success, double o, double s)
 {
     double timespan = ahp_xc_get_sampletime();
-    offset = o * timespan;
     if(success)
     {
         timespan = ahp_xc_get_sampletime() / s;
         offset = o * timespan;
     }
-    for (int x = 0; x < len - o; x++) {
+    getMagnitude()->clear();
+    getPhase()->clear();
+    for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, magnitude_buf[x]);
         stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);
     }

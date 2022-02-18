@@ -466,7 +466,7 @@
      <string>Motor index:</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="motor_index">
+   <widget class="QSpinBox" name="MotorIndex">
     <property name="geometry">
      <rect>
       <x>500</x>

@@ -114,7 +114,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         flags |= ui->flag4->isChecked() << 4;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), ui->flag4->isChecked());
-        if((flags & 0x10) != 0 && mode == Autocorrelator)
+        if(getFlag(4) && mode == Autocorrelator)
         {
             ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
             ui->ElementalAlign->setEnabled(true);
@@ -172,17 +172,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         saveSetting("IDFT", ui->IDFT->isChecked());
     });
-    connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        if(ui->StartLine->value() >= ui->EndLine->value() - 5)
-        {
-            ui->EndLine->setValue(ui->StartLine->value() + 1);
-        }
-        start = ui->StartLine->value();
-        end = ui->EndLine->value();
-        len = end - start;
-        saveSetting("StartLine", ui->StartLine->value());
-    });
     connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         saveSetting("ElementalAlign", ui->ElementalAlign->isChecked());
@@ -207,15 +196,32 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         elemental->setSampleSize(value);
         saveSetting("SampleSize", ui->SampleSize->value());
     });
-    connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         if(ui->StartLine->value() >= ui->EndLine->value() - 5)
         {
-            ui->StartLine->setValue(ui->EndLine->value() - 1);
+            ui->EndLine->setValue(ui->StartLine->value() + 5);
         }
         start = ui->StartLine->value();
         end = ui->EndLine->value();
         len = end - start;
+        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (abs(len)+1));
+        phase_buf = (double*)realloc(phase_buf, sizeof(double) * (abs(len)+1));
+        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (abs(len)+1));
+        saveSetting("StartLine", ui->StartLine->value());
+    });
+    connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        if(ui->StartLine->value() >= ui->EndLine->value() - 5)
+        {
+            ui->StartLine->setValue(ui->EndLine->value() - 5);
+        }
+        start = ui->StartLine->value();
+        end = ui->EndLine->value();
+        len = end - start;
+        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (abs(len)+1));
+        phase_buf = (double*)realloc(phase_buf, sizeof(double) * (abs(len)+1));
+        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (abs(len)+1));
         saveSetting("EndLine", ui->EndLine->value());
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -268,6 +274,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         saveSetting("z_location", value);
     });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Line::plot);
+    ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex()+1));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
@@ -345,6 +352,9 @@ void Line::setFlag(int flag, bool value)
         case 3:
             ui->flag3->setChecked(value);
             break;
+        case 4:
+            ui->flag4->setChecked(value);
+            break;
         default:
             break;
     }
@@ -362,6 +372,8 @@ bool Line::getFlag(int flag)
             return ui->flag2->isChecked();
         case 3:
             return ui->flag3->isChecked();
+        case 4:
+            return ui->flag4->isChecked();
         default:
             return false;
     }
@@ -442,7 +454,7 @@ void Line::paint()
     {
         if(mode != Counter && mode != Holograph)
         {
-            if(getPercent() > ui->Progress->minimum() && localpercent < ui->Progress->maximum())
+            if(getPercent() > ui->Progress->minimum() && getPercent() < ui->Progress->maximum())
                 ui->Progress->setValue(getPercent());
         }
     }
@@ -527,14 +539,14 @@ bool Line::DarkTaken()
 
 void Line::gotoRaDec(double ra, double dec)
 {
-    ahp_gt_set_address(ui->motor_index->value());
+    ahp_gt_set_address(ui->MotorIndex->value());
     ahp_gt_goto_absolute(0, ra, 800);
     ahp_gt_goto_absolute(1, dec, 800);
 }
 
 void Line::startTracking(double ra_rate, double dec_rate)
 {
-    ahp_gt_set_address(ui->motor_index->value());
+    ahp_gt_set_address(ui->MotorIndex->value());
     ahp_gt_stop_motion(0, 1);
     ahp_gt_stop_motion(1, 1);
     ahp_gt_start_motion(0, ra_rate);
@@ -573,17 +585,12 @@ void Line::stackCorrelations()
     ahp_xc_sample *spectrum = nullptr;
     start = ui->StartLine->value();
     end = ui->EndLine->value();
-    int len = end - start;
+    len = end - start;
     stop = 0;
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &localpercent);
     if(spectrum != nullptr && npackets == len)
     {
         stack += 1.0;
-        getMagnitude()->clear();
-        getPhase()->clear();
-        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * npackets);
-        phase_buf = (double*)realloc(phase_buf, sizeof(double) * npackets);
-        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * npackets);
         if(ui->IDFT->isChecked())
         {
             for (int x = 0; x < npackets; x++)
@@ -635,12 +642,13 @@ void Line::plot(bool success, double o, double s)
         timespan = ahp_xc_get_sampletime() / s;
         offset = o * timespan;
     }
-    for (int x = 0; x < elemental->getStream()->len; x++) {
+    getMagnitude()->clear();
+    getPhase()->clear();
+    for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
         stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);
     }
     stretch(getMagnitude());
-    dft = (fftw_complex*)realloc(dft, 1);
 }
 
 Line::~Line()

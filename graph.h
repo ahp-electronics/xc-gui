@@ -30,6 +30,8 @@
 #include <QWidget>
 #include <QChart>
 #include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
 #include <QGroupBox>
 #include <QDateTime>
 #include <QChartView>
@@ -110,6 +112,12 @@ class Graph : public QWidget
         QImage phase;
         QImage coverage;
         QGroupBox *correlator;
+        QLineEdit *editRa;
+        QLineEdit *editDec;
+        QLabel *labelRa;
+        QLabel *labelDec;
+        QLabel *labelGoto;
+        QPushButton *btnGoto;
         QLabel *infoLabel;
         QLabel *idftLabel;
         QLabel *magnitudeLabel;
