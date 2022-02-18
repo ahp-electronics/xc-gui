@@ -64,13 +64,7 @@ class Line : public QWidget
         void setActive(bool a)
         {
             running = a;
-            if(!running)
-            {
-                getCounts()->clear();
-                getMagnitude()->clear();
-                getPhase()->clear();
-            }
-            emit activeStateChanged(this);
+            activeStateChanged(this);
         }
         inline int getFlags()
         {
@@ -150,7 +144,27 @@ class Line : public QWidget
         {
             return running;
         }
-
+        inline void setMagnitudeSize(size_t size)
+        {
+            if(magnitude_buf != nullptr)
+                magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size+1));
+            else
+                magnitude_buf = (double*)malloc(sizeof(double) * (size+1));
+        }
+        inline void setPhaseSize(size_t size)
+        {
+            if(phase_buf != nullptr)
+                phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size+1));
+            else
+                phase_buf = (double*)malloc(sizeof(double) * (size+1));
+        }
+        inline void setDftSize(size_t size)
+        {
+            if(dft != nullptr)
+                dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (size+1));
+            else
+                dft = (fftw_complex*)malloc(sizeof(fftw_complex) * (size+1));
+        }
         inline QLineSeries* getMagnitude()
         {
             return magnitude;
@@ -256,8 +270,8 @@ class Line : public QWidget
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
         double stack;
-        double *magnitude_buf;
-        double *phase_buf;
+        double *magnitude_buf { nullptr };
+        double *phase_buf { nullptr };
         double offset { 0.0 };
         double timespan { 1.0 };
         bool scalingDone { false };
@@ -275,7 +289,7 @@ class Line : public QWidget
         dsp_stream_p stream;
         dsp_location location;
         fftw_plan plan;
-        fftw_complex *dft;
+        fftw_complex *dft { nullptr };
         bool running;
         QString name;
         QSettings *settings;
@@ -300,10 +314,11 @@ class Line : public QWidget
         void plot(bool success, double o, double s);
         void SavePlot();
     signals:
+        void activeStateChanged(Line*);
+        void updateBufferSizes();
         void savePlot();
         void takeDark(Line* sender);
         void clearCrosscorrelations();
-        void activeStateChanged(Line* line);
 };
 
 #endif // LINE_H

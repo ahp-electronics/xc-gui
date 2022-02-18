@@ -40,9 +40,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     localpercent = 0;
     parents = p;
     name = ln;
-    magnitude_buf = (double*)malloc(sizeof(double));
-    phase_buf = (double*)malloc(sizeof(double));
-    dft = (fftw_complex*)malloc(sizeof(fftw_complex));
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     phaseStack = new QMap<double, double>();
@@ -205,9 +202,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         start = ui->StartLine->value();
         end = ui->EndLine->value();
         len = end - start;
-        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (abs(len)+1));
-        phase_buf = (double*)realloc(phase_buf, sizeof(double) * (abs(len)+1));
-        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (abs(len)+1));
+        setMagnitudeSize(len);
+        setPhaseSize(len);
+        setDftSize(len);
+        emit updateBufferSizes();
         saveSetting("StartLine", ui->StartLine->value());
     });
     connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -219,9 +217,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         start = ui->StartLine->value();
         end = ui->EndLine->value();
         len = end - start;
-        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (abs(len)+1));
-        phase_buf = (double*)realloc(phase_buf, sizeof(double) * (abs(len)+1));
-        dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (abs(len)+1));
+        setMagnitudeSize(len);
+        setPhaseSize(len);
+        setDftSize(len);
+        emit updateBufferSizes();
         saveSetting("EndLine", ui->EndLine->value());
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -468,7 +467,7 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int id
     {
         y += stacked->values().at(idx) * (stack - 1) / stack;
         stacked->keys().replace(idx, x);
-        stacked->values().replace(idx, x);
+        stacked->values().replace(idx, y);
     }
     else
     {
@@ -590,7 +589,6 @@ void Line::stackCorrelations()
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &localpercent);
     if(spectrum != nullptr && npackets == len)
     {
-        stack += 1.0;
         if(ui->IDFT->isChecked())
         {
             for (int x = 0; x < npackets; x++)
@@ -613,12 +611,12 @@ void Line::stackCorrelations()
             for (int x = 0; x < npackets; x++)
             {
                 int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() - start;
-                for(int y = lag+1; y < _lag && y < end; y++) {
+                for(int y = lag+1; y < _lag && y < len; y++) {
                     magnitude_buf[y] = magnitude_buf[lag];
                     phase_buf[y] = phase_buf[lag];
                 }
                 lag = _lag;
-                if(lag < end) {
+                if(lag < len && lag >= 0) {
                     magnitude_buf[lag] = (double)spectrum[x].correlations[0].magnitude / pow(spectrum[x].correlations[0].real + spectrum[x].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[x].correlations[0].phase;
                 }
@@ -644,6 +642,7 @@ void Line::plot(bool success, double o, double s)
     }
     getMagnitude()->clear();
     getPhase()->clear();
+    stack += 1.0;
     for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
         stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);

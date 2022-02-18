@@ -66,6 +66,20 @@ class Baseline : public QWidget
         {
             return phases;
         }
+        inline void setMagnitudeSize(size_t size)
+        {
+            if(magnitude_buf != nullptr)
+                magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size+1));
+            else
+                magnitude_buf = (double*)malloc(sizeof(double) * (size+1));
+        }
+        inline void setPhaseSize(size_t size)
+        {
+            if(phase_buf != nullptr)
+                phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size+1));
+            else
+                phase_buf = (double*)malloc(sizeof(double) * (size+1));
+        }
         inline QLineSeries* getMagnitude()
         {
             return magnitude;
@@ -137,21 +151,23 @@ class Baseline : public QWidget
         }
 
     private:
+        void updateBufferSizes();
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        double *magnitude_buf;
-        double *phase_buf;
+        double *magnitude_buf { nullptr };
+        double *phase_buf { nullptr };
         double offset { 0.0 };
         double timespan { 1.0 };
         double stack {0.0};
         int Index;
         int start1 {0};
         int start2 {0};
+        int end1 {0};
+        int end2 {0};
         int len {1};
         QSettings *settings;
         QString name;
-        int active;
         bool scanning;
         bool threadRunning;
         int stop;

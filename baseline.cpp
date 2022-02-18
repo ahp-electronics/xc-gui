@@ -32,8 +32,6 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     settings = s;
     name = n;
     Index = index;
-    magnitude_buf = (double*)malloc(sizeof(double));
-    phase_buf = (double*)malloc(sizeof(double));
     magnitudeStack = new QMap<double, double>();
     phaseStack = new QMap<double, double>();
     dark = new QMap<double, double>();
@@ -44,33 +42,42 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     complex = new QList<double>();
     line1 = n1;
     line2 = n2;
-    connect(line1, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations), this,
+    connect(line1, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
+    connect(line2, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
+    connect(line1, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
     {
         getMagnitude()->clear();
         getPhase()->clear();
     });
-    connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations), this,
+    connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
     {
         getMagnitude()->clear();
         getPhase()->clear();
     });
-    connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged), this,
+    connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
     {
-        active &= ~1;
-        active |= sender->isActive();
         stop = !isActive();
     });
-    connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged), this,
+    connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
     {
-        active &= ~2;
-        active |= sender->isActive() << 1;
         stop = !isActive();
     });
+    updateBufferSizes();
+}
 
+void Baseline::updateBufferSizes()
+{
+    start1 = getLine1()->getStartLine();
+    start2 = getLine2()->getStartLine();
+    end1 = getLine1()->getEndLine();
+    end2 = getLine2()->getEndLine();
+    len = end1 - start1 + end2 - start2;
+    setMagnitudeSize(len);
+    setPhaseSize(len);
 }
 
 bool Baseline::haveSetting(QString setting)
@@ -122,7 +129,7 @@ void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, in
     if(stacked->count() > idx) {
         y += stacked->values().at(idx) * (stack - 1) / stack;
         stacked->keys().replace(idx, x);
-        stacked->values().replace(idx, x);
+        stacked->values().replace(idx, y);
     } else {
         stacked->insert(x, y);
     }
@@ -197,36 +204,28 @@ void Baseline::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
-    start1 = getLine1()->getEndLine();
-    start2 = getLine2()->getEndLine();
     getLine1()->setPercentPtr(&percent);
     getLine2()->setPercentPtr(&percent);
 
-    len = start1 + start2 - 1;
     stop = 0;
-    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, start2, len, &stop, &percent);
-    if(spectrum != nullptr && npackets == len)
+    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, end1 - start1, start2, end2 - start2, &stop, &percent);
+    if(spectrum != nullptr && npackets >= len)
     {
-        stack += 1.0;
-        getMagnitude()->clear();
-        getPhase()->clear();
-        magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * len);
-        phase_buf = (double*)realloc(phase_buf, sizeof(double) * len);
         int lag = 0;
         for (int x = 0; x < npackets; x++)
         {
-            int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() + start1;
+            int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() + end1 - start1;
             for(int y = lag+1; y < _lag && y < len; y++) {
                 magnitude_buf[y] = magnitude_buf[lag];
                 phase_buf[y] = phase_buf[lag];
             }
             lag = _lag;
-            if(lag < len) {
+            if(lag < len && lag >= 0) {
                 magnitude_buf[lag] = (double)spectrum[x].correlations[0].magnitude / pow(spectrum[x].correlations[0].real + spectrum[x].correlations[0].imaginary, 2);
                 phase_buf[lag] = (double)spectrum[x].correlations[0].phase;
             }
         }
-        plot(false, -start1, 1.0);
+        plot(true, -(end1-start1), 1.0);
         free(spectrum);
     }
     getLine1()->resetPercentPtr();
@@ -244,6 +243,7 @@ void Baseline::plot(bool success, double o, double s)
     }
     getMagnitude()->clear();
     getPhase()->clear();
+    stack += 1.0;
     for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, magnitude_buf[x]);
         stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);
