@@ -610,7 +610,7 @@ void Line::stackCorrelations()
             int lag = 0;
             for (int x = 0; x < npackets; x++)
             {
-                int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() - start;
+                int _lag = spectrum[x].correlations[0].lag - start;
                 for(int y = lag+1; y < _lag && y < len; y++) {
                     magnitude_buf[y] = magnitude_buf[lag];
                     phase_buf[y] = phase_buf[lag];

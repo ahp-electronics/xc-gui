@@ -66,7 +66,6 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         stop = !isActive();
     });
-    updateBufferSizes();
 }
 
 void Baseline::updateBufferSizes()
@@ -206,13 +205,14 @@ void Baseline::stackCorrelations()
     ahp_xc_sample *spectrum = nullptr;
     getLine1()->setPercentPtr(&percent);
     getLine2()->setPercentPtr(&percent);
+    updateBufferSizes();
 
     stop = 0;
     int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, end1 - start1, start2, end2 - start2, &stop, &percent);
     if(spectrum != nullptr && npackets >= len)
     {
         int lag = 0;
-        for (int x = 0; x < npackets; x++)
+        for (int x = 0; x < len; x++)
         {
             int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() + end1 - start1;
             for(int y = lag+1; y < _lag && y < len; y++) {
