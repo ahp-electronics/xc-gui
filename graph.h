@@ -73,6 +73,8 @@ class Graph : public QWidget
         inline QImage *getPhase() { return &phase; }
         inline QImage *getCoverage() { return &coverage; }
         inline QImage *getIdft() { return &idft; }
+        inline int getMotorFD() { return motorFD; }
+        inline void setMotorFD(int fd) { motorFD = fd; }
 
         double getJ2000Time();
         double getLST();
@@ -111,12 +113,15 @@ class Graph : public QWidget
         QImage magnitude;
         QImage phase;
         QImage coverage;
+        QLabel *labelseparator[4];
         QGroupBox *correlator;
-        QLineEdit *editRa;
-        QLineEdit *editDec;
+        QLineEdit *editRa[3];
+        QLineEdit *editDec[3];
         QLabel *labelRa;
         QLabel *labelDec;
         QLabel *labelGoto;
+        QPushButton *btnConnect;
+        QPushButton *btnDisconnect;
         QPushButton *btnGoto;
         QLabel *infoLabel;
         QLabel *idftLabel;
@@ -132,7 +137,10 @@ class Graph : public QWidget
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
+        int motorFD;
 signals:
+        void connectMotors();
+        void disconnectMotors();
         void gotoRaDec(double, double);
 
 };

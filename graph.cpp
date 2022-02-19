@@ -70,31 +70,74 @@ Graph::Graph(QWidget *parent, QString name) :
     idftLabel->setText("IDFT");
     infoLabel = new QLabel(correlator);
     infoLabel->setVisible(true);
-    editRa = new QLineEdit(correlator);
-    editRa->setVisible(true);
-    connect(editRa, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    editRa[0] = new QLineEdit(correlator);
+    editRa[1] = new QLineEdit(correlator);
+    editRa[2] = new QLineEdit(correlator);
+    editRa[0]->setVisible(true);
+    editRa[1]->setVisible(true);
+    editRa[2]->setVisible(true);
+    connect(editRa[0], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
     {
-        QString str = text;
-        str.replace(":", "");
-        if(str.length() < 6) {
-            str = str.append("000000");
-            str.remove(6, str.length()-6);
-        }
-        editRa->setText(str.remove(2,str.length()-2)+":"+str.remove(0,2).remove(2,str.length()-2)+":"+str.remove(4,str.length()-4));
-        Ra = fromHMSorDMS(editRa->text());
+        Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
     });
-    editDec = new QLineEdit(correlator);
-    editDec->setVisible(true);
-    connect(editDec, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    connect(editRa[1], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
     {
-        QString str = text;
-        str.replace(":", "");
-        if(str.length() < 6) {
-            str = str.append("000000");
-            str.remove(6, str.length()-6);
-        }
-        editDec->setText(str.remove(2,str.length()-2)+":"+str.remove(0,2).remove(2,str.length()-2)+":"+str.remove(4,str.length()-4));
-        Dec = fromHMSorDMS(editDec->text());
+        Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
+    });
+    connect(editRa[2], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    {
+        Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
+    });
+    editRa[0]->setText("00");
+    editRa[1]->setText("00");
+    editRa[2]->setText("00");
+    editDec[0] = new QLineEdit(correlator);
+    editDec[1] = new QLineEdit(correlator);
+    editDec[2] = new QLineEdit(correlator);
+    editDec[0]->setVisible(true);
+    editDec[1]->setVisible(true);
+    editDec[2]->setVisible(true);
+    connect(editDec[0], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    {
+        Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
+    });
+    connect(editRa[1], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    {
+        Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
+    });
+    connect(editRa[2], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    {
+        Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
+    });
+    editDec[0]->setText("00");
+    editDec[1]->setText("00");
+    editDec[2]->setText("00");
+    labelseparator[0] = new QLabel(correlator);
+    labelseparator[1] = new QLabel(correlator);
+    labelseparator[2] = new QLabel(correlator);
+    labelseparator[3] = new QLabel(correlator);
+    labelseparator[0]->setVisible(true);
+    labelseparator[1]->setVisible(true);
+    labelseparator[2]->setVisible(true);
+    labelseparator[3]->setVisible(true);
+    labelseparator[0]->setText(":");
+    labelseparator[1]->setText(":");
+    labelseparator[2]->setText(":");
+    labelseparator[3]->setText(":");
+    btnConnect = new QPushButton(correlator);
+    btnConnect->setText("Connect");
+    btnConnect->setVisible(true);
+    connect(btnConnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool clicked)
+    {
+        emit connectMotors();
+    });
+    btnDisconnect = new QPushButton(correlator);
+    btnDisconnect->setText("Disconnect");
+    btnDisconnect->setVisible(true);
+    btnDisconnect->setEnabled(false);
+    connect(btnDisconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool clicked)
+    {
+        emit disconnectMotors();
     });
     btnGoto = new QPushButton(correlator);
     btnGoto->setText("Slew");
@@ -172,6 +215,10 @@ void Graph::updateInfo()
     label += QString("Elevation: ") + Elevation;
     label += "\n";
     label += QString("Altitude: ") + QString(getAltitude() < 0 ? "-" : "+") + toDMS(getAltitude());
+    label += "\n";
+    label += QString("Right Ascension: ") + toDMS(getRa());
+    label += "\n";
+    label += QString("Declination: ") + QString(getDec() < 0 ? "-" : "+") + toDMS(getDec());
     label += "\n";
     label += QString("Azimuth: ") + toDMS(getAzimuth());
     label += "\n";
@@ -311,23 +358,41 @@ void Graph::resizeEvent(QResizeEvent *event)
     correlator->setGeometry(0, 0, width(), height());
     int size = (correlator->width() - 270) / 4;
     int n = 0;
-    coverageView->setGeometry   (size * n + 5 + 5 * n, 40, size, size);
+    coverageView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
     n++;
-    magnitudeView->setGeometry  (size * n + 5 + 5 * n, 40, size, size);
+    magnitudeView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
     n++;
-    phaseView->setGeometry      (size * n + 5 + 5 * n, 40, size, size);
+    phaseView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
     n++;
-    idftView->setGeometry       (size * n + 5 + 5 * n, 40, size, size);
+    idftView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
     n++;
     coverageLabel->setGeometry(0,0, size, 30);
     magnitudeLabel->setGeometry(0,0, size, 30);
     phaseLabel->setGeometry(0,0, size, 30);
     idftLabel->setGeometry(0,0, size, 30);
-    infoLabel->setGeometry(correlator->width() - 240, 40, 230, 150);
-    labelRa->setGeometry(correlator->width() - 240, 200, 140, 23);
-    labelDec->setGeometry(correlator->width() - 240, 225, 140, 23);
-    labelGoto->setGeometry(correlator->width() - 240, 250, 140, 23);
-    editRa->setGeometry(correlator->width() - 90, 200, 75, 23);
-    editDec->setGeometry(correlator->width() - 90, 225, 75, 23);
-    btnGoto->setGeometry(correlator->width() - 90, 250, 75, 23);
+    int y_offset = 40;
+    infoLabel->setGeometry(correlator->width() - 240, 40, 230, 170);
+    y_offset += infoLabel->height();
+    btnConnect->setGeometry(correlator->width() - 160, y_offset+3, 75, 23);
+    btnDisconnect->setGeometry(correlator->width() - 80, y_offset+3, 75, 23);
+    y_offset += 23;
+    int radec_offset = 90;
+    int radec_size = 23;
+    int separator_size = 3;
+    labelRa->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
+    editRa[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
+    editRa[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
+    editRa[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
+    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
+    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
+    y_offset += 23;
+    labelDec->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
+    editDec[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
+    editDec[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
+    editDec[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
+    labelseparator[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
+    labelseparator[3]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
+    y_offset += 23;
+    labelGoto->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
+    btnGoto->setGeometry(correlator->width() - radec_offset, y_offset+3, 75, 23);
 }
