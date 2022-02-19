@@ -251,11 +251,7 @@ class Line : public QWidget
             return Motors.count()-1;
         }
 
-        inline double getMotorAxisPosition(int axis, int index = 0) { if(!hasMotorbBus()) return 0.0; selectMotor(axis, index); return ahp_gt_get_position(axis); }
-        inline void setMotorAxisPosition(int axis, double value, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_set_position(axis, value); }
-        inline void moveMotorAxisBy(int axis, double value, double speed, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_goto_relative(axis, value, speed); }
-        inline void moveMotorAxisTo(int axis, double value, double speed, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_goto_absolute(axis, value, speed); }
-        inline void stopMotorAxis(int axis, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_stop_motion(axis, false); }
+        inline int getMotorIndex() { return motorIndex; }
 
         inline int getStartLine() { return start; }
         inline int getEndLine() { return end; }
@@ -266,6 +262,11 @@ class Line : public QWidget
         void startTracking(double ra_rate, double dec_rate);
 
     private:
+        inline double getMotorAxisPosition(int axis, int index = 0) { if(!hasMotorbBus()) return 0.0; selectMotor(axis, index); return ahp_gt_get_position(axis); }
+        inline void setMotorAxisPosition(int axis, double value, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_set_position(axis, value); }
+        inline void moveMotorAxisBy(int axis, double value, double speed, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_goto_relative(axis, value, speed); }
+        inline void moveMotorAxisTo(int axis, double value, double speed, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_goto_absolute(axis, value, speed); }
+        inline void stopMotorAxis(int axis, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_stop_motion(axis, false); }
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 

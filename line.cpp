@@ -257,6 +257,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ahp_xc_set_channel_cross(line, 0, value);
         saveSetting("LineDelay", value);
     });
+    connect(ui->MotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        motorIndex = value;
+        saveSetting("MotorIndex", value);
+    });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.x = (double)value / 1000.0;
@@ -478,7 +483,7 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int id
 
 void Line::setLocation(dsp_location location)
 {
-    ui->x_location->setValue(getLocation()->xyz.x);
+    ui->x_location->setValue(location.xyz.x);
     ui->y_location->setValue(location.xyz.y);
     ui->z_location->setValue(location.xyz.z);
     saveSetting("location_x", location.xyz.x);
@@ -610,7 +615,7 @@ void Line::stackCorrelations()
             int lag = 0;
             for (int x = 0; x < npackets; x++)
             {
-                int _lag = spectrum[x].correlations[0].lag - start;
+                int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() - start;
                 for(int y = lag+1; y < _lag && y < len; y++) {
                     magnitude_buf[y] = magnitude_buf[lag];
                     phase_buf[y] = phase_buf[lag];
