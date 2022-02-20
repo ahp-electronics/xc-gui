@@ -126,9 +126,12 @@ class MainWindow : public QMainWindow
                     Baselines[i]->getMagnitude()->clear();
                     Baselines[i]->getPhase()->clear();
                 }
-                for(int x = 0; x < Lines.count(); x++)
+                for(int i = 0; i < Lines.count(); i++)
                 {
-                    Lines[x]->setMode(mode);
+                    Lines[i]->getMagnitude()->clear();
+                    Lines[i]->getPhase()->clear();
+                    Lines[i]->setActive(false);
+                    Lines[i]->setMode(mode);
                 }
                 if(mode == Counter) {
                     for(int i = 0; i < Lines.count(); i++) {

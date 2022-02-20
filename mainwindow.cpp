@@ -142,6 +142,10 @@ MainWindow::MainWindow(QWidget *parent)
             [ = ](bool checked)
     {
         (void)checked;
+        for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
+        {
+            Lines[l]->setActive(false);
+        }
         stopThreads();
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
@@ -201,12 +205,11 @@ MainWindow::MainWindow(QWidget *parent)
                 {
                     motor_socket.setReadBufferSize(4096);
                     motorFD = motor_socket.socketDescriptor();
-                    if(motorFD > -1)
+                    if(motorFD != -1)
                     {
-                        if(!ahp_gt_connect_fd(motorFD))
-                        {
+                        getGraph()->setMotorFD(motorFD);
+                        if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
                             settings->setValue("motor_connection", motorport);
-                        }
                     }
                 }
                 else
@@ -218,7 +221,7 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 ahp_gt_connect(motorport.toUtf8());
-                motorFD = ahp_xc_get_fd();
+                motorFD = ahp_gt_get_fd();
                 if(motorFD == -1)
                     motorFD = open(motorport.toUtf8(), O_RDWR);
                 if(motorFD != -1)
@@ -283,7 +286,6 @@ MainWindow::MainWindow(QWidget *parent)
                         QString name = "Line " + QString::number(l + 1);
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         getGraph()->addSeries(Lines[l]->getMagnitude());
-                        getGraph()->addSeries(Lines[l]->getPhase());
                         getGraph()->addSeries(Lines[l]->getMagnitudes());
                         getGraph()->addSeries(Lines[l]->getPhases());
                         getGraph()->addSeries(Lines[l]->getCounts());
@@ -298,7 +300,7 @@ MainWindow::MainWindow(QWidget *parent)
                             QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                             getGraph()->addSeries(Baselines[idx]->getMagnitude());
-                            getGraph()->addSeries(Baselines[idx]->getPhase());
+                            idx++;
                         }
                     }
                     createPacket();
@@ -321,6 +323,14 @@ MainWindow::MainWindow(QWidget *parent)
             else
                 ahp_xc_disconnect();
         }
+    });
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::connectMotors),
+            [ = ]()
+    {
+    });
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::disconnectMotors),
+            [ = ]()
+    {
     });
     connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec),
             [ = ](double ra, double dec)

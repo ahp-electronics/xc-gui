@@ -40,6 +40,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
     complex = new QList<double>();
+    elemental = new Elemental(this);
+    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
     line1 = n1;
     line2 = n2;
     connect(line1, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
@@ -49,12 +51,14 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         getMagnitude()->clear();
         getPhase()->clear();
+        stack = 0.0;
     });
     connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
     {
         getMagnitude()->clear();
         getPhase()->clear();
+        stack = 0.0;
     });
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
@@ -206,26 +210,41 @@ void Baseline::stackCorrelations()
     getLine1()->setPercentPtr(&percent);
     getLine2()->setPercentPtr(&percent);
     updateBufferSizes();
+    int tail_size = end2 - start2;
+    int head_size = end1 - start1;
 
     stop = 0;
-    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, end1 - start1, start2, end2 - start2, &stop, &percent);
-    if(spectrum != nullptr && npackets >= len)
+    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, head_size + 1, start2, tail_size + 1, &stop, &percent);
+    if(spectrum != nullptr && npackets == len + 2)
     {
         int lag = 0;
-        for (int x = 0; x < len; x++)
+        for (int x = 0, z = 1; x < len + 1; x++, z++)
         {
-            int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() + end1 - start1;
-            for(int y = lag+1; y < _lag && y < len; y++) {
+            if(x == head_size) {
+                lag = head_size;
+                continue;
+            }
+            int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() + head_size;
+            for(int y = lag; y != _lag && y >= 0 && y < len; y += (lag < _lag ? 1 : -1)) {
                 magnitude_buf[y] = magnitude_buf[lag];
                 phase_buf[y] = phase_buf[lag];
             }
-            lag = _lag;
-            if(lag < len && lag >= 0) {
-                magnitude_buf[lag] = (double)spectrum[x].correlations[0].magnitude / pow(spectrum[x].correlations[0].real + spectrum[x].correlations[0].imaginary, 2);
-                phase_buf[lag] = (double)spectrum[x].correlations[0].phase;
+            if(_lag < len && _lag >= 0) {
+                lag = _lag;
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
+                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
             }
         }
-        plot(true, -(end1-start1), 1.0);
+        if(getLine1()->Idft() && getLine2()->Idft()) {
+            elemental->setMagnitude(magnitude_buf, len);
+            elemental->setPhase(phase_buf, len);
+            elemental->idft();
+        } else
+            elemental->setBuffer(magnitude_buf, len);
+        if(getLine1()->Align() && getLine2()->Align())
+            elemental->run();
+        else
+            elemental->finish(true, -head_size);
         free(spectrum);
     }
     getLine1()->resetPercentPtr();
@@ -245,8 +264,7 @@ void Baseline::plot(bool success, double o, double s)
     getPhase()->clear();
     stack += 1.0;
     for (int x = 0; x < len; x++) {
-        stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, magnitude_buf[x]);
-        stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);
+        stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
     }
     stretch(getMagnitude());
 }

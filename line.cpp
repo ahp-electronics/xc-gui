@@ -25,7 +25,6 @@
 
 #include "line.h"
 #include "ui_line.h"
-#include <fftw3.h>
 #include <QMapNode>
 #include <QFile>
 #include <QFileDialog>
@@ -49,6 +48,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     phases = new QLineSeries();
     counts = new QLineSeries();
     elemental = new Elemental(this);
+    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Line::plot);
     resetPercentPtr();
     getMagnitude()->setName(name + " magnitude");
     getPhase()->setName(name + " phase");
@@ -138,25 +138,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             ui->SampleSize->setEnabled(false);
         }
     });
-    connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
-    {
-        if(ui->Run->text() == "Run")
-        {
-            setActive(true);
-            ui->Run->setText("Stop");
-        }
-        else
-        {
-            setActive(false);
-            ui->Run->setText("Run");
-        }
-        ui->Counter->setEnabled(mode == Counter);
-        ui->Correlator->setEnabled(false);
-        if(mode != Counter)
-        {
-            ui->Correlator->setEnabled(!isActive());
-        }
-    });
+    connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::runClicked);
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         emit savePlot();
@@ -277,7 +259,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("z_location", value);
     });
-    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Line::plot);
     ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex()+1));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
@@ -319,6 +300,26 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     setActive(false);
 }
 
+void Line::runClicked(bool checked)
+{
+
+    if(ui->Run->text() == "Run")
+    {
+        setActive(true);
+        ui->Run->setText("Stop");
+    }
+    else
+    {
+        setActive(false);
+        ui->Run->setText("Run");
+    }
+    ui->Counter->setEnabled(mode == Counter);
+    ui->Correlator->setEnabled(false);
+    if(mode != Counter)
+    {
+        ui->Correlator->setEnabled(!isActive());
+    }
+}
 bool Line::haveSetting(QString setting)
 {
     return settings->contains(QString(name + "_" + setting).replace(' ', ""));
@@ -448,7 +449,8 @@ void Line::setMode(Mode m)
     if(!isActive())
     {
         ui->Correlator->setEnabled(mode != Counter);
-    }
+    } else
+        runClicked();
 }
 
 void Line::paint()
@@ -527,6 +529,16 @@ void Line::SavePlot()
     data.close();
 }
 
+bool Line::Idft()
+{
+    return ui->IDFT->isChecked();
+}
+
+bool Line::Align()
+{
+    return ui->ElementalAlign->isChecked();
+}
+
 bool Line::DarkTaken()
 {
     if(ui->TakeDark->text() == "Apply Dark")
@@ -546,6 +558,12 @@ void Line::gotoRaDec(double ra, double dec)
     ahp_gt_set_address(ui->MotorIndex->value());
     ahp_gt_goto_absolute(0, ra, 800);
     ahp_gt_goto_absolute(1, dec, 800);
+}
+
+void Line::setActive(bool a)
+{
+    running = a;
+    activeStateChanged(this);
 }
 
 void Line::startTracking(double ra_rate, double dec_rate)
@@ -587,51 +605,34 @@ void Line::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
-    start = ui->StartLine->value();
-    end = ui->EndLine->value();
-    len = end - start;
     stop = 0;
-    int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &localpercent);
-    if(spectrum != nullptr && npackets == len)
+    int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len+1, &stop, &localpercent);
+    if(spectrum != nullptr && npackets == len + 1)
     {
-        if(ui->IDFT->isChecked())
+        int lag = 1;
+        for (int x = 0, z = 1; x < len; x++, z++)
         {
-            for (int x = 0; x < npackets; x++)
-            {
-                if(spectrum[x].correlations[0].magnitude > 0)
-                {
-                    dft[x][0] = spectrum[x].correlations[0].real;
-                    dft[x][1] = spectrum[x].correlations[0].imaginary;
-                }
+            int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() - start;
+            for(int y = lag+1; y < _lag && y < len; y++) {
+                magnitude_buf[y] = magnitude_buf[lag];
+                phase_buf[y] = phase_buf[lag];
             }
-            plan = fftw_plan_dft_c2r_1d(len, dft, magnitude_buf, FFTW_ESTIMATE);
-            fftw_execute(plan);
-            fftw_destroy_plan(plan);
-            elemental->setBuffer(magnitude_buf, npackets);
-            elemental->finish();
-        }
-        else
-        {
-            int lag = 0;
-            for (int x = 0; x < npackets; x++)
-            {
-                int _lag = spectrum[x].correlations[0].lag / ahp_xc_get_packettime() - start;
-                for(int y = lag+1; y < _lag && y < len; y++) {
-                    magnitude_buf[y] = magnitude_buf[lag];
-                    phase_buf[y] = phase_buf[lag];
-                }
+            if(_lag < len && _lag >= 0) {
                 lag = _lag;
-                if(lag < len && lag >= 0) {
-                    magnitude_buf[lag] = (double)spectrum[x].correlations[0].magnitude / pow(spectrum[x].correlations[0].real + spectrum[x].correlations[0].imaginary, 2);
-                    phase_buf[lag] = (double)spectrum[x].correlations[0].phase;
-                }
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
+                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
             }
-            elemental->setBuffer(magnitude_buf, npackets);
-            if(ui->ElementalAlign->isChecked())
-                elemental->run();
-            else
-                elemental->finish();
         }
+        if(Idft()) {
+            elemental->setMagnitude(magnitude_buf, len);
+            elemental->setPhase(phase_buf, len);
+            elemental->idft();
+        } else
+            elemental->setBuffer(magnitude_buf, len);
+        if(Align())
+            elemental->run();
+        else
+            elemental->finish();
         free(spectrum);
     }
     scanning = false;
@@ -650,7 +651,6 @@ void Line::plot(bool success, double o, double s)
     stack += 1.0;
     for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-        stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, phase_buf[x]);
     }
     stretch(getMagnitude());
 }

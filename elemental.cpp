@@ -34,6 +34,14 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
     dsp_stream_add_dim(stream, 1);
     dsp_stream_add_dim(stream, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
+    stream->magnitude = dsp_stream_new();
+    dsp_stream_add_dim(stream->magnitude, 1);
+    dsp_stream_add_dim(stream->magnitude, 1);
+    dsp_stream_alloc_buffer(stream->magnitude, stream->magnitude->len);
+    stream->phase = dsp_stream_new();
+    dsp_stream_add_dim(stream->phase, 1);
+    dsp_stream_add_dim(stream->phase, 1);
+    dsp_stream_alloc_buffer(stream->phase, stream->phase->len);
     scanThread = new Thread(this);
     connect(scanThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=] (Thread* thread) {
         Elemental* parent = (Elemental*)thread->getParent();
@@ -51,7 +59,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
                 matches++;
             }
         }
-        emit scanFinished(success, offset, scale);
+        finish(success, offset, scale);
         thread->requestInterruption();
         thread->unlock();
     });
@@ -127,9 +135,9 @@ void Elemental::run()
         scanThread->start();
 }
 
-void Elemental::finish()
+void Elemental::finish(bool done, double ofs, double sc)
 {
-    emit scanFinished(success, offset, scale);
+    emit scanFinished(done, ofs, sc);
 }
 
 void Elemental::setBuffer(double * buf, int len)
@@ -141,4 +149,23 @@ void Elemental::setBuffer(double * buf, int len)
     stream->len = len;
     dsp_stream_alloc_buffer(stream, stream->len);
     dsp_buffer_copy(buf, stream->buf, stream->len);
+}
+
+void Elemental::setMagnitude(double * buf, int len)
+{
+    dsp_stream_alloc_buffer(stream, len);
+    dsp_stream_alloc_buffer(stream->magnitude, stream->len);
+    dsp_buffer_copy(buf, stream->magnitude->buf, stream->len);
+}
+
+void Elemental::setPhase(double * buf, int len)
+{
+    dsp_stream_alloc_buffer(stream, len);
+    dsp_stream_alloc_buffer(stream->phase, stream->len);
+    dsp_buffer_copy(buf, stream->phase->buf, stream->len);
+}
+
+void Elemental::idft()
+{
+    dsp_fourier_idft(stream);
 }

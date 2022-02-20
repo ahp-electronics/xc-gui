@@ -57,15 +57,13 @@ class Line : public QWidget
         ~Line();
 
         void paint();
+        bool Idft();
+        bool Align();
         inline bool isActive()
         {
             return running;
         }
-        void setActive(bool a)
-        {
-            running = a;
-            activeStateChanged(this);
-        }
+        void setActive(bool a);
         inline int getFlags()
         {
             return flags;
@@ -257,10 +255,10 @@ class Line : public QWidget
         inline int getEndLine() { return end; }
         void TakeDark(Line* sender);
         bool DarkTaken();
+        void runClicked(bool checked = false);
 
         void gotoRaDec(double ra, double dec);
         void startTracking(double ra_rate, double dec_rate);
-
     private:
         inline double getMotorAxisPosition(int axis, int index = 0) { if(!hasMotorbBus()) return 0.0; selectMotor(axis, index); return ahp_gt_get_position(axis); }
         inline void setMotorAxisPosition(int axis, double value, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_set_position(axis, value); }
@@ -271,6 +269,8 @@ class Line : public QWidget
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
         double stack;
+        fftw_plan plan;
+        fftw_complex *dft { nullptr };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
         double offset { 0.0 };
@@ -289,8 +289,6 @@ class Line : public QWidget
         bool applymedian;
         dsp_stream_p stream;
         dsp_location location;
-        fftw_plan plan;
-        fftw_complex *dft { nullptr };
         bool running;
         QString name;
         QSettings *settings;

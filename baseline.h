@@ -39,6 +39,7 @@
 #include <QTextStream>
 #include <cmath>
 #include "types.h"
+#include "elemental.h"
 
 using namespace QtCharts;
 class Line;
@@ -79,6 +80,13 @@ class Baseline : public QWidget
                 phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size+1));
             else
                 phase_buf = (double*)malloc(sizeof(double) * (size+1));
+        }
+        inline void setDftSize(size_t size)
+        {
+            if(dft != nullptr)
+                dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (size+1));
+            else
+                dft = (fftw_complex*)malloc(sizeof(fftw_complex) * (size+1));
         }
         inline QLineSeries* getMagnitude()
         {
@@ -155,11 +163,13 @@ class Baseline : public QWidget
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
+        double stack {0.0};
+        fftw_plan plan;
+        fftw_complex *dft { nullptr };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
         double offset { 0.0 };
         double timespan { 1.0 };
-        double stack {0.0};
         int Index;
         int start1 {0};
         int start2 {0};
@@ -173,6 +183,7 @@ class Baseline : public QWidget
         int stop;
         double percent;
         Mode mode;
+        Elemental *elemental;
         QMap<double, double>* dark;
         QMap<double, double>* magnitudeStack;
         QMap<double, double>* phaseStack;

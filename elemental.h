@@ -27,7 +27,7 @@ class Elemental : public QObject
         ~Elemental();
 
         void run();
-        void finish();
+        void finish(bool done = false, double ofs = 0.0, double sc = 1.0);
         static dsp_stream_p reference;
         static QList <dsp_stream_p> elements;
 
@@ -40,6 +40,9 @@ class Elemental : public QObject
         inline double getOffset() { return offset; }
         inline double getScale() { return scale; }
         void setBuffer(double * buf, int len);
+        void setMagnitude(double * buf, int len);
+        void setPhase(double * buf, int len);
+        void idft();
         inline void setSampleSize(int value) { sample = value; }
         inline int getSampleSize() { return sample; }
         inline dsp_stream_p getStream() { return stream; }
