@@ -78,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
     vlbiThread = new Thread(this, 4000, 1000);
     motorThread = new Thread(this, 1000, 1000);
     Elemental::loadCatalog();
-    graph = new Graph(this);
+    graph = new Graph(settings, this);
     int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
@@ -286,6 +286,7 @@ MainWindow::MainWindow(QWidget *parent)
                         QString name = "Line " + QString::number(l + 1);
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         getGraph()->addSeries(Lines[l]->getMagnitude());
+                        getGraph()->addSeries(Lines[l]->getPhase());
                         getGraph()->addSeries(Lines[l]->getMagnitudes());
                         getGraph()->addSeries(Lines[l]->getPhases());
                         getGraph()->addSeries(Lines[l]->getCounts());
@@ -300,6 +301,7 @@ MainWindow::MainWindow(QWidget *parent)
                             QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                             getGraph()->addSeries(Baselines[idx]->getMagnitude());
+                            getGraph()->addSeries(Baselines[idx]->getPhase());
                             idx++;
                         }
                     }
@@ -341,6 +343,17 @@ MainWindow::MainWindow(QWidget *parent)
         {
             Lines[x]->gotoRaDec(ra, dec);
         }
+    });
+    connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::coordinatesUpdated),
+            [ = ](double ra, double dec, double radius)
+    {
+        Ra = ra;
+        Dec = dec;
+    });
+    connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::locationUpdated),
+            [ = ](double lat, double lon, double el)
+    {
+        vlbi_set_location(getVLBIContext(), lat, lon, el);
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
@@ -498,11 +511,11 @@ MainWindow::MainWindow(QWidget *parent)
                                          line->getBuffer()->count() / 2);
         }
         vlbi_get_uv_plot(getVLBIContext(), "coverage", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
-                         getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, coverage_delegate);
+                         getGraph()->getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, coverage_delegate);
         vlbi_get_uv_plot(getVLBIContext(), "phase", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
-                         getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate);
+                         getGraph()->getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate);
         vlbi_get_uv_plot(getVLBIContext(), "magnitude", getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
-                         getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, vlbi_magnitude_delegate);
+                         getGraph()->getFrequency(), 1000000.0 / ahp_xc_get_packettime(), true, true, vlbi_magnitude_delegate);
         vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
         dsp_stream_p idft_stream = vlbi_get_model(getVLBIContext(), "idft");
         dsp_stream_p magnitude_stream = vlbi_get_model(getVLBIContext(), "magnitude");

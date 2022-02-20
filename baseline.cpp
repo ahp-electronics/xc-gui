@@ -51,6 +51,9 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         getMagnitude()->clear();
         getPhase()->clear();
+        getMagnitudes()->clear();
+        getPhases()->clear();
+        getBuffer()->clear();
         stack = 0.0;
     });
     connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
@@ -58,6 +61,9 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         getMagnitude()->clear();
         getPhase()->clear();
+        getMagnitudes()->clear();
+        getPhases()->clear();
+        getBuffer()->clear();
         stack = 0.0;
     });
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
@@ -265,6 +271,8 @@ void Baseline::plot(bool success, double o, double s)
     stack += 1.0;
     for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+        if(!getLine1()->Idft() || !getLine2()->Idft())
+            stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
     }
     stretch(getMagnitude());
 }

@@ -259,6 +259,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("z_location", value);
     });
+    ui->x_location->setValue(readInt("x_location", 0));
+    ui->y_location->setValue(readInt("y_location", 0));
+    ui->z_location->setValue(readInt("z_location", 0));
     ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex()+1));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
@@ -651,6 +654,8 @@ void Line::plot(bool success, double o, double s)
     stack += 1.0;
     for (int x = 0; x < len; x++) {
         stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+        if(!Idft())
+            stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
     }
     stretch(getMagnitude());
 }

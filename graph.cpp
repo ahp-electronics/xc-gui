@@ -28,14 +28,16 @@
 #include <QTextFormat>
 #include "ahp_xc.h"
 
-Graph::Graph(QWidget *parent, QString name) :
+Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     QWidget(parent)
 {
+    settings = s;
     plot_w = 1024;
     plot_h = 1024;
     setAccessibleName("Graph");
     chart = new QChart();
-    chart->setTitle(name);
+    name = n;
+    chart->setTitle(n);
     chart->setVisible(true);
     chart->createDefaultAxes();
     chart->legend()->hide();
@@ -70,60 +72,76 @@ Graph::Graph(QWidget *parent, QString name) :
     idftLabel->setText("IDFT");
     infoLabel = new QLabel(correlator);
     infoLabel->setVisible(true);
-    editRa[0] = new QLineEdit(correlator);
-    editRa[1] = new QLineEdit(correlator);
-    editRa[2] = new QLineEdit(correlator);
-    editRa[0]->setVisible(true);
-    editRa[1]->setVisible(true);
-    editRa[2]->setVisible(true);
-    connect(editRa[0], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    QStringList ra = toHMS(readDouble("Ra", 0.0)).split(":");
+    QStringList dec = toDMS(readDouble("Dec", 0.0)).split(":");
+    QStringList lat = toDMS(readDouble("Lat", 0.0)).split(":");
+    QStringList lon = toDMS(readDouble("Lon", 0.0)).split(":");
+    for (int i = 0; i < 3; i++) {
+        editRa[i] = new QLineEdit(correlator);
+        editRa[i]->setVisible(true);
+        editRa[i]->setText("00");
+        connect(editRa[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+        {
+            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
+            Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
+            saveSetting("Ra", Ra);
+            emit coordinatesUpdated(Ra, Dec, 0);
+        });
+        editRa[i]->setText(ra[i]);
+        editDec[i] = new QLineEdit(correlator);
+        editDec[i]->setVisible(true);
+        connect(editDec[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+        {
+            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
+            Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
+            saveSetting("Dec", Dec);
+            emit coordinatesUpdated(Ra, Dec, 0);
+        });
+        editDec[i]->setText(dec[i]);
+        editLat[i] = new QLineEdit(correlator);
+        editLat[i]->setVisible(true);
+        connect(editLat[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+        {
+            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
+            Latitude = fromHMSorDMS(editLat[0]->text()+":"+editLat[1]->text()+":"+editLat[2]->text());
+            saveSetting("Latitude", Latitude);
+            emit locationUpdated(Latitude, Longitude, Elevation);
+        });
+        editLat[i]->setText(lat[i]);
+        editLon[i] = new QLineEdit(correlator);
+        editLon[i]->setVisible(true);
+        connect(editLon[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+        {
+            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
+            Longitude = fromHMSorDMS(editLon[0]->text()+":"+editLon[1]->text()+":"+editLon[2]->text());
+            saveSetting("Longitude", Longitude);
+            emit locationUpdated(Latitude, Longitude, Elevation);
+        });
+        editLon[i]->setText(lon[i]);
+    }
+    editEl = new QLineEdit(correlator);
+    editEl->setVisible(true);
+    connect(editEl, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
     {
-        Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
+        if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
+        Elevation = editEl->text().toDouble();
+        saveSetting("Elevation", Elevation);
+        emit locationUpdated(Latitude, Longitude, Elevation);
     });
-    connect(editRa[1], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    editFrequency = new QLineEdit(correlator);
+    editFrequency->setVisible(true);
+    connect(editFrequency, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
     {
-        Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
+        if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
+        Frequency = editFrequency->text().toDouble();
+        saveSetting("Frequency", Frequency);
+        emit frequencyUpdated(Frequency);
     });
-    connect(editRa[2], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-    {
-        Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
-    });
-    editRa[0]->setText("00");
-    editRa[1]->setText("00");
-    editRa[2]->setText("00");
-    editDec[0] = new QLineEdit(correlator);
-    editDec[1] = new QLineEdit(correlator);
-    editDec[2] = new QLineEdit(correlator);
-    editDec[0]->setVisible(true);
-    editDec[1]->setVisible(true);
-    editDec[2]->setVisible(true);
-    connect(editDec[0], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-    {
-        Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
-    });
-    connect(editRa[1], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-    {
-        Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
-    });
-    connect(editRa[2], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-    {
-        Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
-    });
-    editDec[0]->setText("00");
-    editDec[1]->setText("00");
-    editDec[2]->setText("00");
-    labelseparator[0] = new QLabel(correlator);
-    labelseparator[1] = new QLabel(correlator);
-    labelseparator[2] = new QLabel(correlator);
-    labelseparator[3] = new QLabel(correlator);
-    labelseparator[0]->setVisible(true);
-    labelseparator[1]->setVisible(true);
-    labelseparator[2]->setVisible(true);
-    labelseparator[3]->setVisible(true);
-    labelseparator[0]->setText(":");
-    labelseparator[1]->setText(":");
-    labelseparator[2]->setText(":");
-    labelseparator[3]->setText(":");
+    for (int i = 0; i < 8; i++) {
+        labelseparator[i] = new QLabel(correlator);
+        labelseparator[i]->setVisible(true);
+        labelseparator[i]->setText(":");
+    }
     btnConnect = new QPushButton(correlator);
     btnConnect->setText("Connect");
     btnConnect->setVisible(true);
@@ -152,9 +170,19 @@ Graph::Graph(QWidget *parent, QString name) :
     labelDec = new QLabel(correlator);
     labelDec->setVisible(true);
     labelDec->setText("Declination");
+    labelLat = new QLabel(correlator);
+    labelLat->setVisible(true);
+    labelLat->setText("Latitude");
+    labelLon = new QLabel(correlator);
+    labelLon->setVisible(true);
+    labelLon->setText("Longitude");
+    labelEl = new QLabel(correlator);
+    labelEl->setVisible(true);
+    labelEl->setText("Elevation");
     labelGoto = new QLabel(correlator);
     labelGoto->setVisible(true);
     labelGoto->setText("Slew to coordinates");
+    editEl->setText(readString("El", "0.0"));
 }
 
 Graph::~Graph()
@@ -194,11 +222,13 @@ QString Graph::toHMS(double hms)
 double Graph::fromHMSorDMS(QString dms)
 {
     double d;
+    double m;
+    double s;
     QStringList deg = dms.split(":");
     d = deg[0].toDouble();
-    d += deg[1].toDouble() / 60.0;
-    d += deg[2].toDouble() / 3600.0;
-    return d;
+    m = deg[1].toDouble() / 60.0 * (d<0 ? -1 : 1);
+    s = deg[2].toDouble() / 3600.0 * (d<0 ? -1 : 1);
+    return d+m+s;
 }
 
 void Graph::updateInfo()
@@ -351,6 +381,27 @@ double Graph::getAzimuth() {
     return az;
 }
 
+bool Graph::haveSetting(QString setting)
+{
+    return settings->contains(QString(name + "_" + setting).replace(' ', ""));
+}
+
+void Graph::removeSetting(QString setting)
+{
+    settings->remove(QString(name + "_" + setting).replace(' ', ""));
+}
+
+void Graph::saveSetting(QString setting, QVariant value)
+{
+    settings->setValue(QString(name + "_" + setting).replace(' ', ""), value);
+    settings->sync();
+}
+
+QVariant Graph::readSetting(QString setting, QVariant defaultValue)
+{
+    return settings->value(QString(name + "_" + setting).replace(' ', ""), defaultValue);
+}
+
 void Graph::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
@@ -379,6 +430,25 @@ void Graph::resizeEvent(QResizeEvent *event)
     int radec_offset = 90;
     int radec_size = 23;
     int separator_size = 3;
+    labelLat->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
+    editLat[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
+    editLat[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
+    editLat[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
+    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
+    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
+    y_offset += 23;
+    labelLon->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
+    editLon[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
+    editLon[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
+    editLon[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
+    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
+    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
+    y_offset += 23;
+    labelEl->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
+    editEl->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size* 3 + separator_size * 2, 23);
+    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
+    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
+    y_offset += 23;
     labelRa->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
     editRa[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
     editRa[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);

@@ -168,4 +168,5 @@ void Elemental::setPhase(double * buf, int len)
 void Elemental::idft()
 {
     dsp_fourier_idft(stream);
+    dsp_buffer_shift(stream);
 }

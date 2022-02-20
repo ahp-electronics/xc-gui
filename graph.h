@@ -26,6 +26,7 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include <QSettings>
 #include <QThread>
 #include <QWidget>
 #include <QChart>
@@ -52,11 +53,32 @@ class Graph : public QWidget
         Q_OBJECT
 
     public:
-        Graph(QWidget *parent = nullptr, QString name = "");
+        Graph(QSettings *s, QWidget *parent = nullptr, QString name = "Graph");
         ~Graph();
 
         void resizeEvent(QResizeEvent *event) override;
         void paint();
+
+        bool haveSetting(QString setting);
+        void removeSetting(QString setting);
+        void saveSetting(QString name, QVariant value);
+        QVariant readSetting(QString name, QVariant defaultValue);
+        inline QString readString(QString setting, QString defaultValue)
+        {
+            return readSetting(setting, defaultValue).toString();
+        }
+        inline double readDouble(QString setting, double defaultValue)
+        {
+            return readSetting(setting, defaultValue).toDouble();
+        }
+        inline int readInt(QString setting, int defaultValue)
+        {
+            return readSetting(setting, defaultValue).toInt();
+        }
+        inline bool readBool(QString setting, bool defaultValue)
+        {
+            return readSetting(setting, defaultValue).toBool();
+        }
 
         void updateInfo();
         void clearSeries();
@@ -81,12 +103,14 @@ class Graph : public QWidget
         double getAltitude();
         double getAzimuth();
 
+        inline double getFrequency() { return Frequency; }
         inline double getRa() { return Ra; }
         inline double getDec() { return Dec; }
         inline double getLatitude() { return Latitude; }
         inline double getLongitude() { return Longitude; }
         inline double getElevation() { return Elevation; }
 
+        inline void setFrequency(double freq) { Frequency = freq; }
         inline void setRa(double ra) { Ra = ra; }
         inline void setDec(double dec) { Dec = dec; }
         inline void setLatitude(double lat) { Latitude = lat; }
@@ -98,8 +122,6 @@ class Graph : public QWidget
         double fromHMSorDMS(QString dms);
 
     private:
-        //uGnssTransportHandle_t gnssFD { .uart = -1 };
-        int gnssHandle { -1 };
         Mode mode { Counter };
         inline QImage initGrayPicture(int w, int h) {
             QVector<QRgb> palette;
@@ -109,17 +131,25 @@ class Graph : public QWidget
         }
         double Latitude, Longitude, Elevation;
         double Ra, Dec;
+        double Frequency;
         QImage idft;
         QImage magnitude;
         QImage phase;
         QImage coverage;
-        QLabel *labelseparator[4];
+        QLabel *labelseparator[8];
         QGroupBox *correlator;
         QLineEdit *editRa[3];
         QLineEdit *editDec[3];
+        QLineEdit *editLat[3];
+        QLineEdit *editLon[3];
+        QLineEdit *editEl;
+        QLineEdit *editFrequency;
         QLabel *labelRa;
         QLabel *labelDec;
         QLabel *labelGoto;
+        QLabel *labelLat;
+        QLabel *labelLon;
+        QLabel *labelEl;
         QPushButton *btnConnect;
         QPushButton *btnDisconnect;
         QPushButton *btnGoto;
@@ -137,8 +167,13 @@ class Graph : public QWidget
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
+        QString name;
         int motorFD;
+        QSettings *settings;
 signals:
+        void frequencyUpdated(double);
+        void locationUpdated(double, double, double);
+        void coordinatesUpdated(double, double, double);
         void connectMotors();
         void disconnectMotors();
         void gotoRaDec(double, double);

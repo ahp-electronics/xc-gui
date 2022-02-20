@@ -130,7 +130,6 @@ class MainWindow : public QMainWindow
                 {
                     Lines[i]->getMagnitude()->clear();
                     Lines[i]->getPhase()->clear();
-                    Lines[i]->setActive(false);
                     Lines[i]->setMode(mode);
                 }
                 if(mode == Counter) {

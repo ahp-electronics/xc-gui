@@ -312,6 +312,7 @@ class Line : public QWidget
         void getMinMax();
         void plot(bool success, double o, double s);
         void SavePlot();
+
     signals:
         void activeStateChanged(Line*);
         void updateBufferSizes();
