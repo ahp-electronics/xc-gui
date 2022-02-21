@@ -37,7 +37,7 @@
 #include "line.h"
 #include "baseline.h"
 #include "types.h"
-
+#define NUM_CONTEXTS 4
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -107,7 +107,7 @@ class MainWindow : public QMainWindow
         }
         inline void* getVLBIContext()
         {
-            return vlbi_context;
+            return context;
         }
         inline double getStartTime()
         {
@@ -132,7 +132,7 @@ class MainWindow : public QMainWindow
                     Lines[i]->getPhase()->clear();
                     Lines[i]->setMode(mode);
                 }
-                if(mode == Counter) {
+                if(mode == Counter || mode == Holograph) {
                     for(int i = 0; i < Lines.count(); i++) {
                         ahp_xc_set_channel_cross(i, 0, 0);
                         ahp_xc_set_channel_auto(i, 0, 0);
@@ -156,6 +156,7 @@ class MainWindow : public QMainWindow
         inline int getMotorFD() { return motorFD; }
         inline int getGpsFD() { return gpsFD; }
         inline int getXcFD() { return xcFD; }
+        void plotVLBI(const char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate);
     private:
         void stopThreads();
         void startThreads();
@@ -166,7 +167,7 @@ class MainWindow : public QMainWindow
         QMutex vlbi_mutex;
         double Ra, Dec;
         double wavelength;
-        void* vlbi_context;
+        void* context;
         ahp_xc_packet *packet;
         QSettings *settings;
         QTcpSocket xc_socket;
