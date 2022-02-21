@@ -57,6 +57,7 @@ if(ANDROID)
     line.ui
     graph.cpp
     graph.h
+    inputs.ui
     elemental.cpp
     elemental.h
     types.h
@@ -75,6 +76,7 @@ else(ANDROID)
     line.ui
     graph.cpp
     graph.h
+    inputs.ui
     elemental.cpp
     elemental.h
     types.h

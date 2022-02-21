@@ -31,7 +31,7 @@
 #include <QWidget>
 #include <QChart>
 #include <QLabel>
-#include <QLineEdit>
+#include <QSpinBox>
 #include <QPushButton>
 #include <QGroupBox>
 #include <QDateTime>
@@ -46,6 +46,7 @@ using namespace QtCharts;
 namespace Ui
 {
 class Graph;
+class Inputs;
 }
 
 class Graph : public QWidget
@@ -116,12 +117,15 @@ class Graph : public QWidget
         inline void setLatitude(double lat) { Latitude = lat; }
         inline void setLongitude(double lon) { Longitude = lon; }
         inline void setElevation(double el) { Elevation = el; }
+        void loadSettings();
 
+        double* toDms(double d);
         QString toHMS(double hms);
         QString toDMS(double dms);
         double fromHMSorDMS(QString dms);
 
     private:
+        Ui::Inputs *inputs;
         Mode mode { Counter };
         inline QImage initGrayPicture(int w, int h) {
             QVector<QRgb> palette;
@@ -132,28 +136,12 @@ class Graph : public QWidget
         double Latitude, Longitude, Elevation;
         double Ra, Dec;
         double Frequency;
+        QGroupBox *infos;
         QImage idft;
         QImage magnitude;
         QImage phase;
         QImage coverage;
-        QLabel *labelseparator[8];
         QGroupBox *correlator;
-        QLineEdit *editRa[3];
-        QLineEdit *editDec[3];
-        QLineEdit *editLat[3];
-        QLineEdit *editLon[3];
-        QLineEdit *editEl;
-        QLineEdit *editFrequency;
-        QLabel *labelRa;
-        QLabel *labelDec;
-        QLabel *labelGoto;
-        QLabel *labelLat;
-        QLabel *labelLon;
-        QLabel *labelEl;
-        QPushButton *btnConnect;
-        QPushButton *btnDisconnect;
-        QPushButton *btnGoto;
-        QLabel *infoLabel;
         QLabel *idftLabel;
         QLabel *magnitudeLabel;
         QLabel *phaseLabel;
@@ -170,6 +158,7 @@ class Graph : public QWidget
         QString name;
         int motorFD;
         QSettings *settings;
+
 signals:
         void frequencyUpdated(double);
         void locationUpdated(double, double, double);

@@ -24,12 +24,14 @@
 */
 
 #include "graph.h"
+#include "ui_inputs.h"
 #include <cfloat>
 #include <QTextFormat>
 #include "ahp_xc.h"
 
 Graph::Graph(QSettings *s, QWidget *parent, QString n) :
-    QWidget(parent)
+    QWidget(parent),
+    inputs(new Ui::Inputs())
 {
     settings = s;
     plot_w = 1024;
@@ -37,7 +39,6 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     setAccessibleName("Graph");
     chart = new QChart();
     name = n;
-    chart->setTitle(n);
     chart->setVisible(true);
     chart->createDefaultAxes();
     chart->legend()->hide();
@@ -46,6 +47,9 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     view->setRenderHint(QPainter::Antialiasing);
     correlator = new QGroupBox(this);
     correlator->setVisible(false);
+    inputs->setupUi(correlator);
+    infos = inputs->infos;
+    infos->setParent(correlator);
     coverage = initGrayPicture(getPlotWidth(), getPlotHeight());
     coverageView = new QLabel(correlator);
     coverageView->setVisible(true);
@@ -70,125 +74,129 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     idftLabel = new QLabel(idftView);
     idftLabel->setVisible(true);
     idftLabel->setText("IDFT");
-    infoLabel = new QLabel(correlator);
-    infoLabel->setVisible(true);
-    QStringList ra = toHMS(readDouble("Ra", 0.0)).split(":");
-    QStringList dec = toDMS(readDouble("Dec", 0.0)).split(":");
-    QStringList lat = toDMS(readDouble("Lat", 0.0)).split(":");
-    QStringList lon = toDMS(readDouble("Lon", 0.0)).split(":");
-    for (int i = 0; i < 3; i++) {
-        editRa[i] = new QLineEdit(correlator);
-        editRa[i]->setVisible(true);
-        editRa[i]->setText("00");
-        connect(editRa[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-        {
-            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
-            Ra = fromHMSorDMS(editRa[0]->text()+":"+editRa[1]->text()+":"+editRa[2]->text());
-            saveSetting("Ra", Ra);
-            emit coordinatesUpdated(Ra, Dec, 0);
-        });
-        editRa[i]->setText(ra[i]);
-        editDec[i] = new QLineEdit(correlator);
-        editDec[i]->setVisible(true);
-        connect(editDec[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-        {
-            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
-            Dec = fromHMSorDMS(editDec[0]->text()+":"+editDec[1]->text()+":"+editDec[2]->text());
-            saveSetting("Dec", Dec);
-            emit coordinatesUpdated(Ra, Dec, 0);
-        });
-        editDec[i]->setText(dec[i]);
-        editLat[i] = new QLineEdit(correlator);
-        editLat[i]->setVisible(true);
-        connect(editLat[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-        {
-            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
-            Latitude = fromHMSorDMS(editLat[0]->text()+":"+editLat[1]->text()+":"+editLat[2]->text());
-            saveSetting("Latitude", Latitude);
-            emit locationUpdated(Latitude, Longitude, Elevation);
-        });
-        editLat[i]->setText(lat[i]);
-        editLon[i] = new QLineEdit(correlator);
-        editLon[i]->setVisible(true);
-        connect(editLon[i], static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
-        {
-            if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
-            Longitude = fromHMSorDMS(editLon[0]->text()+":"+editLon[1]->text()+":"+editLon[2]->text());
-            saveSetting("Longitude", Longitude);
-            emit locationUpdated(Latitude, Longitude, Elevation);
-        });
-        editLon[i]->setText(lon[i]);
-    }
-    editEl = new QLineEdit(correlator);
-    editEl->setVisible(true);
-    connect(editEl, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+
+    connect(inputs->Ra_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
-        Elevation = editEl->text().toDouble();
+        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value())+":"+QString::number(inputs->Ra_1->value())+":"+QString::number(inputs->Ra_2->value()));
+        saveSetting("Ra", Ra);
+        emit coordinatesUpdated(Ra, Dec, 0);
+    });
+    connect(inputs->Ra_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value())+":"+QString::number(inputs->Ra_1->value())+":"+QString::number(inputs->Ra_2->value()));
+        saveSetting("Ra", Ra);
+        emit coordinatesUpdated(Ra, Dec, 0);
+    });
+    connect(inputs->Ra_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value())+":"+QString::number(inputs->Ra_1->value())+":"+QString::number(inputs->Ra_2->value()));
+        saveSetting("Ra", Ra);
+        emit coordinatesUpdated(Ra, Dec, 0);
+    });
+    connect(inputs->Dec_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value())+":"+QString::number(inputs->Dec_1->value())+":"+QString::number(inputs->Dec_2->value()));
+        saveSetting("Dec", Dec);
+        emit coordinatesUpdated(Ra, Dec, 0);
+    });
+    connect(inputs->Dec_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value())+":"+QString::number(inputs->Dec_1->value())+":"+QString::number(inputs->Dec_2->value()));
+        saveSetting("Dec", Dec);
+        emit coordinatesUpdated(Ra, Dec, 0);
+    });
+    connect(inputs->Dec_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value())+":"+QString::number(inputs->Dec_1->value())+":"+QString::number(inputs->Dec_2->value()));
+        saveSetting("Dec", Dec);
+        emit coordinatesUpdated(Ra, Dec, 0);
+    });
+    connect(inputs->Lat_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value())+":"+QString::number(inputs->Lat_1->value())+":"+QString::number(inputs->Lat_2->value()));
+        saveSetting("Latitude", Latitude);
+        emit locationUpdated(Latitude, Longitude, Elevation);
+    });
+    connect(inputs->Lat_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value())+":"+QString::number(inputs->Lat_1->value())+":"+QString::number(inputs->Lat_2->value()));
+        saveSetting("Latitude", Latitude);
+        emit locationUpdated(Latitude, Longitude, Elevation);
+    });
+    connect(inputs->Lat_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value())+":"+QString::number(inputs->Lat_1->value())+":"+QString::number(inputs->Lat_2->value()));
+        saveSetting("Latitude", Latitude);
+        emit locationUpdated(Latitude, Longitude, Elevation);
+    });
+    connect(inputs->Lon_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value())+":"+QString::number(inputs->Lon_1->value())+":"+QString::number(inputs->Lon_2->value()));
+        saveSetting("Longitude", Longitude);
+        emit locationUpdated(Latitude, Longitude, Elevation);
+    });
+    connect(inputs->Lon_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value())+":"+QString::number(inputs->Lon_1->value())+":"+QString::number(inputs->Lon_2->value()));
+        saveSetting("Longitude", Longitude);
+        emit locationUpdated(Latitude, Longitude, Elevation);
+    });
+    connect(inputs->Lon_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value())+":"+QString::number(inputs->Lon_1->value())+":"+QString::number(inputs->Lon_2->value()));
+        saveSetting("Longitude", Longitude);
+        emit locationUpdated(Latitude, Longitude, Elevation);
+    });
+    connect(inputs->El, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Elevation = inputs->El->value();
         saveSetting("Elevation", Elevation);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
-    editFrequency = new QLineEdit(correlator);
-    editFrequency->setVisible(true);
-    connect(editFrequency, static_cast<void (QLineEdit::*)(const QString &)>(&QLineEdit::textChanged), [ = ](const QString &text)
+    connect(inputs->Frequency, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(text.contains(QRegExp("^[0-9\ \(\)\+]$")))return;
-        Frequency = editFrequency->text().toDouble();
+        Frequency = inputs->Frequency->value();
         saveSetting("Frequency", Frequency);
         emit frequencyUpdated(Frequency);
     });
-    for (int i = 0; i < 8; i++) {
-        labelseparator[i] = new QLabel(correlator);
-        labelseparator[i]->setVisible(true);
-        labelseparator[i]->setText(":");
-    }
-    btnConnect = new QPushButton(correlator);
-    btnConnect->setText("Connect");
-    btnConnect->setVisible(true);
-    connect(btnConnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool clicked)
-    {
-        emit connectMotors();
-    });
-    btnDisconnect = new QPushButton(correlator);
-    btnDisconnect->setText("Disconnect");
-    btnDisconnect->setVisible(true);
-    btnDisconnect->setEnabled(false);
-    connect(btnDisconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool clicked)
-    {
-        emit disconnectMotors();
-    });
-    btnGoto = new QPushButton(correlator);
-    btnGoto->setText("Slew");
-    btnGoto->setVisible(true);
-    connect(btnGoto, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool clicked)
-    {
-        emit gotoRaDec(Ra, Dec);
-    });
-    labelRa = new QLabel(correlator);
-    labelRa->setVisible(true);
-    labelRa->setText("Right Ascension");
-    labelDec = new QLabel(correlator);
-    labelDec->setVisible(true);
-    labelDec->setText("Declination");
-    labelLat = new QLabel(correlator);
-    labelLat->setVisible(true);
-    labelLat->setText("Latitude");
-    labelLon = new QLabel(correlator);
-    labelLon->setVisible(true);
-    labelLon->setText("Longitude");
-    labelEl = new QLabel(correlator);
-    labelEl->setVisible(true);
-    labelEl->setText("Elevation");
-    labelGoto = new QLabel(correlator);
-    labelGoto->setVisible(true);
-    labelGoto->setText("Slew to coordinates");
-    editEl->setText(readString("El", "0.0"));
 }
 
 Graph::~Graph()
 {
     chart->~QChart();
     view->~QChartView();
+}
+
+void Graph::loadSettings()
+{
+
+    setRa(readDouble("Ra", 0.0));
+    setDec(readDouble("Dec", 0.0));
+    setLatitude(readDouble("Latitude", 0.0));
+    setLongitude(readDouble("Longitude", 0.0));
+    setElevation(readDouble("Elevation", 0.0));
+    setFrequency(readDouble("Frequency", 1420000.0));
+
+    double* ra = toDms(getRa());
+    double* dec = toDms(getDec());
+    double* lat = toDms(getLatitude());
+    double* lon = toDms(getLongitude());
+
+    inputs->Ra_0->setValue(ra[0]);
+    inputs->Dec_0->setValue(dec[0]);
+    inputs->Lat_0->setValue(lat[0]);
+    inputs->Lon_0->setValue(lon[0]);
+    inputs->Ra_1->setValue(ra[1]);
+    inputs->Dec_1->setValue(dec[1]);
+    inputs->Lat_1->setValue(lat[1]);
+    inputs->Lon_1->setValue(lon[1]);
+    inputs->Ra_2->setValue(ra[2]);
+    inputs->Dec_2->setValue(dec[2]);
+    inputs->Lat_2->setValue(lat[2]);
+    inputs->Lon_2->setValue(lon[2]);
+
+    inputs->El->setValue(getElevation());
+    inputs->Frequency->setValue(getFrequency());
 }
 
 QString Graph::toDMS(double dms)
@@ -200,9 +208,22 @@ QString Graph::toDMS(double dms)
     dms *= 60.0;
     m = floor(dms);
     dms -= m;
-    dms *= 60.0;
+    dms *= 60000.0;
     s = floor(dms)/1000.0;
     return QString::number(d) + QString(":") + QString::number(m) + QString(":") + QString::number(s);
+}
+
+double* Graph::toDms(double d)
+{
+    double* dms = (double*)malloc(sizeof(double)*3);
+    dms[0] = floor(d);
+    d -= dms[0];
+    d *= 60.0;
+    dms[1] = floor(d);
+    d -= dms[1];
+    d *= 60.0;
+    dms[1] = d;
+    return dms;
 }
 
 QString Graph::toHMS(double hms)
@@ -236,25 +257,25 @@ void Graph::updateInfo()
     QString label = "";
     label += QString("UTC: ") + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate);
     label += "\n";
-    label += QString("Latitude: ") + toDMS(Latitude);
-    label += QString(Latitude < 0 ? "S" : "N");
+    label += QString("LST: ") + toHMS(getLST());
     label += "\n";
-    label += QString("Longitude: ") + toDMS(Longitude);
-    label += QString(Longitude < 0 ? "W" : "E");
+    label += QString("Latitude: ") + toDMS(getLatitude());
+    label += QString(getLatitude() < 0 ? "S" : "N");
     label += "\n";
-    label += QString("Elevation: ") + Elevation;
+    label += QString("Longitude: ") + toDMS(getLongitude());
+    label += QString(getLongitude() < 0 ? "W" : "E");
+    label += "\n";
+    label += QString("Elevation: ") + QString::number(getElevation());
     label += "\n";
     label += QString("Altitude: ") + QString(getAltitude() < 0 ? "-" : "+") + toDMS(getAltitude());
+    label += "\n";
+    label += QString("Azimuth: ") + toDMS(getAzimuth());
     label += "\n";
     label += QString("Right Ascension: ") + toDMS(getRa());
     label += "\n";
     label += QString("Declination: ") + QString(getDec() < 0 ? "-" : "+") + toDMS(getDec());
     label += "\n";
-    label += QString("Azimuth: ") + toDMS(getAzimuth());
-    label += "\n";
-    label += QString("LST: ") + toHMS(getLST());
-    label += "\n";
-    infoLabel->setText(label);
+    inputs->infoLabel->setText(label);
 }
 
 void Graph::setMode(Mode m)
@@ -407,62 +428,22 @@ void Graph::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
     view->setGeometry(0, 0, width(), height());
     correlator->setGeometry(0, 0, width(), height());
-    int size = (correlator->width() - 270) / 4;
+    int y_offset = 40;
+    infos->setGeometry(correlator->width() - infos->width() - 10, y_offset, infos->width(), infos->height());
+    int num_blocks = 4;
+    int size = (correlator->width() - infos->width() - 20 - num_blocks * 5) / num_blocks;
     int n = 0;
-    coverageView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
+    coverageView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
     n++;
-    magnitudeView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
+    magnitudeView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
     n++;
-    phaseView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
+    phaseView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
     n++;
-    idftView->setGeometry(size * n + 5 + 5 * n, 40, size, size);
+    idftView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
     n++;
+    y_offset = 40;
     coverageLabel->setGeometry(0,0, size, 30);
     magnitudeLabel->setGeometry(0,0, size, 30);
     phaseLabel->setGeometry(0,0, size, 30);
     idftLabel->setGeometry(0,0, size, 30);
-    int y_offset = 40;
-    infoLabel->setGeometry(correlator->width() - 240, 40, 230, 170);
-    y_offset += infoLabel->height();
-    btnConnect->setGeometry(correlator->width() - 160, y_offset+3, 75, 23);
-    btnDisconnect->setGeometry(correlator->width() - 80, y_offset+3, 75, 23);
-    y_offset += 23;
-    int radec_offset = 90;
-    int radec_size = 23;
-    int separator_size = 3;
-    labelLat->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
-    editLat[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
-    editLat[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
-    editLat[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
-    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
-    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
-    y_offset += 23;
-    labelLon->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
-    editLon[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
-    editLon[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
-    editLon[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
-    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
-    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
-    y_offset += 23;
-    labelEl->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
-    editEl->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size* 3 + separator_size * 2, 23);
-    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
-    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
-    y_offset += 23;
-    labelRa->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
-    editRa[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
-    editRa[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
-    editRa[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
-    labelseparator[0]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
-    labelseparator[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
-    y_offset += 23;
-    labelDec->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
-    editDec[0]->setGeometry(correlator->width() - radec_offset, y_offset+3, radec_size, 23);
-    editDec[1]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1, y_offset+3, radec_size, 23);
-    editDec[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2, y_offset+3, radec_size, 23);
-    labelseparator[2]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*1 - separator_size, y_offset+3, separator_size, 23);
-    labelseparator[3]->setGeometry(correlator->width() - radec_offset + (radec_size+separator_size)*2 - separator_size, y_offset+3, separator_size, 23);
-    y_offset += 23;
-    labelGoto->setGeometry(correlator->width() - 240, y_offset+3, 140, 23);
-    btnGoto->setGeometry(correlator->width() - radec_offset, y_offset+3, 75, 23);
 }
