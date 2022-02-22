@@ -175,7 +175,7 @@ void Graph::loadSettings()
     setLatitude(readDouble("Latitude", 0.0));
     setLongitude(readDouble("Longitude", 0.0));
     setElevation(readDouble("Elevation", 0.0));
-    setFrequency(readDouble("Frequency", 1420000.0));
+    setFrequency(readDouble("Freq. (Hz)", 1420000000.0));
 
     double* ra = toDms(getRa());
     double* dec = toDms(getDec());
@@ -315,10 +315,10 @@ void Graph::paint()
 {
     if(mode == Holograph)
     {
-        coverageView->setPixmap(QPixmap::fromImage(coverage.scaled(coverageView->geometry().size())));
-        magnitudeView->setPixmap(QPixmap::fromImage(magnitude.scaled(magnitudeView->geometry().size())));
-        phaseView->setPixmap(QPixmap::fromImage(phase.scaled(phaseView->geometry().size())));
-        idftView->setPixmap(QPixmap::fromImage(idft.scaled(idftView->geometry().size())));
+        coverageView->setPixmap(QPixmap::fromImage(getCoverage()->scaled(coverageView->geometry().size())));
+        magnitudeView->setPixmap(QPixmap::fromImage(getMagnitude()->scaled(magnitudeView->geometry().size())));
+        phaseView->setPixmap(QPixmap::fromImage(getPhase()->scaled(phaseView->geometry().size())));
+        idftView->setPixmap(QPixmap::fromImage(getIdft()->scaled(idftView->geometry().size())));
         updateInfo();
     }
     else

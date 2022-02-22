@@ -115,22 +115,27 @@ class MainWindow : public QMainWindow
         }
         inline void setMode(Mode m)
         {
-            mode = m;
             if(connected)
             {
-                getGraph()->setMode(m);
+                mode = m;
+                stopThreads();
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
                 ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_ENABLE));
                 for(int i = 0; i < Baselines.count(); i++)
                 {
                     Baselines[i]->getMagnitude()->clear();
                     Baselines[i]->getPhase()->clear();
+                    Baselines[i]->getMagnitudes()->clear();
+                    Baselines[i]->getPhases()->clear();
+                    Baselines[i]->getCounts()->clear();
                 }
                 for(int i = 0; i < Lines.count(); i++)
                 {
                     Lines[i]->getMagnitude()->clear();
                     Lines[i]->getPhase()->clear();
-                    Lines[i]->setMode(mode);
+                    Lines[i]->getMagnitudes()->clear();
+                    Lines[i]->getPhases()->clear();
+                    Lines[i]->getCounts()->clear();
                 }
                 if(mode == Counter || mode == Holograph) {
                     for(int i = 0; i < Lines.count(); i++) {
@@ -139,6 +144,12 @@ class MainWindow : public QMainWindow
                     }
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
                 }
+                for(int i = 0; i < Lines.count(); i++)
+                    Lines[i]->setMode(mode);
+                getGraph()->setMode(m);
+                if(mode == Holograph)
+                    vlbiThread->start();
+                startThreads();
             }
         }
         void resetTimestamp();

@@ -53,7 +53,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         getPhase()->clear();
         getMagnitudes()->clear();
         getPhases()->clear();
-        getBuffer()->clear();
+        getCounts()->clear();
         stack = 0.0;
     });
     connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
@@ -63,7 +63,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         getPhase()->clear();
         getMagnitudes()->clear();
         getPhases()->clear();
-        getBuffer()->clear();
+        getCounts()->clear();
         stack = 0.0;
     });
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),

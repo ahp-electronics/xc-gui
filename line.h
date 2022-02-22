@@ -212,6 +212,7 @@ class Line : public QWidget
         {
             return &location;
         }
+
         void setLocation(dsp_location location);
         double *percent;
         double localpercent;
@@ -260,6 +261,7 @@ class Line : public QWidget
         void gotoRaDec(double ra, double dec);
         void startTracking(double ra_rate, double dec_rate);
     private:
+        double Frequency { LIGHTSPEED };
         inline double getMotorAxisPosition(int axis, int index = 0) { if(!hasMotorbBus()) return 0.0; selectMotor(axis, index); return ahp_gt_get_position(axis); }
         inline void setMotorAxisPosition(int axis, double value, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_set_position(axis, value); }
         inline void moveMotorAxisBy(int axis, double value, double speed, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_goto_relative(axis, value, speed); }

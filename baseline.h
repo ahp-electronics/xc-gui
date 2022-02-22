@@ -96,7 +96,7 @@ class Baseline : public QWidget
         {
             return phase;
         }
-        inline QList<double>* getBuffer()
+        inline QList<double>* getCounts()
         {
             return complex;
         }

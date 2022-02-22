@@ -61,19 +61,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     line = n;
     flags = 0;
     ui->setupUi(this);
-    ui->x_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
-    ui->y_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
-    ui->z_location->setRange(-ahp_xc_get_delaysize() * 1000, ahp_xc_get_delaysize() * 1000);
-
-    setLocation((dsp_location)
-    {
-        .xyz =
-        {
-            .x = readDouble("location_x", 0.0) / 1000.0,
-            .y = readDouble("location_y", 0.0) / 1000.0,
-            .z = readDouble("location_z", 0.0) / 1000.0
-        }
-    });
     start = ui->StartLine->value();
     end = ui->EndLine->value();
     len = end - start;
@@ -247,21 +234,32 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.x = (double)value / 1000.0;
-        saveSetting("x_location", value);
+        saveSetting("location_x", location.xyz.x);
     });
     connect(ui->y_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.y = (double)value / 1000.0;
-        saveSetting("y_location", value);
+        saveSetting("location_y", location.xyz.y);
     });
     connect(ui->z_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.z = (double)value / 1000.0;
-        saveSetting("z_location", value);
+        saveSetting("location_z", location.xyz.z);
     });
-    ui->x_location->setValue(readInt("x_location", 0));
-    ui->y_location->setValue(readInt("y_location", 0));
-    ui->z_location->setValue(readInt("z_location", 0));
+    int maxdia = 1000 * ahp_xc_get_delaysize() * vlbi_astro_mean_speed(0) * ahp_xc_get_sampletime() * pow(2, 15);
+    ui->x_location->setRange(-maxdia, maxdia);
+    ui->y_location->setRange(-maxdia, maxdia);
+    ui->z_location->setRange(-maxdia, maxdia);
+
+    setLocation((dsp_location)
+    {
+        .xyz =
+        {
+            .x = readDouble("location_x", 0.0),
+            .y = readDouble("location_y", 0.0),
+            .z = readDouble("location_z", 0.0)
+        }
+    });
     ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex()+1));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
@@ -486,14 +484,14 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int id
     series->append(x, y);
 }
 
-void Line::setLocation(dsp_location location)
+void Line::setLocation(dsp_location l)
 {
-    ui->x_location->setValue(location.xyz.x);
-    ui->y_location->setValue(location.xyz.y);
-    ui->z_location->setValue(location.xyz.z);
-    saveSetting("location_x", location.xyz.x);
-    saveSetting("location_y", location.xyz.y);
-    saveSetting("location_z", location.xyz.z);
+    ui->x_location->setValue(l.xyz.x * 1000.0);
+    ui->y_location->setValue(l.xyz.y * 1000.0);
+    ui->z_location->setValue(l.xyz.z * 1000.0);
+    saveSetting("location_x", l.xyz.x);
+    saveSetting("location_y", l.xyz.y);
+    saveSetting("location_z", l.xyz.z);
 }
 
 void Line::stretch(QLineSeries* series)

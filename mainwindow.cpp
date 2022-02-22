@@ -148,6 +148,8 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
         ui->Scale->setEnabled(false);
+        ui->Range->setEnabled(false);
+        ui->Mode->setEnabled(false);
         if(!connected)
             return;
         freePacket();
@@ -305,14 +307,14 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                     getGraph()->loadSettings();
                     createPacket();
-                    startThreads();
+                    setMode(Counter);
                     ui->Connect->setEnabled(false);
                     ui->Disconnect->setEnabled(true);
                     ui->Range->setValue(settings->value("Timerange", 0).toInt());
                     ui->Scale->setValue(settings->value("Timescale", 0).toInt());
                     ui->Scale->setEnabled(true);
                     ui->Range->setEnabled(true);
-                    setMode(Counter);
+                    ui->Mode->setEnabled(true);
                     if(motorFD >= 0)
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
@@ -354,6 +356,10 @@ MainWindow::MainWindow(QWidget *parent)
     {
         vlbi_set_location(getVLBIContext(), lat, lon, el);
     });
+    connect(getGraph(), static_cast<void (Graph::*)(double)>(&Graph::frequencyUpdated),
+            [ = ](double freq)
+    {
+    });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
         ahp_xc_packet* packet = getPacket();
@@ -385,13 +391,13 @@ MainWindow::MainWindow(QWidget *parent)
                                 offset2 /= ahp_xc_get_sampletime();
                                 ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), offset1, 0);
                                 ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), offset2, 0);
-                                line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
-                                line->getBuffer()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
+                                line->getCounts()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
+                                line->getCounts()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
                             }
                             else
                             {
-                                line->getBuffer()->append(0.0);
-                                line->getBuffer()->append(0.0);
+                                line->getCounts()->append(0.0);
+                                line->getCounts()->append(0.0);
                             }
                             idx++;
                         }
@@ -505,14 +511,13 @@ MainWindow::MainWindow(QWidget *parent)
             thread->unlock();
             return;
         }
-        readThread->lock();
         for(int i  = 0; i < Baselines.count(); i++)
         {
             Baseline* line = Baselines[i];
-            if(line->getBuffer()->count() > 0) {
+            if(line->getCounts()->count() > 0) {
                 vlbi_set_baseline_buffer(getVLBIContext(), line->getLine1()->getName().toStdString().c_str(),
-                                        line->getLine2()->getName().toStdString().c_str(), (fftw_complex*)line->getBuffer()->toVector().data(),
-                                        line->getBuffer()->count() / 2);
+                                        line->getLine2()->getName().toStdString().c_str(), (fftw_complex*)line->getCounts()->toVector().data(),
+                                        line->getCounts()->count() / 2);
             }
         }
         plotVLBI("coverage", getGraph()->getCoverage(), Ra, Dec, coverage_delegate);
@@ -521,11 +526,9 @@ MainWindow::MainWindow(QWidget *parent)
         vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
 
         dsp_stream_p stream = vlbi_get_model(getVLBIContext(), "idft");
-        QImage *idft = getGraph()->getIdft();
         dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
         dsp_buffer_1sub(stream, 255.0);
-        dsp_buffer_copy(stream->buf, idft->bits(), stream->len);
-        readThread->unlock();
+        dsp_buffer_copy(stream->buf, getGraph()->getIdft()->bits(), stream->len);
         thread->unlock();
     });
     connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
@@ -536,11 +539,7 @@ MainWindow::MainWindow(QWidget *parent)
         {
             if(ahp_gt_is_connected())
             {
-                dsp_location location;
-                for(int x = 0; x < Lines.count(); x++)
-                {
-                    Lines[x]->setLocation(location);
-                }
+                ///TODO
             }
         }
         thread->unlock();
@@ -572,7 +571,6 @@ void MainWindow::startThreads()
 {
     readThread->start();
     uiThread->start();
-    vlbiThread->start();
     motorThread->start();
 }
 
@@ -580,16 +578,12 @@ void MainWindow::stopThreads()
 {
     uiThread->requestInterruption();
     uiThread->wait();
-    uiThread->~Thread();
-    readThread->requestInterruption();
-    readThread->wait();
-    readThread->~Thread();
     vlbiThread->requestInterruption();
     vlbiThread->wait();
-    vlbiThread->~Thread();
+    readThread->requestInterruption();
+    readThread->wait();
     motorThread->requestInterruption();
     motorThread->wait();
-    motorThread->~Thread();
 }
 
 void MainWindow::resetTimestamp()
@@ -607,6 +601,11 @@ void MainWindow::resetTimestamp()
 
 MainWindow::~MainWindow()
 {
+    stopThreads();
+    uiThread->~Thread();
+    vlbiThread->~Thread();
+    readThread->~Thread();
+    motorThread->~Thread();
     unsigned char v = 0x80;
     if(motorFD >= 0)
     {
