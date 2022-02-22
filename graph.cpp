@@ -155,9 +155,9 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Frequency, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Frequency = inputs->Frequency->value();
+        setFrequency(inputs->Frequency->value() * 1000000.0);
         saveSetting("Frequency", Frequency);
-        emit frequencyUpdated(Frequency);
+        emit frequencyUpdated(getFrequency());
     });
 }
 
@@ -175,7 +175,7 @@ void Graph::loadSettings()
     setLatitude(readDouble("Latitude", 0.0));
     setLongitude(readDouble("Longitude", 0.0));
     setElevation(readDouble("Elevation", 0.0));
-    setFrequency(readDouble("Freq. (Hz)", 1420000000.0));
+    setFrequency(readDouble("Frequency", 1420000000.0));
 
     double* ra = toDms(getRa());
     double* dec = toDms(getDec());
@@ -196,7 +196,7 @@ void Graph::loadSettings()
     inputs->Lon_2->setValue(lon[2]);
 
     inputs->El->setValue(getElevation());
-    inputs->Frequency->setValue(getFrequency());
+    inputs->Frequency->setValue(getFrequency()/1000000.0);
 }
 
 QString Graph::toDMS(double dms)
