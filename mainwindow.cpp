@@ -71,11 +71,10 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
     ui->setupUi(this);
-    uiThread = new Thread(this, 300, 200);
+    uiThread = new Thread(this);
     readThread = new Thread(this, 100, 100);
     vlbiThread = new Thread(this, 100, 777);
     motorThread = new Thread(this, 1000, 1000);
-    uiThread->start();
     Elemental::loadCatalog();
     graph = new Graph(settings, this);
     int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
@@ -549,6 +548,7 @@ MainWindow::MainWindow(QWidget *parent)
         thread->unlock();
     });
     resize(1280, 720);
+    uiThread->start();
 }
 
 void MainWindow::plotVLBI(const char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate)
