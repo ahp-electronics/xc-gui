@@ -183,7 +183,6 @@ class MainWindow : public QMainWindow
         QSettings *settings;
         QTcpSocket xc_socket;
         QTcpSocket motor_socket;
-        QTcpSocket gps_socket;
         QSerialPort serial;
         QFile file;
         Mode mode;

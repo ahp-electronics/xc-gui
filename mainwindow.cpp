@@ -71,10 +71,11 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
     ui->setupUi(this);
-    uiThread = new Thread(this);
+    uiThread = new Thread(this, 300, 200);
     readThread = new Thread(this, 100, 100);
     vlbiThread = new Thread(this, 100, 777);
     motorThread = new Thread(this, 1000, 1000);
+    uiThread->start();
     Elemental::loadCatalog();
     graph = new Graph(settings, this);
     int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
@@ -140,26 +141,34 @@ MainWindow::MainWindow(QWidget *parent)
             [ = ](bool checked)
     {
         (void)checked;
-        for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
-        {
-            Lines[l]->setActive(false);
-        }
+        if(!connected)
+            return;
         stopThreads();
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
         ui->Scale->setEnabled(false);
         ui->Range->setEnabled(false);
         ui->Mode->setEnabled(false);
-        if(!connected)
-            return;
-        freePacket();
-        vlbi_exit(getVLBIContext());
+        getGraph()->clearSeries();
         for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
         {
+            Lines[l]->setActive(false);
+            ahp_xc_set_leds(l, 0);
+            ui->Lines->removeTab(l);
             Lines[l]->~Line();
         }
         Lines.clear();
-        getGraph()->clearSeries();
+        unsigned char v = 0x80;
+        if(motorFD >= 0)
+        {
+            write(motorFD, &v, 1);
+            if(ahp_gt_is_connected())
+                ahp_gt_disconnect();
+        }
+        freePacket();
+        vlbi_exit(getVLBIContext());
+        ahp_xc_set_capture_flags(CAP_NONE);
+        ahp_xc_disconnect();
         if(xc_socket.isOpen())
         {
             xc_socket.disconnectFromHost();
@@ -168,11 +177,6 @@ MainWindow::MainWindow(QWidget *parent)
         {
             motor_socket.disconnectFromHost();
         }
-        if(gps_socket.isOpen())
-        {
-            gps_socket.disconnectFromHost();
-        }
-        ahp_xc_disconnect();
         settings->endGroup();
         connected = false;
     });
@@ -570,14 +574,10 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 void MainWindow::startThreads()
 {
     readThread->start();
-    uiThread->start();
-    motorThread->start();
 }
 
 void MainWindow::stopThreads()
 {
-    uiThread->requestInterruption();
-    uiThread->wait();
     vlbiThread->requestInterruption();
     vlbiThread->wait();
     readThread->requestInterruption();
@@ -601,27 +601,17 @@ void MainWindow::resetTimestamp()
 
 MainWindow::~MainWindow()
 {
-    stopThreads();
-    uiThread->~Thread();
-    vlbiThread->~Thread();
-    readThread->~Thread();
-    motorThread->~Thread();
-    unsigned char v = 0x80;
-    if(motorFD >= 0)
-    {
-        write(motorFD, &v, 1);
-        if(ahp_gt_is_connected())
-            ahp_gt_disconnect();
-    }
-    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
-    {
-        ahp_xc_set_leds(l, 0);
-    }
-    ahp_xc_set_capture_flags(CAP_NONE);
     if(connected)
     {
         ui->Disconnect->clicked(false);
     }
+    uiThread->requestInterruption();
+    uiThread->wait();
+    uiThread->~Thread();
+    vlbiThread->~Thread();
+    readThread->~Thread();
+    motorThread->~Thread();
     getGraph()->~Graph();
+    settings->~QSettings();
     delete ui;
 }
