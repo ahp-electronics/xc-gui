@@ -250,16 +250,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->x_location->setRange(-maxdia, maxdia);
     ui->y_location->setRange(-maxdia, maxdia);
     ui->z_location->setRange(-maxdia, maxdia);
-
-    setLocation((dsp_location)
-    {
-        .xyz =
-        {
-            .x = readDouble("location_x", 0.0),
-            .y = readDouble("location_y", 0.0),
-            .z = readDouble("location_z", 0.0)
-        }
-    });
+    ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
+    ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
+    ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
     ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex()+1));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
