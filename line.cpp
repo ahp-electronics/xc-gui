@@ -246,10 +246,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("location_z", location.xyz.z);
     });
-    int maxdia = 1000 * ahp_xc_get_delaysize() * vlbi_astro_mean_speed(0) * ahp_xc_get_sampletime() * pow(2, 15);
-    ui->x_location->setRange(-maxdia, maxdia);
-    ui->y_location->setRange(-maxdia, maxdia);
-    ui->z_location->setRange(-maxdia, maxdia);
     ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
     ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
     ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
