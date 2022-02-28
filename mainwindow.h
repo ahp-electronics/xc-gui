@@ -39,6 +39,8 @@
 #include "types.h"
 #define NUM_CONTEXTS 4
 
+#define fdclose(fd, mode) (fclose(fdopen(fd, mode)))
+
 QT_BEGIN_NAMESPACE
 namespace Ui
 {
@@ -120,7 +122,7 @@ class MainWindow : public QMainWindow
                 mode = m;
                 stopThreads();
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
-                ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_ENABLE));
+                ahp_xc_set_capture_flags((xc_capture_flags)((cur&~CAP_ENABLE)|CAP_RESET_TIMESTAMP));
                 for(int i = 0; i < Baselines.count(); i++)
                 {
                     Baselines[i]->getMagnitude()->clear();
@@ -143,6 +145,7 @@ class MainWindow : public QMainWindow
                         ahp_xc_set_channel_auto(i, 0, 0);
                     }
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
+                    resetTimestamp();
                 }
                 for(int i = 0; i < Lines.count(); i++)
                     Lines[i]->setMode(mode);
@@ -152,6 +155,7 @@ class MainWindow : public QMainWindow
                 startThreads();
             }
         }
+        void setVoltage(unsigned char level);
         void resetTimestamp();
         QDateTime start;
         Thread *readThread;
@@ -165,14 +169,14 @@ class MainWindow : public QMainWindow
         inline QList<int> getMotorAddresses() { return gt_addresses; }
 
         inline int getMotorFD() { return motorFD; }
-        inline int getGpsFD() { return gpsFD; }
+        inline int getControlFD() { return controlFD; }
         inline int getXcFD() { return xcFD; }
         void plotVLBI(const char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate);
     private:
         void stopThreads();
         void startThreads();
         int motorFD;
-        int gpsFD;
+        int controlFD;
         int xcFD;
         double lastpackettime;
         QMutex vlbi_mutex;
@@ -183,6 +187,7 @@ class MainWindow : public QMainWindow
         QSettings *settings;
         QTcpSocket xc_socket;
         QTcpSocket motor_socket;
+        QTcpSocket control_socket;
         QSerialPort serial;
         QFile file;
         Mode mode;

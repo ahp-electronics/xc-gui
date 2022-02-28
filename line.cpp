@@ -138,6 +138,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         saveSetting("IDFT", ui->IDFT->isChecked());
     });
+    connect(ui->Histogram, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    {
+        saveSetting("Histogram", ui->Histogram->isChecked());
+    });
     connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         saveSetting("ElementalAlign", ui->ElementalAlign->isChecked());
@@ -216,6 +220,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         saveSetting(ui->Autocorrelations->text(), ui->Autocorrelations->isChecked());
     });
+    connect(ui->Crosscorrelations, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
+    {
+        saveSetting(ui->Crosscorrelations->text(), ui->Crosscorrelations->isChecked());
+    });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         ahp_xc_set_channel_auto(line, 0, value);
@@ -256,9 +264,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->SampleSize->setValue(readInt("SampleSize", 5));
     ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 1);
+    ui->LineDelay->setRange(0, ahp_xc_get_delaysize() - 1);
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
+    ui->LineDelay->setValue(readInt("LineDelay", ui->LineDelay->minimum()));
     ui->IDFT->setChecked(readBool("IDFT", false));
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 7);
+    ui->Histogram->setChecked(readBool("Histogram", false));
     ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
     ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
     ahp_xc_set_leds(line, flags);
@@ -382,6 +393,11 @@ bool Line::showCounts()
 bool Line::showAutocorrelations()
 {
     return ui->Autocorrelations->isChecked();
+}
+
+bool Line::showCrosscorrelations()
+{
+    return ui->Crosscorrelations->isChecked();
 }
 
 void Line::setMode(Mode m)
@@ -519,6 +535,11 @@ void Line::SavePlot()
     data.close();
 }
 
+bool Line::Histogram()
+{
+    return ui->Histogram->isChecked();
+}
+
 bool Line::Idft()
 {
     return ui->IDFT->isChecked();
@@ -596,11 +617,11 @@ void Line::stackCorrelations()
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
     stop = 0;
-    int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len+1, &stop, &localpercent);
-    if(spectrum != nullptr && npackets == len + 1)
+    int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &localpercent);
+    if(spectrum != nullptr && npackets == len)
     {
         int lag = 1;
-        for (int x = 0, z = 1; x < len; x++, z++)
+        for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() - start;
             for(int y = lag+1; y < _lag && y < len; y++) {
@@ -639,10 +660,20 @@ void Line::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    for (int x = 0; x < len; x++) {
-        stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-        if(!Idft())
-            stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+    if(Histogram()) {
+        int size = fmin(len, 256);
+        double *histo = dsp_stats_histogram(elemental->getStream(), size);
+        for (int x = 1; x < size; x++) {
+            if(histo[x] != 0)
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * M_PI * 2 / size, histo[x]);
+        }
+        free(histo);
+    } else {
+        for (int x = 0; x < len; x++) {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+            if(!Idft())
+                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+        }
     }
     stretch(getMagnitude());
 }

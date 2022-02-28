@@ -69,11 +69,13 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
     {
+        getCounts()->clear();
         stop = !isActive();
     });
     connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
     {
+        getCounts()->clear();
         stop = !isActive();
     });
 }
@@ -220,18 +222,18 @@ void Baseline::stackCorrelations()
     int head_size = end1 - start1;
 
     stop = 0;
-    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, head_size + 1, start2, tail_size + 1, &stop, &percent);
-    if(spectrum != nullptr && npackets == len + 2)
+    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, head_size, start2, tail_size, &stop, &percent);
+    if(spectrum != nullptr && npackets == len)
     {
         int lag = 0;
-        for (int x = 0, z = 1; x < len + 1; x++, z++)
+        for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             if(x == head_size) {
                 lag = head_size;
                 continue;
             }
             int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() + head_size;
-            for(int y = lag; y != _lag && y >= 0 && y < len; y += (lag < _lag ? 1 : -1)) {
+            for(int y = lag; y < _lag && y < len; y+=(lag>_lag?-1:(lag<_lag)?1:0)) {
                 magnitude_buf[y] = magnitude_buf[lag];
                 phase_buf[y] = phase_buf[lag];
             }
@@ -269,10 +271,20 @@ void Baseline::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    for (int x = 0; x < len; x++) {
-        stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-        if(!getLine1()->Idft() || !getLine2()->Idft())
-            stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+    if(getLine1()->Histogram() && getLine2()->Histogram()) {
+        int size = fmin(len, 256);
+        double *histo = dsp_stats_histogram(elemental->getStream(), size);
+        for (int x = 1; x < size; x++) {
+            if(histo[x] != 0)
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * M_PI * 2 / size, histo[x]);
+        }
+        free(histo);
+    } else {
+        for (int x = 0; x < len; x++) {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+            if(!getLine1()->Idft() || !getLine2()->Idft())
+                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+        }
     }
     stretch(getMagnitude());
 }

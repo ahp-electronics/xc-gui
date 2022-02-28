@@ -17,10 +17,10 @@
    <widget class="QComboBox" name="XCPort">
     <property name="geometry">
      <rect>
-      <x>70</x>
+      <x>110</x>
       <y>10</y>
       <width>81</width>
-      <height>21</height>
+      <height>16</height>
      </rect>
     </property>
     <property name="editable">
@@ -32,12 +32,12 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>61</width>
-      <height>21</height>
+      <width>91</width>
+      <height>16</height>
      </rect>
     </property>
     <property name="text">
-     <string>XC Port:</string>
+     <string>Data Port:</string>
     </property>
    </widget>
    <widget class="QPushButton" name="Connect">
@@ -192,10 +192,10 @@
    <widget class="QLabel" name="label_6">
     <property name="geometry">
      <rect>
-      <x>160</x>
-      <y>10</y>
-      <width>81</width>
-      <height>21</height>
+      <x>10</x>
+      <y>30</y>
+      <width>91</width>
+      <height>16</height>
      </rect>
     </property>
     <property name="text">
@@ -205,10 +205,10 @@
    <widget class="QComboBox" name="MotorPort">
     <property name="geometry">
      <rect>
-      <x>250</x>
-      <y>10</y>
+      <x>110</x>
+      <y>30</y>
       <width>81</width>
-      <height>21</height>
+      <height>16</height>
      </rect>
     </property>
     <property name="editable">
@@ -218,8 +218,8 @@
    <widget class="QSlider" name="Voltage">
     <property name="geometry">
      <rect>
-      <x>160</x>
-      <y>45</y>
+      <x>330</x>
+      <y>40</y>
       <width>160</width>
       <height>21</height>
      </rect>
@@ -240,7 +240,7 @@
    <widget class="QLabel" name="voltageLabel">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>200</x>
       <y>40</y>
       <width>131</width>
       <height>21</height>
@@ -248,6 +248,32 @@
     </property>
     <property name="text">
      <string>Voltage:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>50</y>
+      <width>91</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Control Port:</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="ControlPort">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>50</y>
+      <width>81</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="editable">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>

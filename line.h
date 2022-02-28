@@ -57,6 +57,7 @@ class Line : public QWidget
         ~Line();
 
         void paint();
+        bool Histogram();
         bool Idft();
         bool Align();
         inline bool isActive()

@@ -98,6 +98,8 @@ class Graph : public QWidget
         inline QImage *getIdft() { return &idft; }
         inline int getMotorFD() { return motorFD; }
         inline void setMotorFD(int fd) { motorFD = fd; }
+        inline int getControlFD() { return controlFD; }
+        inline void setControlFD(int fd) { controlFD = fd; }
 
         double getJ2000Time();
         double getLST();
@@ -157,6 +159,7 @@ class Graph : public QWidget
         QChartView *view;
         QString name;
         int motorFD;
+        int controlFD;
         QSettings *settings;
 
 signals:

@@ -71,8 +71,8 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
     ui->setupUi(this);
-    uiThread = new Thread(this);
-    readThread = new Thread(this, 100, 100);
+    uiThread = new Thread(this, 100, 100);
+    readThread = new Thread(this, 1, 1);
     vlbiThread = new Thread(this, 100, 777);
     motorThread = new Thread(this, 1000, 1000);
     Elemental::loadCatalog();
@@ -90,6 +90,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->XCPort->addItem(settings->value("xc_connection", "no connection").toString());
     ui->MotorPort->clear();
     ui->MotorPort->addItem(settings->value("motor_connection", "no connection").toString());
+    ui->ControlPort->clear();
+    ui->ControlPort->addItem(settings->value("control_connection", "no connection").toString());
     QList<QSerialPortInfo> devices = QSerialPortInfo::availablePorts();
     settings->endGroup();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
@@ -104,13 +106,18 @@ MainWindow::MainWindow(QWidget *parent)
             ui->XCPort->addItem(portname);
         if(portname != ui->MotorPort->itemText(0))
             ui->MotorPort->addItem(portname);
+        if(portname != ui->ControlPort->itemText(0))
+            ui->ControlPort->addItem(portname);
     }
     if(ui->XCPort->itemText(0) != "no connection")
         ui->XCPort->addItem("no connection");
     if(ui->MotorPort->itemText(0) != "no connection")
         ui->MotorPort->addItem("no connection");
+    if(ui->ControlPort->itemText(0) != "no connection")
+        ui->ControlPort->addItem("no connection");
     ui->XCPort->setCurrentIndex(0);
     ui->MotorPort->setCurrentIndex(0);
+    ui->ControlPort->setCurrentIndex(0);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
     {
@@ -125,10 +132,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
     {
-        unsigned char v = value | 0x80;
         ui->voltageLabel->setText("Voltage: " + QString::number(value * 150 / 127) + " V~");
         settings->setValue("Voltage", value);
-        write(motorFD, &v, 1);
+        setVoltage(value);
     });
     connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [ = ](int value)
@@ -157,12 +163,14 @@ MainWindow::MainWindow(QWidget *parent)
             Lines[l]->~Line();
         }
         Lines.clear();
-        unsigned char v = 0x80;
         if(motorFD >= 0)
         {
-            write(motorFD, &v, 1);
             if(ahp_gt_is_connected())
                 ahp_gt_disconnect();
+        }
+        if(controlFD >= 0) {
+            setVoltage(0);
+            fdclose(controlFD, "rw");
         }
         freePacket();
         vlbi_exit(getVLBIContext());
@@ -176,6 +184,10 @@ MainWindow::MainWindow(QWidget *parent)
         {
             motor_socket.disconnectFromHost();
         }
+        if(control_socket.isOpen())
+        {
+            control_socket.disconnectFromHost();
+        }
         settings->endGroup();
         connected = false;
     });
@@ -185,10 +197,53 @@ MainWindow::MainWindow(QWidget *parent)
         (void)checked;
         int port = 5760;
         QString address = "localhost";
-        QString xcport, motorport, gpsport;
+        QString xcport, motorport, controlport;
         xcport = ui->XCPort->currentText();
         motorport = ui->MotorPort->currentText();
+        controlport = ui->ControlPort->currentText();
         settings->beginGroup("Connection");
+        controlFD = -1;
+        if(controlport == "no connection")
+        {
+            settings->setValue("control_connection", controlport);
+        }
+        else
+        {
+            if(controlport.contains(':'))
+            {
+                address = controlport.split(":")[0];
+                port = controlport.split(":")[1].toInt();
+                ui->Connect->setEnabled(false);
+                update();
+                control_socket.connectToHost(address, port);
+                control_socket.waitForConnected();
+                if(control_socket.isValid())
+                {
+                    control_socket.setReadBufferSize(4096);
+                    controlFD = control_socket.socketDescriptor();
+                    if(controlFD != -1)
+                    {
+                        getGraph()->setControlFD(controlFD);
+                        if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
+                            if(controlFD != -1) {
+                                settings->setValue("control_connection", controlport);
+                            }
+                    }
+                }
+                else
+                {
+                    ui->Connect->setEnabled(true);
+                    update();
+                }
+            }
+            else
+            {
+                controlFD = open(controlport.toUtf8(), O_RDWR);
+                if(controlFD != -1) {
+                    settings->setValue("control_connection", controlport);
+                }
+            }
+        }
         motorFD = -1;
         if(motorport == "no connection")
         {
@@ -223,12 +278,10 @@ MainWindow::MainWindow(QWidget *parent)
             }
             else
             {
-                ahp_gt_connect(motorport.toUtf8());
-                motorFD = ahp_gt_get_fd();
-                if(motorFD == -1)
-                    motorFD = open(motorport.toUtf8(), O_RDWR);
-                if(motorFD != -1)
+                motorFD = open(motorport.toUtf8(), O_RDWR);
+                if(motorFD != -1) {
                     settings->setValue("motor_connection", motorport);
+                }
             }
         }
         xcFD = -1;
@@ -305,6 +358,11 @@ MainWindow::MainWindow(QWidget *parent)
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                             getGraph()->addSeries(Baselines[idx]->getMagnitude());
                             getGraph()->addSeries(Baselines[idx]->getPhase());
+                            getGraph()->addSeries(Baselines[idx]->getMagnitudes());
+                            getGraph()->addSeries(Baselines[idx]->getPhases());
+                            vlbi_set_baseline_buffer(getVLBIContext(), Baselines[idx]->getLine1()->getName().toStdString().c_str(),
+                                                    Baselines[idx]->getLine2()->getName().toStdString().c_str(), (fftw_complex*)Baselines[idx]->getCounts()->toVector().data(),
+                                                    Baselines[idx]->getCounts()->count() / 2);
                             idx++;
                         }
                     }
@@ -318,7 +376,7 @@ MainWindow::MainWindow(QWidget *parent)
                     ui->Scale->setEnabled(true);
                     ui->Range->setEnabled(true);
                     ui->Mode->setEnabled(true);
-                    if(motorFD >= 0)
+                    if(controlFD >= 0)
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
@@ -372,14 +430,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = (double)packet->timestamp;
-                    double diff = packettime - lastpackettime;
-                    if(diff < 0 || diff > 1000000000)
-                    {
-                        resetTimestamp();
-                        break;
-                    }
                     lastpackettime = packettime;
-                    packettime /= 1000000000.0;
                     packettime += J2000_starttime;
                     int idx = 0;
                     for(int x = 0; x < Lines.count(); x++) {
@@ -394,8 +445,8 @@ MainWindow::MainWindow(QWidget *parent)
                                 offset2 /= ahp_xc_get_sampletime();
                                 ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), offset1, 0);
                                 ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), offset2, 0);
-                                line->getCounts()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
-                                line->getCounts()->append((double)packet->crosscorrelations[x].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
+                                line->getCounts()->append((double)packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
+                                line->getCounts()->append((double)packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
                             }
                             else
                             {
@@ -420,49 +471,44 @@ MainWindow::MainWindow(QWidget *parent)
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = (double)packet->timestamp;
-                    double diff = packettime - lastpackettime;
-                    if(diff < 0 || diff > 1000000000)
-                    {
-                        resetTimestamp();
-                        break;
-                    }
                     lastpackettime = packettime;
-                    packettime /= 1000000000.0;
                     packettime += J2000_starttime;
+                    int idx = 0;
                     for(int x = 0; x < Lines.count(); x++)
                     {
                         Line * line = Lines[x];
                         QLineSeries *counts[3] =
                         {
-                            Lines[x]->getCounts(),
-                            Lines[x]->getMagnitudes(),
-                            Lines[x]->getPhases(),
+                            line->getCounts(),
+                            line->getMagnitudes(),
+                            line->getPhases(),
                         };
-                        for (int y = 0; y < 3; y++)
+                        for (int z = 0; z < 3; z++)
                         {
+                            QLineSeries *Counts = counts[z];
                             if(line->isActive())
                             {
-                                if(counts[y]->count() > 0)
+                                if(Counts->count() > 0)
                                 {
-                                    for(int d = counts[y]->count() - 1; d >= 0; d--)
+                                    for(int d = Counts->count() - 1; d >= 0; d--)
                                     {
-                                        if(counts[y]->at(d).x() < packettime - (double)getTimeRange())
-                                            counts[y]->remove(d);
+                                        if(Counts->at(d).x() < packettime - (double)getTimeRange())
+                                            Counts->remove(d);
                                     }
                                 }
-                                switch (y)
+                                switch (z)
                                 {
                                 case 0:
-                                    if(Lines[x]->showCounts())
-                                        counts[y]->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
+                                    if(line->showCounts())
+                                        Counts->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
                                     break;
                                 case 1:
-                                    if(Lines[x]->showAutocorrelations())
-                                        counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude * M_PI * 2 / pow(packet->autocorrelations[x].correlations[0].real+packet->autocorrelations[x].correlations[0].imaginary, 2));
+                                    if(line->showAutocorrelations())
+                                        Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude * M_PI * 2 / pow(packet->autocorrelations[x].correlations[0].real+packet->autocorrelations[x].correlations[0].imaginary, 2));
                                     break;
                                 case 2:
-                                    if(Lines[x]->showAutocorrelations())
-                                        counts[y]->append(packettime, (double)packet->autocorrelations[x].correlations[0].phase);
+                                    if(line->showAutocorrelations())
+                                        Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].phase);
                                     break;
                                 default:
                                     break;
@@ -470,8 +516,51 @@ MainWindow::MainWindow(QWidget *parent)
                             }
                             else
                             {
-                                counts[y]->clear();
+                                Counts->clear();
                             }
+                        }
+                        for(int y = x+1; y < Lines.count(); y++)
+                        {
+                            Baseline * line = Baselines[idx];
+                            QLineSeries *counts[2] =
+                            {
+                                line->getMagnitudes(),
+                                line->getPhases(),
+                            };
+                            if(line->getLine1()->showCrosscorrelations()&&line->getLine2()->showCrosscorrelations())
+                            {
+                                for (int z = 0; z < 2; z++)
+                                {
+                                    QLineSeries *Counts = counts[z];
+                                    if(line->isActive())
+                                    {
+                                        if(Counts->count() > 0)
+                                        {
+                                            for(int d = Counts->count() - 1; d >= 0; d--)
+                                            {
+                                                if(Counts->at(d).x() < packettime - (double)getTimeRange())
+                                                    Counts->remove(d);
+                                            }
+                                        }
+                                        switch (z)
+                                        {
+                                        case 0:
+                                            Counts->append(packettime, (double)packet->crosscorrelations[idx].correlations[0].magnitude * M_PI * 2 / pow(packet->crosscorrelations[idx].correlations[0].real+packet->crosscorrelations[idx].correlations[0].imaginary, 2));
+                                            break;
+                                        case 1:
+                                            Counts->append(packettime, (double)packet->crosscorrelations[idx].correlations[0].phase);
+                                            break;
+                                        default:
+                                            break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Counts->clear();
+                                    }
+                                }
+                            }
+                            idx++;
                         }
                     }
                 }
@@ -510,28 +599,17 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
-        if(getMode() != Holograph) {
-            thread->unlock();
-            return;
-        }
-        for(int i  = 0; i < Baselines.count(); i++)
-        {
-            Baseline* line = Baselines[i];
-            if(line->getCounts()->count() > 0) {
-                vlbi_set_baseline_buffer(getVLBIContext(), line->getLine1()->getName().toStdString().c_str(),
-                                        line->getLine2()->getName().toStdString().c_str(), (fftw_complex*)line->getCounts()->toVector().data(),
-                                        line->getCounts()->count() / 2);
-            }
-        }
-        plotVLBI("coverage", getGraph()->getCoverage(), Ra, Dec, coverage_delegate);
-        plotVLBI("phase", getGraph()->getPhase(), Ra, Dec, vlbi_phase_delegate);
-        plotVLBI("magnitude", getGraph()->getMagnitude(), Ra, Dec, vlbi_magnitude_delegate);
-        vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
+        if(getMode() == Holograph) {
+            plotVLBI("coverage", getGraph()->getCoverage(), Ra, Dec, coverage_delegate);
+            plotVLBI("phase", getGraph()->getPhase(), Ra, Dec, vlbi_phase_delegate);
+            plotVLBI("magnitude", getGraph()->getMagnitude(), Ra, Dec, vlbi_magnitude_delegate);
 
-        dsp_stream_p stream = vlbi_get_model(getVLBIContext(), "idft");
-        dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
-        dsp_buffer_1sub(stream, 255.0);
-        dsp_buffer_copy(stream->buf, getGraph()->getIdft()->bits(), stream->len);
+            vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
+            dsp_stream_p stream = vlbi_get_model(getVLBIContext(), "idft");
+            dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
+            dsp_buffer_1sub(stream, 255.0);
+            dsp_buffer_copy(stream->buf, getGraph()->getIdft()->bits(), stream->len);
+        }
         thread->unlock();
     });
     connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
@@ -555,11 +633,13 @@ void MainWindow::plotVLBI(const char *model, QImage *picture, double ra, double 
 {
     double radec[3] = { ra, dec, 0};
     vlbi_get_uv_plot(getVLBIContext(), model, getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
-                     getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, delegate);
+                     getGraph()->getFrequency(), 0.01, true, true, delegate);
     dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
-    dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
-    dsp_buffer_1sub(stream, 255.0);
-    dsp_buffer_copy(stream->buf, picture->bits(), stream->len);
+    if(stream != nullptr) {
+        dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
+        dsp_buffer_1sub(stream, 255.0);
+        dsp_buffer_copy(stream->buf, picture->bits(), stream->len);
+    }
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
@@ -588,15 +668,19 @@ void MainWindow::stopThreads()
 
 void MainWindow::resetTimestamp()
 {
-    xc_capture_flags cur = ahp_xc_get_capture_flags();
-    ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_RESET_TIMESTAMP));
     start = QDateTime::currentDateTimeUtc();
     lastpackettime = 0;
-    ahp_xc_set_capture_flags((xc_capture_flags)(cur&~CAP_RESET_TIMESTAMP));
     timespec ts = vlbi_time_string_to_timespec((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
     J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
     for(int i = 0; i < Lines.count(); i++)
         Lines[i]->getStream()->starttimeutc = ts;
+}
+
+void MainWindow::setVoltage(unsigned char level)
+{
+    unsigned char v = 0x80|(level&0x7f);
+    if(controlFD >= 0)
+        write(controlFD, &v, 1);
 }
 
 MainWindow::~MainWindow()
