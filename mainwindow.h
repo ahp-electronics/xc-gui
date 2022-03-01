@@ -171,7 +171,8 @@ class MainWindow : public QMainWindow
         inline int getMotorFD() { return motorFD; }
         inline int getControlFD() { return controlFD; }
         inline int getXcFD() { return xcFD; }
-        void plotVLBI(const char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate);
+        void plotVLBI(char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate);
+        void QImageFromModel(QImage* picture, char* model);
     private:
         void stopThreads();
         void startThreads();

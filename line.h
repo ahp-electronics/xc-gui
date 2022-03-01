@@ -60,6 +60,7 @@ class Line : public QWidget
         bool Histogram();
         bool Idft();
         bool Align();
+        bool Differential();
         inline bool isActive()
         {
             return running;

@@ -38,6 +38,7 @@
 #include <QDateTime>
 #include <QTcpSocket>
 #include <QThreadPool>
+#include <QTemporaryDir>
 #include <QDir>
 #include <fcntl.h>
 #include "mainwindow.h"
@@ -503,12 +504,14 @@ MainWindow::MainWindow(QWidget *parent)
                                         Counts->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
                                     break;
                                 case 1:
-                                    if(line->showAutocorrelations())
+                                    if(line->showAutocorrelations()) {
                                         Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude * M_PI * 2 / pow(packet->autocorrelations[x].correlations[0].real+packet->autocorrelations[x].correlations[0].imaginary, 2));
+                                    }
                                     break;
                                 case 2:
-                                    if(line->showAutocorrelations())
+                                    if(line->showAutocorrelations()) {
                                         Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].phase);
+                                    }
                                     break;
                                 default:
                                     break;
@@ -605,10 +608,7 @@ MainWindow::MainWindow(QWidget *parent)
             plotVLBI("magnitude", getGraph()->getMagnitude(), Ra, Dec, vlbi_magnitude_delegate);
 
             vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
-            dsp_stream_p stream = vlbi_get_model(getVLBIContext(), "idft");
-            dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
-            dsp_buffer_1sub(stream, 255.0);
-            dsp_buffer_copy(stream->buf, getGraph()->getIdft()->bits(), stream->len);
+            QImageFromModel(getGraph()->getIdft(), "idft");
         }
         thread->unlock();
     });
@@ -629,16 +629,26 @@ MainWindow::MainWindow(QWidget *parent)
     uiThread->start();
 }
 
-void MainWindow::plotVLBI(const char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate)
+void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate)
 {
     double radec[3] = { ra, dec, 0};
     vlbi_get_uv_plot(getVLBIContext(), model, getGraph()->getPlotWidth(), getGraph()->getPlotHeight(), radec,
-                     getGraph()->getFrequency(), 0.01, true, true, delegate);
-    dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
-    if(stream != nullptr) {
-        dsp_buffer_stretch(stream->buf, stream->len, 0.0, 255.0);
-        dsp_buffer_1sub(stream, 255.0);
-        dsp_buffer_copy(stream->buf, picture->bits(), stream->len);
+                     getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, delegate);
+    QImageFromModel(picture, model);
+}
+
+void MainWindow::QImageFromModel(QImage* picture, char* model)
+{
+    QTemporaryDir dir;
+    if (dir.isValid()) {
+        QString qfilename = dir.path();
+        char filename[128];
+        sprintf(filename, "%s/%s.jpg", dir.path().toStdString().c_str(), model);
+        if(QFile::exists(filename))
+            unlink(filename);
+        vlbi_get_model_to_jpeg(getVLBIContext(), filename, model);
+        picture->load(filename);
+        unlink(filename);
     }
 }
 

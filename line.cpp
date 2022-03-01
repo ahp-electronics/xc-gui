@@ -520,7 +520,7 @@ void Line::SavePlot()
     if(!isActive())
         return;
     QString filename = QFileDialog::getSaveFileName(this, "DialogTitle", "filename.csv",
-                       "CSV files (.csv);;Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)
+                       "CSV files (.csv);Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)
     QFile data(filename);
     if(data.open(QFile::WriteOnly | QFile::Truncate))
     {
@@ -533,6 +533,11 @@ void Line::SavePlot()
         }
     }
     data.close();
+}
+
+bool Line::Differential()
+{
+    return getFlag(4);
 }
 
 bool Line::Histogram()
