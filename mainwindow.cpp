@@ -73,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     TimeRange = 10;
     ui->setupUi(this);
     uiThread = new Thread(this, 100, 100);
-    readThread = new Thread(this, 1, 1);
+    readThread = new Thread(this, 500, 500);
     vlbiThread = new Thread(this, 100, 777);
     motorThread = new Thread(this, 1000, 1000);
     Elemental::loadCatalog();
@@ -381,6 +381,7 @@ MainWindow::MainWindow(QWidget *parent)
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
+                    readThread->setLoop(ahp_xc_get_packettime()*1000);
                 }
                 else
                     ahp_xc_disconnect();
@@ -639,17 +640,14 @@ void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, v
 
 void MainWindow::QImageFromModel(QImage* picture, char* model)
 {
-    QTemporaryDir dir;
-    if (dir.isValid()) {
-        QString qfilename = dir.path();
-        char filename[128];
-        sprintf(filename, "%s/%s.jpg", dir.path().toStdString().c_str(), model);
-        if(QFile::exists(filename))
-            unlink(filename);
-        vlbi_get_model_to_jpeg(getVLBIContext(), filename, model);
-        picture->load(filename);
+    QString tmpdir = QDir::tempPath() + "/";
+    char filename[128];
+    sprintf(filename, "%s/%s.jpg", tmpdir.toStdString().c_str(), model);
+    if(QFile::exists(filename))
         unlink(filename);
-    }
+    vlbi_get_model_to_jpeg(getVLBIContext(), filename, model);
+    picture->load(filename);
+    unlink(filename);
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
