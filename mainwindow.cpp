@@ -640,9 +640,8 @@ void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, v
 
 void MainWindow::QImageFromModel(QImage* picture, char* model)
 {
-    QString tmpdir = QDir::tempPath() + "/";
     char filename[128];
-    sprintf(filename, "%s/%s.jpg", tmpdir.toStdString().c_str(), model);
+    sprintf(filename, "%s/%s.jpg", QDir::tempPath().toStdString().c_str(), model);
     if(QFile::exists(filename))
         unlink(filename);
     vlbi_get_model_to_jpeg(getVLBIContext(), filename, model);
