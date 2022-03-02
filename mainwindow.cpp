@@ -73,8 +73,8 @@ MainWindow::MainWindow(QWidget *parent)
     TimeRange = 10;
     ui->setupUi(this);
     uiThread = new Thread(this, 100, 100);
-    readThread = new Thread(this, 500, 500);
-    vlbiThread = new Thread(this, 100, 777);
+    readThread = new Thread(this, 100, 100);
+    vlbiThread = new Thread(this, 4000, 1000);
     motorThread = new Thread(this, 1000, 1000);
     Elemental::loadCatalog();
     graph = new Graph(settings, this);
@@ -381,7 +381,6 @@ MainWindow::MainWindow(QWidget *parent)
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
-                    readThread->setLoop(ahp_xc_get_packettime()*1000);
                 }
                 else
                     ahp_xc_disconnect();
@@ -432,6 +431,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = (double)packet->timestamp;
+                    double diff = packettime-lastpackettime;
                     lastpackettime = packettime;
                     packettime += J2000_starttime;
                     int idx = 0;
@@ -473,6 +473,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = (double)packet->timestamp;
+                    double diff = packettime-lastpackettime;
                     lastpackettime = packettime;
                     packettime += J2000_starttime;
                     int idx = 0;
