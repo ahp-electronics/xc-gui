@@ -134,7 +134,7 @@ class MainWindow : public QMainWindow
         {
             if(connected)
             {
-                if(!ahp_xc_has_crosscorrelator() && (m == CrosscorrelatorI || m == CrosscorrelatorIQ || m == HolographIQ))
+                if(!ahp_xc_has_crosscorrelator() && (m == CrosscorrelatorII || m == CrosscorrelatorIQ || m == HolographIQ))
                     return;
                 mode = m;
                 stopThreads();

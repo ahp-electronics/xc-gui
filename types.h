@@ -46,7 +46,6 @@ enum Mode
     Counter = 0,
     AutocorrelatorI,
     AutocorrelatorIQ,
-    CrosscorrelatorI,
     CrosscorrelatorIQ,
     CrosscorrelatorII,
     HolographIQ,
