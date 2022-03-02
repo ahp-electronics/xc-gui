@@ -34,12 +34,23 @@
 #include "threads.h"
 #include <fftw3.h>
 
+enum VlbiContext
+{
+    vlbi_context_iq = 0,
+    vlbi_context_ii,
+    vlbi_total_contexts
+};
+
 enum Mode
 {
     Counter = 0,
-    Autocorrelator,
-    Crosscorrelator,
-    Holograph
+    AutocorrelatorI,
+    AutocorrelatorIQ,
+    CrosscorrelatorI,
+    CrosscorrelatorIQ,
+    CrosscorrelatorII,
+    HolographIQ,
+    HolographII
 };
 
 enum Scale

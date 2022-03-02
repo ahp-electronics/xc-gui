@@ -253,6 +253,16 @@ class Line : public QWidget
             return Motors.count()-1;
         }
 
+        inline void* getVLBIContext(int index = 0)
+        {
+            return context[index];
+        }
+
+        inline void setVLBIContext(void* ctx, int index = 0)
+        {
+            context[index] = ctx;
+        }
+
         inline int getMotorIndex() { return motorIndex; }
 
         inline int getStartLine() { return start; }
@@ -272,6 +282,8 @@ class Line : public QWidget
         inline void stopMotorAxis(int axis, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_stop_motion(axis, false); }
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
+
+        void* context[vlbi_total_contexts];
 
         double stack;
         fftw_plan plan;

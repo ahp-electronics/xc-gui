@@ -168,6 +168,16 @@ class Baseline : public QWidget
             stream = s;
         }
 
+        inline void* getVLBIContext(int index = 0)
+        {
+            return context[index];
+        }
+
+        inline void setVLBIContext(void* ctx, int index = 0)
+        {
+            context[index] = ctx;
+        }
+
     private:
         void updateBufferSizes();
         void stretch(QLineSeries* series);
@@ -191,9 +201,11 @@ class Baseline : public QWidget
         QString name;
         bool scanning;
         bool threadRunning;
+        bool oldstate;
         int stop;
         double percent;
         Mode mode;
+        void* context[vlbi_total_contexts];
         Elemental *elemental;
         QMap<double, double>* dark;
         QMap<double, double>* magnitudeStack;

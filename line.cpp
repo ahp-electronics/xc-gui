@@ -99,7 +99,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         flags |= ui->flag4->isChecked() << 4;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), ui->flag4->isChecked());
-        if(getFlag(4) && mode == Autocorrelator)
+        if(getFlag(4) && mode == (AutocorrelatorIQ || mode == AutocorrelatorI))
         {
             ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
             ui->ElementalAlign->setEnabled(true);
@@ -206,7 +206,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getPhase()->clear();
         getMagnitudeStack()->clear();
         getPhaseStack()->clear();
-        if(mode == Autocorrelator)
+        if(mode == AutocorrelatorIQ || mode == AutocorrelatorI)
         {
             stack = 0.0;
             mx = 0.0;
@@ -232,7 +232,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_channel_cross(line, 0, value);
+        if(ahp_xc_has_crosscorrelator())
+            ahp_xc_set_channel_cross(line, 0, value);
         saveSetting("LineDelay", value);
     });
     connect(ui->MotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -273,6 +274,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Histogram->setChecked(readBool("Histogram", false));
     ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
     ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
+    ui->flag4->setEnabled(!ahp_xc_has_differential_only());
+    ui->Crosscorrelations->setEnabled(ahp_xc_has_crosscorrelator());
     ahp_xc_set_leds(line, flags);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
@@ -423,7 +426,8 @@ void Line::setMode(Mode m)
         stack = 0.0;
         mx = 0.0;
     }
-    if(mode == Autocorrelator)
+    ui->IDFT->setEnabled(mode == AutocorrelatorIQ || mode == CrosscorrelatorIQ);
+    if(mode == AutocorrelatorIQ || mode == AutocorrelatorI)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         connect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
@@ -471,7 +475,7 @@ void Line::paint()
     stop = !isActive();
     if(ui->Progress != nullptr)
     {
-        if(mode != Counter && mode != Holograph)
+        if(mode == AutocorrelatorIQ || mode == AutocorrelatorI || mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
         {
             if(getPercent() > ui->Progress->minimum() && getPercent() < ui->Progress->maximum())
                 ui->Progress->setValue(getPercent());
@@ -642,11 +646,16 @@ void Line::stackCorrelations()
             }
             if(_lag < len && _lag >= 0) {
                 lag = _lag;
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
-                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                if(mode == AutocorrelatorIQ) {
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                } else {
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
+                    phase_buf[lag] = (double)magnitude_buf[lag];
+                }
             }
         }
-        if(Idft()) {
+        if(mode == AutocorrelatorIQ && Idft()) {
             elemental->setMagnitude(magnitude_buf, len);
             elemental->setPhase(phase_buf, len);
             elemental->idft();
@@ -683,7 +692,7 @@ void Line::plot(bool success, double o, double s)
     } else {
         for (int x = 0; x < len; x++) {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-            if(!Idft())
+            if(mode == AutocorrelatorIQ && !Idft())
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
         }
     }

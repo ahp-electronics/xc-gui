@@ -71,12 +71,14 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         getCounts()->clear();
         stop = !isActive();
+        oldstate = isActive();
     });
     connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
     {
         getCounts()->clear();
         stop = !isActive();
+        oldstate = isActive();
     });
 }
 
@@ -114,13 +116,14 @@ QVariant Baseline::readSetting(QString setting, QVariant defaultValue)
 
 void Baseline::setDelay(double s)
 {
-    ahp_xc_set_channel_cross((uint32_t)Index, (off_t)s * (ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider()), 0);
+    if(ahp_xc_has_crosscorrelator())
+        ahp_xc_set_channel_cross((uint32_t)Index, (off_t)s * (ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider()), 0);
 }
 
 void Baseline::setMode(Mode m)
 {
     mode = m;
-    if(mode == Crosscorrelator)
+    if(mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
     {
         connect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         connect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
@@ -222,7 +225,8 @@ void Baseline::stackCorrelations()
     int head_size = end1 - start1;
 
     stop = 0;
-    int npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, head_size, start2, tail_size, &stop, &percent);
+    int npackets = 0;
+    npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, head_size, start2, tail_size, &stop, &percent);
     if(spectrum != nullptr && npackets == len)
     {
         int lag = 0;
@@ -239,11 +243,16 @@ void Baseline::stackCorrelations()
             }
             if(_lag < len && _lag >= 0) {
                 lag = _lag;
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
-                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                if(mode == CrosscorrelatorIQ) {
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                } else if(mode == CrosscorrelatorII) {
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
+                    phase_buf[lag] = magnitude_buf[lag];
+                }
             }
         }
-        if(getLine1()->Idft() && getLine2()->Idft()) {
+        if(mode == CrosscorrelatorIQ && getLine1()->Idft() && getLine2()->Idft()) {
             elemental->setMagnitude(magnitude_buf, len);
             elemental->setPhase(phase_buf, len);
             elemental->idft();
@@ -282,7 +291,7 @@ void Baseline::plot(bool success, double o, double s)
     } else {
         for (int x = 0; x < len; x++) {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-            if(!getLine1()->Idft() || !getLine2()->Idft())
+            if(mode == CrosscorrelatorIQ && (!getLine1()->Idft() || !getLine2()->Idft()))
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
         }
     }

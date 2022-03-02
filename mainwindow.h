@@ -122,9 +122,9 @@ class MainWindow : public QMainWindow
         {
             return mode;
         }
-        inline void* getVLBIContext()
+        inline void* getVLBIContext(int index = 0)
         {
-            return context;
+            return context[index];
         }
         inline double getStartTime()
         {
@@ -134,6 +134,8 @@ class MainWindow : public QMainWindow
         {
             if(connected)
             {
+                if(!ahp_xc_has_crosscorrelator() && (m == CrosscorrelatorI || m == CrosscorrelatorIQ || m == HolographIQ))
+                    return;
                 mode = m;
                 stopThreads();
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
@@ -154,9 +156,10 @@ class MainWindow : public QMainWindow
                     Lines[i]->getPhases()->clear();
                     Lines[i]->getCounts()->clear();
                 }
-                if(mode == Counter || mode == Holograph) {
+                if(mode == Counter || mode == HolographIQ || mode == HolographII) {
                     for(int i = 0; i < Lines.count(); i++) {
-                        ahp_xc_set_channel_cross(i, 0, 0);
+                        if(ahp_xc_has_crosscorrelator())
+                            ahp_xc_set_channel_cross(i, 0, 0);
                         ahp_xc_set_channel_auto(i, 0, 0);
                     }
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
@@ -164,8 +167,10 @@ class MainWindow : public QMainWindow
                 }
                 for(int i = 0; i < Lines.count(); i++)
                     Lines[i]->setMode(mode);
+                for(int i = 0; i < Baselines.count(); i++)
+                    Baselines[i]->setMode(mode);
                 getGraph()->setMode(m);
-                if(mode == Holograph)
+                if(mode == HolographIQ || mode == HolographII)
                     vlbiThread->start();
                 startThreads();
             }
@@ -198,7 +203,7 @@ class MainWindow : public QMainWindow
         QMutex vlbi_mutex;
         double Ra, Dec;
         double wavelength;
-        void* context;
+        void* context[vlbi_total_contexts];
         ahp_xc_packet *packet;
         QSettings *settings;
         QTcpSocket xc_socket;

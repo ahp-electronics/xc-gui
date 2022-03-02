@@ -281,7 +281,7 @@ void Graph::updateInfo()
 void Graph::setMode(Mode m)
 {
     mode = m;
-    if(mode == Holograph)
+    if(mode == HolographIQ || mode == HolographII)
     {
         correlator->setVisible(true);
         chart->setVisible(false);
@@ -313,7 +313,7 @@ void Graph::clearSeries()
 
 void Graph::paint()
 {
-    if(mode == Holograph)
+    if(mode == HolographIQ || mode == HolographII)
     {
         coverageView->setPixmap(QPixmap::fromImage(getCoverage()->scaled(coverageView->geometry().size())));
         magnitudeView->setPixmap(QPixmap::fromImage(getMagnitude()->scaled(magnitudeView->geometry().size())));

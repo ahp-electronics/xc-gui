@@ -78,6 +78,9 @@
     </property>
    </widget>
    <widget class="QCheckBox" name="flag4">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -185,6 +188,9 @@
     </property>
    </widget>
    <widget class="QCheckBox" name="IDFT">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -589,7 +595,7 @@
    </widget>
    <widget class="QCheckBox" name="Crosscorrelations">
     <property name="enabled">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="geometry">
      <rect>
