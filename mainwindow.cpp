@@ -694,6 +694,8 @@ void MainWindow::startThreads()
 
 void MainWindow::stopThreads()
 {
+    for(int l = 0; l < Lines.count(); l++)
+        Lines[l]->Stop();
     vlbiThread->requestInterruption();
     vlbiThread->wait();
     readThread->requestInterruption();

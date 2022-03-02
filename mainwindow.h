@@ -134,10 +134,10 @@ class MainWindow : public QMainWindow
         {
             if(connected)
             {
+                stopThreads();
                 if(!ahp_xc_has_crosscorrelator() && (m == CrosscorrelatorII || m == CrosscorrelatorIQ || m == HolographIQ))
                     return;
                 mode = m;
-                stopThreads();
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
                 ahp_xc_set_capture_flags((xc_capture_flags)((cur&~CAP_ENABLE)|CAP_RESET_TIMESTAMP));
                 for(int i = 0; i < Baselines.count(); i++)

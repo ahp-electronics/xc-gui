@@ -113,6 +113,10 @@ class Line : public QWidget
         {
             return !stop;
         }
+        inline void Stop()
+        {
+            stop = 1;
+        }
         inline void addBaseline(Baseline* b)
         {
             nodes.append(b);
