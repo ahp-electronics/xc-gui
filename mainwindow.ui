@@ -233,9 +233,9 @@
    <widget class="QSlider" name="Voltage">
     <property name="geometry">
      <rect>
-      <x>330</x>
+      <x>340</x>
       <y>50</y>
-      <width>151</width>
+      <width>141</width>
       <height>21</height>
      </rect>
     </property>
@@ -257,7 +257,7 @@
      <rect>
       <x>230</x>
       <y>50</y>
-      <width>101</width>
+      <width>111</width>
       <height>21</height>
      </rect>
     </property>
