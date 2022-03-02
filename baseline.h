@@ -158,11 +158,22 @@ class Baseline : public QWidget
             return readSetting(setting, defaultValue).toBool();
         }
 
+        inline dsp_stream_p getStream()
+        {
+            return stream;
+        }
+
+        inline void setStream(dsp_stream_p s)
+        {
+            stream = s;
+        }
+
     private:
         void updateBufferSizes();
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
+        dsp_stream_p stream;
         double stack {0.0};
         fftw_plan plan;
         fftw_complex *dft { nullptr };

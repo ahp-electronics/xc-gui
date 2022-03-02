@@ -1,7 +1,7 @@
 /*
     MIT License
 
-    libahp_xc library to drive the AHP XC correlators
+    xc-gui GUI for libahp_xc and OpenVLBI using the AHP XC correlators
     Copyright (C) 2020  Ilia Platone
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,13 +26,28 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
+#include <fcntl.h>
 #include <QThread>
 #include <QCoreApplication>
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QSerialPort>
+#include <QSerialPortInfo>
 #include <QSettings>
 #include <QMutex>
+#include <QIODevice>
+#include <QStandardPaths>
+#include <QDateTime>
+#include <QTcpSocket>
+#include <QThreadPool>
+#include <QDir>
 #include "graph.h"
 #include "line.h"
 #include "baseline.h"
@@ -197,6 +212,7 @@ class MainWindow : public QMainWindow
         Graph *graph;
         Ui::MainWindow *ui;
         double J2000_starttime;
+        timespec starttime;
 
         int gt_address;
         QList<double> position_multipliers;

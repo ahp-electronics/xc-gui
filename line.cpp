@@ -29,6 +29,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QTextStream>
+#include <QDateTime>
 
 Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     QWidget(parent),
@@ -364,6 +365,12 @@ void Line::setFlag(int flag, bool value)
         default:
             break;
     }
+}
+
+void Line::resetTimestamp()
+{
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    getStream()->starttimeutc = vlbi_time_string_to_timespec((char*)now.toString(Qt::DateFormat::ISODate).toStdString().c_str());
 }
 
 bool Line::getFlag(int flag)

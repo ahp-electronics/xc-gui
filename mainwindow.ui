@@ -18,9 +18,9 @@
     <property name="geometry">
      <rect>
       <x>110</x>
-      <y>10</y>
+      <y>11</y>
       <width>81</width>
-      <height>16</height>
+      <height>20</height>
      </rect>
     </property>
     <property name="editable">
@@ -206,9 +206,9 @@
     <property name="geometry">
      <rect>
       <x>110</x>
-      <y>30</y>
+      <y>31</y>
       <width>81</width>
-      <height>16</height>
+      <height>20</height>
      </rect>
     </property>
     <property name="editable">
@@ -267,9 +267,9 @@
     <property name="geometry">
      <rect>
       <x>110</x>
-      <y>50</y>
+      <y>51</y>
       <width>81</width>
-      <height>16</height>
+      <height>20</height>
      </rect>
     </property>
     <property name="editable">
@@ -283,7 +283,7 @@
      <x>0</x>
      <y>0</y>
      <width>929</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

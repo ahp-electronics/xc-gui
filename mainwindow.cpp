@@ -24,23 +24,6 @@
 */
 
 #include "types.h"
-#include <cmath>
-#include <ctime>
-#include <cstring>
-#include <fcntl.h>
-#include <unistd.h>
-#include <cstdio>
-#include <cstdlib>
-#include <QIODevice>
-#include <QStandardPaths>
-#include <QSerialPort>
-#include <QSerialPortInfo>
-#include <QDateTime>
-#include <QTcpSocket>
-#include <QThreadPool>
-#include <QTemporaryDir>
-#include <QDir>
-#include <fcntl.h>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
@@ -361,9 +344,7 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Baselines[idx]->getPhase());
                             getGraph()->addSeries(Baselines[idx]->getMagnitudes());
                             getGraph()->addSeries(Baselines[idx]->getPhases());
-                            vlbi_set_baseline_buffer(getVLBIContext(), Baselines[idx]->getLine1()->getName().toStdString().c_str(),
-                                                    Baselines[idx]->getLine2()->getName().toStdString().c_str(), (fftw_complex*)Baselines[idx]->getCounts()->toVector().data(),
-                                                    Baselines[idx]->getCounts()->count() / 2);
+                            Baselines[idx]->setStream(vlbi_get_baseline_stream(getVLBIContext(), Baselines[idx]->getLine1()->getName().toStdString().c_str(), Baselines[idx]->getLine2()->getName().toStdString().c_str()));
                             idx++;
                         }
                     }
@@ -433,9 +414,23 @@ MainWindow::MainWindow(QWidget *parent)
                     double packettime = (double)packet->timestamp;
                     double diff = packettime-lastpackettime;
                     lastpackettime = packettime;
+                    if(diff < 0 || diff > 10.0)
+                    {
+                        resetTimestamp();
+                        break;
+                    }
                     packettime += J2000_starttime;
                     int idx = 0;
                     for(int x = 0; x < Lines.count(); x++) {
+                        Line * line = Lines[x];
+                        line->getStream()->sizes[0]++;
+                        line->getStream()->len++;
+                        dsp_stream_alloc_buffer(line->getStream(), line->getStream()->len);
+                        line->getStream()->location = (dsp_location*)realloc(line->getStream()->location,
+                                                      sizeof(dsp_location) * (line->getStream()->len));
+                        line->getStream()->location[line->getStream()->len - 1].xyz.x = line->getLocation()->xyz.x;
+                        line->getStream()->location[line->getStream()->len - 1].xyz.y = line->getLocation()->xyz.y;
+                        line->getStream()->location[line->getStream()->len - 1].xyz.z = line->getLocation()->xyz.z;
                         for(int y = x+1; y < Lines.count(); y++) {
                             Baseline * line = Baselines[idx];
                             if(line->isActive())
@@ -447,25 +442,20 @@ MainWindow::MainWindow(QWidget *parent)
                                 offset2 /= ahp_xc_get_sampletime();
                                 ahp_xc_set_channel_cross(line->getLine1()->getLineIndex(), offset1, 0);
                                 ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), offset2, 0);
-                                line->getCounts()->append((double)packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real);
-                                line->getCounts()->append((double)packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary);
+                                dsp_stream_alloc_buffer(line->getStream(), line->getStream()->len+1);
+                                line->getStream()->dft.fftw[line->getStream()->len][0] = (double)packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                                line->getStream()->dft.fftw[line->getStream()->len][1] = (double)packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                                dsp_stream_set_dim(line->getStream(), 0, line->getStream()->len);
                             }
                             else
                             {
-                                line->getCounts()->append(0.0);
-                                line->getCounts()->append(0.0);
+                                dsp_stream_alloc_buffer(line->getStream(), line->getStream()->len+1);
+                                line->getStream()->dft.fftw[line->getStream()->len][0] = 0.0;
+                                line->getStream()->dft.fftw[line->getStream()->len][1] = 0.0;
+                                dsp_stream_set_dim(line->getStream(), 0, line->getStream()->len);
                             }
                             idx++;
                         }
-                        Line * line = Lines[x];
-                        line->getStream()->sizes[0]++;
-                        line->getStream()->len++;
-                        dsp_stream_alloc_buffer(line->getStream(), line->getStream()->len);
-                        line->getStream()->location = (dsp_location*)realloc(line->getStream()->location,
-                                                      sizeof(dsp_location) * (line->getStream()->len));
-                        line->getStream()->location[line->getStream()->len - 1].xyz.x = line->getLocation()->xyz.x;
-                        line->getStream()->location[line->getStream()->len - 1].xyz.y = line->getLocation()->xyz.y;
-                        line->getStream()->location[line->getStream()->len - 1].xyz.z = line->getLocation()->xyz.z;
                     }
                 }
                 break;
@@ -475,6 +465,11 @@ MainWindow::MainWindow(QWidget *parent)
                     double packettime = (double)packet->timestamp;
                     double diff = packettime-lastpackettime;
                     lastpackettime = packettime;
+                    if(diff < 0 || diff > 10.0)
+                    {
+                        resetTimestamp();
+                        break;
+                    }
                     packettime += J2000_starttime;
                     int idx = 0;
                     for(int x = 0; x < Lines.count(); x++)
@@ -506,14 +501,12 @@ MainWindow::MainWindow(QWidget *parent)
                                         Counts->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
                                     break;
                                 case 1:
-                                    if(line->showAutocorrelations()) {
+                                    if(line->showAutocorrelations())
                                         Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude * M_PI * 2 / pow(packet->autocorrelations[x].correlations[0].real+packet->autocorrelations[x].correlations[0].imaginary, 2));
-                                    }
                                     break;
                                 case 2:
-                                    if(line->showAutocorrelations()) {
+                                    if(line->showAutocorrelations())
                                         Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].phase);
-                                    }
                                     break;
                                 default:
                                     break;
@@ -676,12 +669,15 @@ void MainWindow::stopThreads()
 
 void MainWindow::resetTimestamp()
 {
+    int cur = ahp_xc_get_capture_flags();
+    ahp_xc_set_capture_flags((xc_capture_flags)(cur&~ENABLE_CAPTURE));
     start = QDateTime::currentDateTimeUtc();
+    ahp_xc_set_capture_flags((xc_capture_flags)(cur|ENABLE_CAPTURE));
     lastpackettime = 0;
-    timespec ts = vlbi_time_string_to_timespec((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
-    J2000_starttime = vlbi_time_timespec_to_J2000time(ts);
+    starttime = vlbi_time_string_to_timespec((char*)start.toString(Qt::DateFormat::ISODate).toStdString().c_str());
+    J2000_starttime = vlbi_time_timespec_to_J2000time(starttime);
     for(int i = 0; i < Lines.count(); i++)
-        Lines[i]->getStream()->starttimeutc = ts;
+        Lines[i]->getStream()->starttimeutc = starttime;
 }
 
 void MainWindow::setVoltage(unsigned char level)

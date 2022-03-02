@@ -37,6 +37,7 @@
 #include <complex.h>
 #include <fftw3.h>
 #include <cmath>
+#include <ctime>
 #include "types.h"
 #include "baseline.h"
 #include "elemental.h"
@@ -259,7 +260,7 @@ class Line : public QWidget
         void TakeDark(Line* sender);
         bool DarkTaken();
         void runClicked(bool checked = false);
-
+        void resetTimestamp();
         void gotoRaDec(double ra, double dec);
         void startTracking(double ra_rate, double dec_rate);
     private:
@@ -316,6 +317,7 @@ class Line : public QWidget
         void getMinMax();
         void plot(bool success, double o, double s);
         void SavePlot();
+        timespec starttime;
 
     signals:
         void activeStateChanged(Line*);
