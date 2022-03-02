@@ -46,10 +46,10 @@ enum Mode
     Counter = 0,
     AutocorrelatorI,
     AutocorrelatorIQ,
-    CrosscorrelatorIQ,
     CrosscorrelatorII,
-    HolographIQ,
-    HolographII
+    CrosscorrelatorIQ,
+    HolographII,
+    HolographIQ
 };
 
 enum Scale

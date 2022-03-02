@@ -165,7 +165,7 @@
       <x>670</x>
       <y>60</y>
       <width>61</width>
-      <height>16</height>
+      <height>21</height>
      </rect>
     </property>
     <property name="maximum">
@@ -194,7 +194,7 @@
       <x>670</x>
       <y>40</y>
       <width>61</width>
-      <height>16</height>
+      <height>21</height>
      </rect>
     </property>
     <property name="minimum">

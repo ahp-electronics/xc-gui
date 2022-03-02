@@ -681,7 +681,7 @@ void MainWindow::QImageFromModel(QImage* picture, char* model)
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
-    int starty = 35 + ui->XCPort->y() + ui->XCPort->height();
+    int starty = 90;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
