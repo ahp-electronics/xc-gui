@@ -17,9 +17,9 @@
    <widget class="QComboBox" name="XCPort">
     <property name="geometry">
      <rect>
-      <x>90</x>
+      <x>110</x>
       <y>10</y>
-      <width>131</width>
+      <width>111</width>
       <height>20</height>
      </rect>
     </property>
@@ -32,8 +32,8 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>71</width>
-      <height>16</height>
+      <width>91</width>
+      <height>21</height>
      </rect>
     </property>
     <property name="text">
@@ -209,8 +209,8 @@
      <rect>
       <x>10</x>
       <y>30</y>
-      <width>71</width>
-      <height>16</height>
+      <width>91</width>
+      <height>21</height>
      </rect>
     </property>
     <property name="text">
@@ -220,9 +220,9 @@
    <widget class="QComboBox" name="MotorPort">
     <property name="geometry">
      <rect>
-      <x>90</x>
+      <x>110</x>
       <y>30</y>
-      <width>131</width>
+      <width>111</width>
       <height>20</height>
      </rect>
     </property>
@@ -270,8 +270,8 @@
      <rect>
       <x>10</x>
       <y>50</y>
-      <width>71</width>
-      <height>16</height>
+      <width>91</width>
+      <height>21</height>
      </rect>
     </property>
     <property name="text">
@@ -281,9 +281,9 @@
    <widget class="QComboBox" name="ControlPort">
     <property name="geometry">
      <rect>
-      <x>90</x>
+      <x>110</x>
       <y>50</y>
-      <width>131</width>
+      <width>111</width>
       <height>20</height>
      </rect>
     </property>
