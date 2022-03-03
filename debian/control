@@ -10,7 +10,7 @@ Homepage: http://iliaplatone.github.io/OpenVLBI/
 Vcs-Git: git://github.com/iliaplatone/OpenVLBI.git
 
 Package: xc-gui
-Section: libs
+Section: education
 Architecture: any
 Multi-Arch: same
 Depends: libahp-gt, libopenvlbi, ${shlibs:Depends}, ${misc:Depends},
