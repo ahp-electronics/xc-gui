@@ -1,4 +1,10 @@
-xc-gui (0.8.6) focal; urgency=low
+xc-gui (0.8.7) stable; urgency=medium
+
+  * New upstream relase
+
+ -- Ilia Platone <info@iliaplatone.com>  Thu, 03 Mar 2022 16:13:20 +0100
+
+xc-gui (0.8.6) stable; urgency=low
 
   * Initial release
 
