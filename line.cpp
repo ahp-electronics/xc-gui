@@ -641,7 +641,7 @@ void Line::stackCorrelations()
     if(spectrum != nullptr && npackets == len)
     {
         int lag = 1;
-        for (int x = 0, z = 0; x < npackets; x++, z++)
+        for (int x = 0, z = 0; x < len; x++, z++)
         {
             int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() - start;
             if(_lag < len && _lag >= 0)
@@ -658,18 +658,24 @@ void Line::stackCorrelations()
                                          spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
-                else
+                else if(mode == AutocorrelatorIQ)
                 {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
-                    phase_buf[lag] = (double)magnitude_buf[lag];
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / spectrum[z].correlations[0].counts;
                 }
             }
         }
-        if(mode == AutocorrelatorIQ && Idft())
+        if(Idft())
         {
-            elemental->setMagnitude(magnitude_buf, len);
-            elemental->setPhase(phase_buf, len);
-            elemental->idft();
+            if(mode == AutocorrelatorIQ) {
+                elemental->setMagnitude(magnitude_buf, len);
+                elemental->setPhase(phase_buf, len);
+                elemental->idft();
+            } else {
+                elemental->setReal(magnitude_buf, len);
+                elemental->setImaginary(phase_buf, len);
+                elemental->dft(1);
+            }
         }
         else
             elemental->setBuffer(magnitude_buf, len);
@@ -693,6 +699,7 @@ void Line::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
+    elemental->getStream()->len --;
     if(Histogram())
     {
         int size = fmin(len, 256);
@@ -706,14 +713,17 @@ void Line::plot(bool success, double o, double s)
     }
     else
     {
-        for (int x = 1; x < len; x++)
+        for (int x = 1; x < elemental->getStream()->len - 1; x++)
         {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-            if(mode == AutocorrelatorIQ && !Idft())
+            if(!Idft())
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
         }
     }
+    elemental->getStream()->len ++;
     stretch(getMagnitude());
+    if(mode == AutocorrelatorI)
+        stretch(getPhase());
 }
 
 Line::~Line()

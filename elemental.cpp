@@ -158,8 +158,32 @@ void Elemental::setPhase(double * buf, int len)
     dsp_buffer_copy(buf, stream->phase->buf, stream->len);
 }
 
+void Elemental::setReal(double * buf, int len)
+{
+    dsp_stream_set_dim(stream, 0, len);
+    dsp_stream_alloc_buffer(stream, stream->len);
+    for(int i = 0; i < stream->len; i++)
+        stream->dft.fftw[i][0] = buf[i];
+    dsp_fourier_2dsp(stream);
+}
+
+void Elemental::setImaginary(double * buf, int len)
+{
+    dsp_stream_set_dim(stream, 0, len);
+    dsp_stream_alloc_buffer(stream, stream->len);
+    for(int i = 0; i < stream->len; i++)
+        stream->dft.fftw[i][1] = buf[i];
+    dsp_fourier_2dsp(stream);
+}
+
 void Elemental::idft()
 {
     dsp_fourier_idft(stream);
+    dsp_buffer_shift(stream);
+}
+
+void Elemental::dft(int depth)
+{
+    dsp_fourier_dft(stream, depth);
     dsp_buffer_shift(stream);
 }

@@ -42,7 +42,10 @@ class Elemental : public QObject
         void setBuffer(double * buf, int len);
         void setMagnitude(double * buf, int len);
         void setPhase(double * buf, int len);
+        void setReal(double * buf, int len);
+        void setImaginary(double * buf, int len);
         void idft();
+        void dft(int depth);
         inline void setSampleSize(int value) { sample = value; }
         inline int getSampleSize() { return sample; }
         inline dsp_stream_p getStream() { return stream; }
