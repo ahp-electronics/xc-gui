@@ -143,18 +143,12 @@ MainWindow::MainWindow(QWidget *parent)
         for (int i = 0; i < vlbi_total_contexts; i++)
             vlbi_exit(getVLBIContext(i));
         getGraph()->clearSeries();
-        for(unsigned int l = ahp_xc_get_nbaselines() - 1; l >= 0; l--)
+        for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
         {
-            Baselines[l]->~Baseline();
+            ahp_xc_set_leds(l, 0);
         }
         Baselines.clear();
-        for(unsigned int l = ahp_xc_get_nlines() - 1; l >= 0; l--)
-        {
-            Lines[l]->setActive(false);
-            ahp_xc_set_leds(l, 0);
-            ui->Lines->removeTab(l);
-            Lines[l]->~Line();
-        }
+        ui->Lines->clear();
         Lines.clear();
         if(motorFD >= 0)
         {
