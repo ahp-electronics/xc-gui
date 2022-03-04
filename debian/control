@@ -13,7 +13,7 @@ Package: xc-gui
 Section: education
 Architecture: any
 Multi-Arch: same
-Depends: libahp-gt, libopenvlbi, ${shlibs:Depends}, ${misc:Depends},
+Depends: libahp-gt, libahp-xc, libopenvlbi, ${shlibs:Depends}, ${misc:Depends},
 Pre-Depends: ${misc:Pre-Depends}
 Description: XC Correlators test application
     Test application for the AHP XC Crosscorrelators.
