@@ -134,12 +134,20 @@ MainWindow::MainWindow(QWidget *parent)
         if(!connected)
             return;
         stopThreads();
+        settings->endGroup();
         ui->Connect->setEnabled(true);
         ui->Disconnect->setEnabled(false);
         ui->Scale->setEnabled(false);
         ui->Range->setEnabled(false);
         ui->Mode->setEnabled(false);
+        for (int i = 0; i < vlbi_total_contexts; i++)
+            vlbi_exit(getVLBIContext(i));
         getGraph()->clearSeries();
+        for(unsigned int l = ahp_xc_get_nbaselines() - 1; l >= 0; l--)
+        {
+            Baselines[l]->~Baseline();
+        }
+        Baselines.clear();
         for(unsigned int l = ahp_xc_get_nlines() - 1; l >= 0; l--)
         {
             Lines[l]->setActive(false);
@@ -159,8 +167,6 @@ MainWindow::MainWindow(QWidget *parent)
             fdclose(controlFD, "rw");
         }
         freePacket();
-        for (int i = 0; i < vlbi_total_contexts; i++)
-            vlbi_exit(getVLBIContext(i));
         ahp_xc_set_capture_flags(CAP_NONE);
         ahp_xc_disconnect();
         if(xc_socket.isOpen())
@@ -175,7 +181,6 @@ MainWindow::MainWindow(QWidget *parent)
         {
             control_socket.disconnectFromHost();
         }
-        settings->endGroup();
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),

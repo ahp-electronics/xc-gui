@@ -259,7 +259,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
     ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
     ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
-    ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex()+1));
+    ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex() + 1));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
@@ -373,7 +373,8 @@ void Line::setFlag(int flag, bool value)
 void Line::resetTimestamp()
 {
     QDateTime now = QDateTime::currentDateTimeUtc();
-    getStream()->starttimeutc = vlbi_time_string_to_timespec((char*)now.toString(Qt::DateFormat::ISODate).toStdString().c_str());
+    getStream()->starttimeutc = vlbi_time_string_to_timespec((char*)now.toString(
+                                    Qt::DateFormat::ISODate).toStdString().c_str());
 }
 
 bool Line::getFlag(int flag)
@@ -457,7 +458,9 @@ void Line::setMode(Mode m)
             ui->MinScore->setEnabled(false);
             ui->SampleSize->setEnabled(false);
         }
-    } else {
+    }
+    else
+    {
         disconnect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         disconnect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
     }
@@ -466,7 +469,8 @@ void Line::setMode(Mode m)
     if(!isActive())
     {
         ui->Correlator->setEnabled(mode != Counter);
-    } else
+    }
+    else
         runClicked();
 }
 
@@ -540,7 +544,7 @@ void Line::SavePlot()
         for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
         {
             output << "'" + QString::number(getMagnitude()->at(y).x()) + "';'" + QString::number(getMagnitude()->at(y).y()) + "';'"
-            + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
+                   + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
         }
     }
     data.close();
@@ -640,26 +644,34 @@ void Line::stackCorrelations()
         for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() - start;
-            for(int y = lag+1; y < _lag && y < len; y++) {
-                magnitude_buf[y] = magnitude_buf[lag];
-                phase_buf[y] = phase_buf[lag];
-            }
-            if(_lag < len && _lag >= 0) {
+            if(_lag < len && _lag >= 0)
+            {
+                for(int y = lag + 1; y < _lag && y < len; y++)
+                {
+                    magnitude_buf[y] = magnitude_buf[lag];
+                    phase_buf[y] = phase_buf[lag];
+                }
                 lag = _lag;
-                if(mode == AutocorrelatorIQ) {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
+                if(mode == AutocorrelatorIQ)
+                {
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real +
+                                         spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
-                } else {
+                }
+                else
+                {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
                     phase_buf[lag] = (double)magnitude_buf[lag];
                 }
             }
         }
-        if(mode == AutocorrelatorIQ && Idft()) {
+        if(mode == AutocorrelatorIQ && Idft())
+        {
             elemental->setMagnitude(magnitude_buf, len);
             elemental->setPhase(phase_buf, len);
             elemental->idft();
-        } else
+        }
+        else
             elemental->setBuffer(magnitude_buf, len);
         if(Align())
             elemental->run();
@@ -681,16 +693,21 @@ void Line::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    if(Histogram()) {
+    if(Histogram())
+    {
         int size = fmin(len, 256);
         double *histo = dsp_stats_histogram(elemental->getStream(), size);
-        for (int x = 1; x < size; x++) {
+        for (int x = 1; x < size; x++)
+        {
             if(histo[x] != 0)
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * M_PI * 2 / size, histo[x]);
         }
         free(histo);
-    } else {
-        for (int x = 0; x < len; x++) {
+    }
+    else
+    {
+        for (int x = 0; x < len; x++)
+        {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
             if(mode == AutocorrelatorIQ && !Idft())
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);

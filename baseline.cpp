@@ -129,7 +129,9 @@ void Baseline::setMode(Mode m)
         connect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         connect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
         connect(getLine2(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
-    } else {
+    }
+    else
+    {
         disconnect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         disconnect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         disconnect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
@@ -140,11 +142,14 @@ void Baseline::setMode(Mode m)
 void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
     y /= stack;
-    if(stacked->count() > idx) {
+    if(stacked->count() > idx)
+    {
         y += stacked->values().at(idx) * (stack - 1) / stack;
         stacked->keys().replace(idx, x);
         stacked->values().replace(idx, y);
-    } else {
+    }
+    else
+    {
         stacked->insert(x, y);
     }
     series->append(x, y);
@@ -154,13 +159,15 @@ void Baseline::stretch(QLineSeries* series)
 {
     double mx = DBL_MIN;
     double mn = DBL_MAX;
-    for (int x = 0; x < series->count(); x++) {
+    for (int x = 0; x < series->count(); x++)
+    {
         mn = fmin(series->at(x).y(), mn);
         mx = fmax(series->at(x).y(), mx);
     }
-    for (int x = 0; x < series->count(); x++) {
+    for (int x = 0; x < series->count(); x++)
+    {
         QPointF p = series->at(x);
-        series->replace(x, p.x(), (p.y()-mn) * M_PI * 2.0/(mx-mn));
+        series->replace(x, p.x(), (p.y() - mn) * M_PI * 2.0 / (mx - mn));
     }
 }
 
@@ -208,7 +215,7 @@ void Baseline::SavePlot()
         for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
         {
             output << "'" + QString::number(getMagnitude()->at(y).x()) + "';'" + QString::number(getMagnitude()->at(y).y()) + "';'"
-            + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
+                   + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
         }
     }
     data.close();
@@ -226,37 +233,47 @@ void Baseline::stackCorrelations()
 
     stop = 0;
     int npackets = 0;
-    npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1, head_size, start2, tail_size, &stop, &percent);
+    npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
+               head_size, start2, tail_size, &stop, &percent);
     if(spectrum != nullptr && npackets == len)
     {
-        int lag = 0;
+        int lag = head_size;
         for (int x = 0, z = 0; x < npackets; x++, z++)
         {
-            if(x == head_size) {
+            if(x == head_size)
+            {
                 lag = head_size;
                 continue;
             }
             int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() + head_size;
-            for(int y = lag; y < _lag && y < len; y+=(lag>_lag?-1:(lag<_lag)?1:0)) {
-                magnitude_buf[y] = magnitude_buf[lag];
-                phase_buf[y] = phase_buf[lag];
-            }
-            if(_lag < len && _lag >= 0) {
+            if(_lag < len && _lag >= 0)
+            {
+                for(int y = lag; y != _lag; y += (lag > _lag ? -1 : (lag < _lag) ? 1 : 0))
+                {
+                    magnitude_buf[y] = magnitude_buf[lag];
+                    phase_buf[y] = phase_buf[lag];
+                }
                 lag = _lag;
-                if(mode == CrosscorrelatorIQ) {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real + spectrum[z].correlations[0].imaginary, 2);
+                if(mode == CrosscorrelatorIQ)
+                {
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real +
+                                         spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
-                } else if(mode == CrosscorrelatorII) {
+                }
+                else if(mode == CrosscorrelatorII)
+                {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
                     phase_buf[lag] = magnitude_buf[lag];
                 }
             }
         }
-        if(mode == CrosscorrelatorIQ && getLine1()->Idft() && getLine2()->Idft()) {
+        if(mode == CrosscorrelatorIQ && getLine1()->Idft() && getLine2()->Idft())
+        {
             elemental->setMagnitude(magnitude_buf, len);
             elemental->setPhase(phase_buf, len);
             elemental->idft();
-        } else
+        }
+        else
             elemental->setBuffer(magnitude_buf, len);
         if(getLine1()->Align() && getLine2()->Align())
             elemental->run();
@@ -280,16 +297,21 @@ void Baseline::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    if(getLine1()->Histogram() && getLine2()->Histogram()) {
+    if(getLine1()->Histogram() && getLine2()->Histogram())
+    {
         int size = fmin(len, 256);
         double *histo = dsp_stats_histogram(elemental->getStream(), size);
-        for (int x = 1; x < size; x++) {
+        for (int x = 1; x < size; x++)
+        {
             if(histo[x] != 0)
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * M_PI * 2 / size, histo[x]);
         }
         free(histo);
-    } else {
-        for (int x = 0; x < len; x++) {
+    }
+    else
+    {
+        for (int x = 0; x < len; x++)
+        {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
             if(mode == CrosscorrelatorIQ && (!getLine1()->Idft() || !getLine2()->Idft()))
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
