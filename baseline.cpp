@@ -310,7 +310,7 @@ void Baseline::plot(bool success, double o, double s)
     }
     else
     {
-        for (int x = 0; x < len; x++)
+        for (int x = 1; x < len; x++)
         {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
             if(mode == CrosscorrelatorIQ && (!getLine1()->Idft() || !getLine2()->Idft()))
