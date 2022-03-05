@@ -131,8 +131,8 @@ class Graph : public QWidget
         Mode mode { Counter };
         inline QImage initGrayPicture(int w, int h) {
             QVector<QRgb> palette;
-            QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
-            image.fill(255);
+            QImage image = QImage(w, h, QImage::Format::Format_RGB32);
+            image.fill((1<<24)-1);
             return image;
         }
         double Latitude, Longitude, Elevation;

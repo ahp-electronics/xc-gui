@@ -328,7 +328,7 @@ MainWindow::MainWindow(QWidget *parent)
                     {
                         context[i] = vlbi_init();
                     }
-                    vlbi_max_threads(QThreadPool::globalInstance()->maxThreadCount());
+                    vlbi_max_threads(1);
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
                         QString name = "Line " + QString::number(l + 1);
@@ -445,7 +445,10 @@ MainWindow::MainWindow(QWidget *parent)
                         Line * line = Lines[x];
                         dsp_stream_set_dim(line->getStream(), 0, line->getStream()->len + 1);
                         dsp_stream_alloc_buffer(line->getStream(), line->getStream()->len);
-                        line->getStream()->buf[line->getStream()->len - 1] = (double)packet->counts[x];
+                        if(line->isActive())
+                            line->getStream()->buf[line->getStream()->len - 1] = (double)packet->counts[x];
+                        else
+                            line->getStream()->buf[line->getStream()->len - 1] = 0.0;
                         line->getStream()->location = (dsp_location*)realloc(line->getStream()->location,
                                                       sizeof(dsp_location) * (line->getStream()->len));
                         line->getStream()->location[line->getStream()->len - 1].xyz.x = line->getLocation()->xyz.x;
@@ -469,13 +472,10 @@ MainWindow::MainWindow(QWidget *parent)
                                         ahp_xc_set_channel_cross(line->getLine2()->getLineIndex(), offset2, 0);
                                     }
                                     dsp_stream_alloc_buffer(line->getStream(), line->getStream()->len + 1);
-                                    if(getMode() == HolographIQ)
-                                    {
-                                        line->getStream()->dft.fftw[line->getStream()->len][0] = (double)
-                                                packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                                        line->getStream()->dft.fftw[line->getStream()->len][1] = (double)
-                                                packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
-                                    }
+                                    line->getStream()->dft.fftw[line->getStream()->len][0] = (double)
+                                            packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                                    line->getStream()->dft.fftw[line->getStream()->len][1] = (double)
+                                            packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
                                     dsp_stream_set_dim(line->getStream(), 0, line->getStream()->len);
                                 }
                                 else
@@ -660,7 +660,8 @@ MainWindow::MainWindow(QWidget *parent)
             plotVLBI("phase", getGraph()->getPhase(), Ra, Dec, vlbi_phase_delegate);
             plotVLBI("magnitude", getGraph()->getMagnitude(), Ra, Dec, vlbi_magnitude_delegate);
 
-            vlbi_get_ifft(getVLBIContext(getMode() == HolographIQ ? vlbi_context_iq : vlbi_context_ii), "idft", "magnitude", "phase");
+            VlbiContext ctx = getMode() == HolographIQ ? vlbi_context_iq : vlbi_context_ii;
+            vlbi_get_ifft(getVLBIContext(ctx), "idft", "magnitude", "phase");
             QImageFromModel(getGraph()->getIdft(), "idft");
         }
         thread->unlock();
@@ -693,12 +694,12 @@ void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, v
 
 void MainWindow::QImageFromModel(QImage* picture, char* model)
 {
-    char filename[128];
-    dsp_stream_p stream = vlbi_get_model(getVLBIContext(getMode() == HolographIQ ? vlbi_context_iq : vlbi_context_ii), model);
-    unsigned char *pixels = picture->bits();
-    dsp_stream_p data = dsp_stream_copy(stream);
-    dsp_buffer_stretch(data->buf, data->len, 0.0, 255.0);
-    dsp_buffer_1sub(data, 255.0);
+    VlbiContext ctx = getMode() == HolographIQ ? vlbi_context_iq : vlbi_context_ii;
+    unsigned int* pixels = (unsigned int*)picture->bits();
+    dsp_stream_p data = dsp_stream_copy(vlbi_get_model(getVLBIContext(ctx), model));
+    dsp_buffer_stretch(data->buf, data->len, 0.0, 0xff);
+    dsp_buffer_mul1(data, 0x10101);
+    dsp_buffer_1sub(data, (1<<24)-1);
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);
     dsp_stream_free(data);

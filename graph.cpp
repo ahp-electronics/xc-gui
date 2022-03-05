@@ -34,8 +34,8 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     inputs(new Ui::Inputs())
 {
     settings = s;
-    plot_w = 1024;
-    plot_h = 1024;
+    plot_w = 512;
+    plot_h = 512;
     setAccessibleName("Graph");
     chart = new QChart();
     name = n;
@@ -437,17 +437,17 @@ void Graph::resizeEvent(QResizeEvent *event)
     int num_blocks = 4;
     int size = (correlator->width() - infos->width() - 20 - num_blocks * 5) / num_blocks;
     int n = 0;
-    coverageView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
-    coverageLabel->setGeometry(coverageView->x(), y_offset - 30, size, 30);
+    coverageView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
+    coverageLabel->setGeometry(coverageView->x(), y_offset, size, 30);
     n++;
-    magnitudeView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
-    magnitudeLabel->setGeometry(magnitudeView->x(), y_offset - 30, size, 30);
+    magnitudeView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
+    magnitudeLabel->setGeometry(magnitudeView->x(), y_offset, size, 30);
     n++;
-    phaseView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
-    phaseLabel->setGeometry(phaseView->x(), y_offset - 30, size, 30);
+    phaseView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
+    phaseLabel->setGeometry(phaseView->x(), y_offset, size, 30);
     n++;
-    idftView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
-    idftLabel->setGeometry(idftView->x(), y_offset - 30, size, 30);
+    idftView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
+    idftLabel->setGeometry(idftView->x(), y_offset, size, 30);
     n++;
     y_offset = 40;
 }
