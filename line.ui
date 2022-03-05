@@ -200,7 +200,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>IDFT</string>
+     <string>DFT</string>
     </property>
    </widget>
    <widget class="Line" name="line">

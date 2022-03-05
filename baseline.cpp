@@ -262,8 +262,10 @@ void Baseline::stackCorrelations()
                 }
                 else if(mode == CrosscorrelatorII)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / spectrum[z].correlations[0].counts;
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / pow(spectrum[z].correlations[0].real +
+                            spectrum[z].correlations[0].imaginary, 2);
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / pow(spectrum[z].correlations[0].real +
+                            spectrum[z].correlations[0].imaginary, 2);
                 }
             }
         }

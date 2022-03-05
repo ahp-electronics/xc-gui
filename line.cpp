@@ -137,7 +137,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->IDFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
-        saveSetting("IDFT", ui->IDFT->isChecked());
+        saveSetting("DFT", ui->IDFT->isChecked());
     });
     connect(ui->Histogram, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
@@ -427,7 +427,6 @@ void Line::setMode(Mode m)
         stack = 0.0;
         mx = 0.0;
     }
-    ui->IDFT->setEnabled(mode == AutocorrelatorIQ || mode == CrosscorrelatorIQ);
     if(mode == AutocorrelatorIQ || mode == AutocorrelatorI)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
@@ -660,8 +659,10 @@ void Line::stackCorrelations()
                 }
                 else if(mode == AutocorrelatorIQ)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / spectrum[z].correlations[0].counts;
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / pow(spectrum[z].correlations[0].real +
+                            spectrum[z].correlations[0].imaginary, 2);;
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / pow(spectrum[z].correlations[0].real +
+                            spectrum[z].correlations[0].imaginary, 2);;
                 }
             }
         }
