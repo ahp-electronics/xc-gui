@@ -694,12 +694,14 @@ void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, v
 void MainWindow::QImageFromModel(QImage* picture, char* model)
 {
     char filename[128];
-    sprintf(filename, "%s/%s.jpg", QDir::tempPath().toStdString().c_str(), model);
-    if(QFile::exists(filename))
-        unlink(filename);
-    vlbi_get_model_to_jpeg(getVLBIContext(getMode() == HolographIQ ? vlbi_context_iq : vlbi_context_ii), filename, model);
-    picture->load(filename);
-    unlink(filename);
+    dsp_stream_p stream = vlbi_get_model(getVLBIContext(getMode() == HolographIQ ? vlbi_context_iq : vlbi_context_ii), model);
+    unsigned char *pixels = picture->bits();
+    dsp_stream_p data = dsp_stream_copy(stream);
+    dsp_buffer_stretch(data->buf, data->len, 0.0, 255.0);
+    dsp_buffer_1sub(data, 255.0);
+    dsp_buffer_copy(data->buf, pixels, data->len);
+    dsp_stream_free_buffer(data);
+    dsp_stream_free(data);
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)

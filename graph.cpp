@@ -62,16 +62,16 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     idft = initGrayPicture(getPlotWidth(), getPlotHeight());
     idftView = new QLabel(correlator);
     idftView->setVisible(true);
-    coverageLabel = new QLabel(coverageView);
+    coverageLabel = new QLabel(correlator);
     coverageLabel->setVisible(true);
     coverageLabel->setText("Coverage");
-    magnitudeLabel = new QLabel(magnitudeView);
+    magnitudeLabel = new QLabel(correlator);
     magnitudeLabel->setVisible(true);
     magnitudeLabel->setText("Magnitude");
-    phaseLabel = new QLabel(phaseView);
+    phaseLabel = new QLabel(correlator);
     phaseLabel->setVisible(true);
     phaseLabel->setText("Phase");
-    idftLabel = new QLabel(idftView);
+    idftLabel = new QLabel(correlator);
     idftLabel->setVisible(true);
     idftLabel->setText("IDFT");
 
@@ -315,10 +315,14 @@ void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)
     {
-        coverageView->setPixmap(QPixmap::fromImage(getCoverage()->scaled(coverageView->geometry().size())));
-        magnitudeView->setPixmap(QPixmap::fromImage(getMagnitude()->scaled(magnitudeView->geometry().size())));
-        phaseView->setPixmap(QPixmap::fromImage(getPhase()->scaled(phaseView->geometry().size())));
-        idftView->setPixmap(QPixmap::fromImage(getIdft()->scaled(idftView->geometry().size())));
+        if(getCoverage() != nullptr)
+            coverageView->setPixmap(QPixmap::fromImage(getCoverage()->scaled(coverageView->geometry().size())));
+        if(getMagnitude() != nullptr)
+            magnitudeView->setPixmap(QPixmap::fromImage(getMagnitude()->scaled(magnitudeView->geometry().size())));
+        if(getPhase() != nullptr)
+            phaseView->setPixmap(QPixmap::fromImage(getPhase()->scaled(phaseView->geometry().size())));
+        if(getIdft() != nullptr)
+            idftView->setPixmap(QPixmap::fromImage(getIdft()->scaled(idftView->geometry().size())));
         updateInfo();
     }
     else
@@ -434,16 +438,16 @@ void Graph::resizeEvent(QResizeEvent *event)
     int size = (correlator->width() - infos->width() - 20 - num_blocks * 5) / num_blocks;
     int n = 0;
     coverageView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
+    coverageLabel->setGeometry(coverageView->x(), y_offset - 30, size, 30);
     n++;
     magnitudeView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
+    magnitudeLabel->setGeometry(magnitudeView->x(), y_offset - 30, size, 30);
     n++;
     phaseView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
+    phaseLabel->setGeometry(phaseView->x(), y_offset - 30, size, 30);
     n++;
     idftView->setGeometry(size * n + 5 + 5 * n, y_offset, size, size);
+    idftLabel->setGeometry(idftView->x(), y_offset - 30, size, 30);
     n++;
     y_offset = 40;
-    coverageLabel->setGeometry(0,0, size, 30);
-    magnitudeLabel->setGeometry(0,0, size, 30);
-    phaseLabel->setGeometry(0,0, size, 30);
-    idftLabel->setGeometry(0,0, size, 30);
 }
