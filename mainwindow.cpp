@@ -684,7 +684,7 @@ void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, v
     double radec[3] = { ra, dec, 0};
     vlbi_get_uv_plot(getVLBIContext(), model,
                      getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                     getGraph()->getFrequency(), 0.001 / ahp_xc_get_packettime(), true, true, delegate);
+                     getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, delegate);
     QImageFromModel(picture, model);
 }
 
@@ -693,7 +693,6 @@ void MainWindow::QImageFromModel(QImage* picture, char* model)
     unsigned char* pixels = (unsigned char*)picture->bits();
     dsp_stream_p data = dsp_stream_copy(vlbi_get_model(getVLBIContext(), model));
     dsp_buffer_stretch(data->buf, data->len, 0.0, 0xff);
-    //dsp_buffer_1sub(data, 0xff);
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);
     dsp_stream_free(data);
