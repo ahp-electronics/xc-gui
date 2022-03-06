@@ -36,8 +36,8 @@
 
 enum VlbiContext
 {
-    vlbi_context_iq = 0,
-    vlbi_context_ii,
+    vlbi_context_ii = 0,
+    vlbi_context_iq,
     vlbi_total_contexts
 };
 

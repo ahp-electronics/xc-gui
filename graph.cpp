@@ -35,7 +35,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
 {
     settings = s;
     plot_w = 512;
-    plot_h = 512;
+    plot_w = 512;
     setAccessibleName("Graph");
     chart = new QChart();
     name = n;
@@ -50,16 +50,16 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     inputs->setupUi(correlator);
     infos = inputs->infos;
     infos->setParent(correlator);
-    coverage = initGrayPicture(getPlotWidth(), getPlotHeight());
+    coverage = initGrayPicture(getPlotSize(), getPlotSize());
     coverageView = new QLabel(correlator);
     coverageView->setVisible(true);
-    magnitude = initGrayPicture(getPlotWidth(), getPlotHeight());
+    magnitude = initGrayPicture(getPlotSize(), getPlotSize());
     magnitudeView = new QLabel(correlator);
     magnitudeView->setVisible(true);
-    phase = initGrayPicture(getPlotWidth(), getPlotHeight());
+    phase = initGrayPicture(getPlotSize(), getPlotSize());
     phaseView = new QLabel(correlator);
     phaseView->setVisible(true);
-    idft = initGrayPicture(getPlotWidth(), getPlotHeight());
+    idft = initGrayPicture(getPlotSize(), getPlotSize());
     idftView = new QLabel(correlator);
     idftView->setVisible(true);
     coverageLabel = new QLabel(correlator);

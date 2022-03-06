@@ -56,9 +56,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getCounts()->setName(name + " (counts)");
     getPhases()->setName(name + " (magnitudes)");
     getMagnitudes()->setName(name + " (phases)");
-    stream = dsp_stream_new();
-    dsp_stream_add_dim(stream, 1);
-    dsp_stream_alloc_buffer(stream, stream->len);
     line = n;
     flags = 0;
     ui->setupUi(this);
@@ -413,7 +410,6 @@ bool Line::showCrosscorrelations()
 
 void Line::setMode(Mode m)
 {
-    mode = m;
     getDark()->clear();
     getMagnitude()->clear();
     getPhase()->clear();
@@ -422,12 +418,12 @@ void Line::setMode(Mode m)
     getPhases()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
-    if(mode != Counter)
+    if(m != Counter)
     {
         stack = 0.0;
         mx = 0.0;
     }
-    if(mode == AutocorrelatorIQ || mode == AutocorrelatorI)
+    if(m == AutocorrelatorIQ || m == AutocorrelatorI)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         connect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
@@ -464,10 +460,11 @@ void Line::setMode(Mode m)
         disconnect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
     }
     resetPercentPtr();
-    ui->Counter->setEnabled(mode == Counter);
+    ui->Counter->setEnabled(m == Counter);
+    mode = m;
     if(!isActive())
     {
-        ui->Correlator->setEnabled(mode != Counter);
+        ui->Correlator->setEnabled(m != Counter);
     }
     else
         runClicked();
@@ -485,6 +482,31 @@ void Line::paint()
         }
     }
     update(rect());
+}
+
+void Line::addToVLBIContext(int index)
+{
+    if(index < 0) {
+        index = getMode() - HolographII;
+        if (index < 0) return;
+    }
+    if(stream == nullptr) {
+        stream = dsp_stream_new();
+        dsp_stream_add_dim(stream, 0);
+        dsp_stream_alloc_buffer(stream, stream->len + 1);
+    }
+    vlbi_add_node(getVLBIContext(index), getStream(), getName().toStdString().c_str(), false);
+}
+
+void Line::removeFromVLBIContext(int index)
+{
+    if(index < 0) {
+        index = getMode() - HolographII;
+        if (index < 0) return;
+    }
+    if(stream != nullptr) {
+        vlbi_del_node(getVLBIContext(index), getName().toStdString().c_str());
+    }
 }
 
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
@@ -592,6 +614,13 @@ void Line::gotoRaDec(double ra, double dec)
 
 void Line::setActive(bool a)
 {
+    if(a) {
+        if(stream != nullptr) {
+            stream->starttimeutc = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+            dsp_stream_set_dim(stream, 0, 0);
+            dsp_stream_alloc_buffer(stream, stream->len + 1);
+        }
+    }
     running = a;
     activeStateChanged(this);
 }
@@ -637,6 +666,7 @@ void Line::stackCorrelations()
     ahp_xc_sample *spectrum = nullptr;
     stop = 0;
     int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &localpercent);
+    *percent = 0;
     if(spectrum != nullptr && npackets == len)
     {
         int lag = 1;

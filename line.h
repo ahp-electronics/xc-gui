@@ -81,8 +81,8 @@ class Line : public QWidget
         {
             return name;
         }
-
         void setMode(Mode m);
+        Mode getMode() { return mode; }
         Scale getYScale();
         void stackCorrelations();
         inline bool applyMedian()
@@ -257,11 +257,14 @@ class Line : public QWidget
             return Motors.count()-1;
         }
 
-        inline void* getVLBIContext(int index = 0)
+        void addToVLBIContext(int index = -1);
+        void removeFromVLBIContext(int index = -1);
+        inline void* getVLBIContext(int index = -1)
         {
+            if(index < 0)
+                index = getMode() - HolographII;
             return context[index];
         }
-
         inline void setVLBIContext(void* ctx, int index = 0)
         {
             context[index] = ctx;
@@ -287,53 +290,52 @@ class Line : public QWidget
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        void* context[vlbi_total_contexts];
+        void* context[vlbi_total_contexts] { nullptr };
 
-        double stack;
-        fftw_plan plan;
+        fftw_plan plan { 0 };
         fftw_complex *dft { nullptr };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
-        double offset { 0.0 };
-        double timespan { 1.0 };
-        bool scalingDone { false };
+        Elemental *elemental { nullptr };
+        QList<int> Motors;
+        Ui::Line *ui { nullptr };
+        dsp_stream_p stream { nullptr };
+        dsp_location location { 0 };
+        QString name;
+        int stop { 1 };
+        int motorIndex {0};
+        Mode mode { Counter };
+        QSettings *settings { nullptr };
+        QList<Line*> *parents { nullptr };
+        QList<Baseline*> nodes { nullptr };
+        QMap<double, double>* dark { nullptr };
+        QMap<double, double>* magnitudeStack { nullptr };
+        QMap<double, double>* phaseStack { nullptr };
+        QLineSeries* magnitude { nullptr };
+        QLineSeries* phase { nullptr };
+        QLineSeries* magnitudes { nullptr };
+        QLineSeries* phases { nullptr };
+        QLineSeries* counts { nullptr };
+        unsigned int line { 0 };
+        int flags { 0x8 };
         int start { 0 };
         int end { 1 };
         int len { 1 };
-
-        Elemental *elemental;
-        QList<int> Motors;
-        int motorIndex {0};
-        double mx;
-        Ui::Line *ui;
-        bool applysigmaclipping;
-        bool applymedian;
-        dsp_stream_p stream;
-        dsp_location location;
-        bool running;
-        QString name;
-        QSettings *settings;
-        QList<Line*> *parents;
-        QList<Baseline*> nodes;
-        bool scanning;
-        int stop;
-        Mode mode;
-        QMap<double, double>* dark;
-        QMap<double, double>* magnitudeStack;
-        QMap<double, double>* phaseStack;
-        QLineSeries* magnitude;
-        QLineSeries* phase;
-        QLineSeries* magnitudes;
-        QLineSeries* phases;
-        QLineSeries* counts;
-        unsigned int line;
-        int flags { 0x8 };
+        double mx { 0.0 };
         double averageBottom { 0 };
         double averageTop { 1.0 };
+        double offset { 0.0 };
+        double timespan { 1.0 };
+        double stack { 0.0 };
+        timespec starttime { 0 };
+        bool applysigmaclipping { false };
+        bool applymedian { false };
+        bool running { false };
+        bool scanning { false };
+        bool scalingDone { false };
         void getMinMax();
         void plot(bool success, double o, double s);
         void SavePlot();
-        timespec starttime;
 
     signals:
         void activeStateChanged(Line*);

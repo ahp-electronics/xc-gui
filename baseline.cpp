@@ -70,14 +70,32 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
             [ = ](Line * sender)
     {
         getCounts()->clear();
-        stop = !isActive();
+        bool newstate = getLine1()->isActive() && getLine2()->isActive();
+        stop = !newstate;
+        if(oldstate != newstate) {
+            if(newstate){
+                if(stream != nullptr) {
+                    dsp_stream_set_dim(stream, 0, 0);
+                    dsp_stream_alloc_buffer(stream, stream->len + 1);
+                }
+            }
+        }
+        running = newstate;
         oldstate = isActive();
     });
     connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
     {
         getCounts()->clear();
-        stop = !isActive();
+        bool newstate = getLine1()->isActive() && getLine2()->isActive();
+        stop = !newstate;
+        if(oldstate != newstate) {
+            if(newstate){
+                dsp_stream_set_dim(stream, 0, 0);
+                dsp_stream_alloc_buffer(stream, stream->len);
+            }
+        }
+        running = newstate;
         oldstate = isActive();
     });
 }
@@ -171,9 +189,32 @@ void Baseline::stretch(QLineSeries* series)
     }
 }
 
+void Baseline::addToVLBIContext(int index)
+{
+    if(index < 0) {
+        index = getMode() - HolographIQ;
+        if(index < 0) return;
+    }
+    stream = dsp_stream_new();
+    dsp_stream_add_dim(stream, 0);
+    dsp_stream_alloc_buffer(stream, stream->len + 1);
+    vlbi_set_baseline_stream(getVLBIContext(vlbi_context_iq), getLine1()->getName().toStdString().c_str(),
+                             getLine2()->getName().toStdString().c_str(), getStream());
+}
+
+void Baseline::removeFromVLBIContext(int index)
+{
+    if(index < 0) {
+        index = getMode() - HolographIQ;
+        if (index < 0) return;
+    }
+    vlbi_unlock_baseline(getVLBIContext(index), getLine1()->getName().toStdString().c_str(),
+                         getLine2()->getName().toStdString().c_str());
+}
+
 bool Baseline::isActive()
 {
-    return getLine1()->isActive() && getLine2()->isActive();
+    return running;
 }
 
 void Baseline::TakeDark(Line* sender)

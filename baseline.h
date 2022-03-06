@@ -113,6 +113,7 @@ class Baseline : public QWidget
             return dark;
         }
         void setMode(Mode m);
+        inline Mode getMode() { return mode; }
         inline void setDelay(double s);
         inline double getPercent()
         {
@@ -158,6 +159,8 @@ class Baseline : public QWidget
             return readSetting(setting, defaultValue).toBool();
         }
 
+        void addToVLBIContext(int index = -1);
+        void removeFromVLBIContext(int index = -1);
         inline dsp_stream_p getStream()
         {
             return stream;
@@ -179,6 +182,7 @@ class Baseline : public QWidget
         }
 
     private:
+        bool running { false };
         void updateBufferSizes();
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);

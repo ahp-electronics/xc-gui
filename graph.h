@@ -88,10 +88,15 @@ class Graph : public QWidget
         void removeSeries(QAbstractSeries* series);
         void setMode(Mode m);
         inline Mode getMode() { return mode; }
-        inline int getPlotWidth() { return plot_w; }
-        inline int getPlotHeight() { return plot_h; }
-        inline void setPlotWidth(int value) {  plot_w = value; }
-        inline void setPlotHeight(int value) { plot_h = value; }
+        inline int getPlotSize() { return plot_w; }
+        inline void setPlotSize(int value) {
+                                    plot_w = value;
+                                    idft = idft.scaled(plot_w, plot_w);
+                                    coverage = coverage.scaled(plot_w, plot_w);
+                                    magnitude = coverage.scaled(plot_w, plot_w);
+                                    phase = phase.scaled(plot_w, plot_w);
+        }
+        inline void setPlotHeight(int value) { plot_w = value; }
         inline QImage *getMagnitude() { return &magnitude; }
         inline QImage *getPhase() { return &phase; }
         inline QImage *getCoverage() { return &coverage; }
@@ -131,7 +136,7 @@ class Graph : public QWidget
         Mode mode { Counter };
         inline QImage initGrayPicture(int w, int h) {
             QVector<QRgb> palette;
-            QImage image = QImage(w, h, QImage::Format::Format_RGB32);
+            QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
             image.fill((1<<24)-1);
             return image;
         }
@@ -152,7 +157,7 @@ class Graph : public QWidget
         QLabel *magnitudeView;
         QLabel *phaseView;
         QLabel *coverageView;
-        int plot_w, plot_h;
+        int plot_w;
         QValueAxis *axisX;
         QValueAxis *axisY;
         QChart *chart;
