@@ -128,6 +128,12 @@ class MainWindow : public QMainWindow
                 index = getMode() - HolographII;
             return context[index];
         }
+        inline void setVLBIContext(void *ctx, int index = -1)
+        {
+            if(index < 0)
+                return;
+            context[index] = ctx;
+        }
         inline double getStartTime()
         {
             return J2000_starttime;
@@ -206,6 +212,7 @@ class MainWindow : public QMainWindow
         double lastpackettime;
         QMutex vlbi_mutex;
         double Ra, Dec;
+        double Latitude, Longitude, Elevation;
         double wavelength;
         void* context[vlbi_total_contexts];
         ahp_xc_packet *packet;

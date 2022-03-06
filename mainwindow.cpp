@@ -324,11 +324,9 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                     settings->endGroup();
                     settings->beginGroup(header);
-                    for (int i = 0; i < vlbi_total_contexts; i++)
-                    {
+                    for (int i = 0; i < vlbi_total_contexts; i++) {
                         context[i] = vlbi_init();
                     }
-                    vlbi_max_threads(1);
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
                         QString name = "Line " + QString::number(l + 1);
@@ -355,13 +353,17 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Baselines[idx]->getPhase());
                             getGraph()->addSeries(Baselines[idx]->getMagnitudes());
                             getGraph()->addSeries(Baselines[idx]->getPhases());
-                            for (int j = 0; j < vlbi_total_contexts; j++) {
-                                Baselines[idx]->setVLBIContext(getVLBIContext(j), j);
+                            for (int i = 0; i < vlbi_total_contexts; i++) {
+                                Baselines[idx]->setVLBIContext(getVLBIContext(i), i);
+                                if(i == vlbi_context_iq)
+                                    Baselines[idx]->addToVLBIContext(i);
                             }
-                            Baselines[l]->addToVLBIContext();
                             idx++;
                         }
                     }
+
+                    vlbi_max_threads(1);
+
                     getGraph()->loadSettings();
                     createPacket();
                     setMode(Counter);
@@ -411,8 +413,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::locationUpdated),
             [ = ](double lat, double lon, double el)
     {
+        Latitude = lat;
+        Longitude = lon;
+        Elevation = el;
         for (int i = 0; i < vlbi_total_contexts; i++)
-            vlbi_set_location(getVLBIContext(i), lat, lon, el);
+            vlbi_set_location(getVLBIContext(i), Latitude, Longitude, Elevation);
     });
     connect(getGraph(), static_cast<void (Graph::*)(double)>(&Graph::frequencyUpdated),
             [ = ](double freq)
@@ -645,14 +650,6 @@ MainWindow::MainWindow(QWidget *parent)
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            for(int l = 0; l < Lines.count(); l++)
-                Lines[l]->removeFromVLBIContext();
-            for(int l = 0; l < Baselines.count(); l++)
-                Baselines[l]->removeFromVLBIContext();
-            for(int l = 0; l < Lines.count(); l++)
-                Lines[l]->addToVLBIContext();
-            for(int l = 0; l < Baselines.count(); l++)
-                Baselines[l]->addToVLBIContext();
             plotVLBI("coverage", getGraph()->getCoverage(), Ra, Dec, coverage_delegate);
             plotVLBI("phase", getGraph()->getPhase(), Ra, Dec, vlbi_phase_delegate);
             plotVLBI("magnitude", getGraph()->getMagnitude(), Ra, Dec, vlbi_magnitude_delegate);
@@ -682,6 +679,7 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate)
 {
     double radec[3] = { ra, dec, 0};
+    vlbi_set_location(getVLBIContext(), Latitude, Longitude, Elevation);
     vlbi_get_uv_plot(getVLBIContext(), model,
                      getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                      getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, delegate);
