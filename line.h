@@ -81,6 +81,10 @@ class Line : public QWidget
         {
             return name;
         }
+        inline QString getLastName()
+        {
+            return name + "_" + QString::number(floor(vlbi_time_timespec_to_J2000time(getStream()->starttimeutc)));
+        }
         void setMode(Mode m);
         Mode getMode() { return mode; }
         Scale getYScale();
@@ -280,7 +284,16 @@ class Line : public QWidget
         void resetTimestamp();
         void gotoRaDec(double ra, double dec);
         void startTracking(double ra_rate, double dec_rate);
+        void lock()
+        {
+            while(!mutex.tryLock());
+        }
+        void unlock()
+        {
+            mutex.unlock();
+        }
     private:
+        QMutex mutex;
         double Frequency { LIGHTSPEED };
         inline double getMotorAxisPosition(int axis, int index = 0) { if(!hasMotorbBus()) return 0.0; selectMotor(axis, index); return ahp_gt_get_position(axis); }
         inline void setMotorAxisPosition(int axis, double value, int index = 0) { if(!hasMotorbBus()) return; selectMotor(axis, index); ahp_gt_set_position(axis, value); }

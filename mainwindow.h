@@ -201,9 +201,19 @@ class MainWindow : public QMainWindow
         inline int getMotorFD() { return motorFD; }
         inline int getControlFD() { return controlFD; }
         inline int getXcFD() { return xcFD; }
-        void plotVLBI(char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate);
+        void plotVLBI(char *model, QImage *picture, vlbi_func2_t delegate);
         void QImageFromModel(QImage* picture, char* model);
+
+        void lock()
+        {
+            while(!mutex.tryLock());
+        }
+        void unlock()
+        {
+            mutex.unlock();
+        }
     private:
+        QMutex mutex;
         void stopThreads();
         void startThreads();
         int motorFD;

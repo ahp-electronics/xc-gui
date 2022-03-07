@@ -132,7 +132,7 @@ class Baseline : public QWidget
             return line2;
         }
 
-        bool isActive();
+        bool isActive(bool atleast1 = false);
 
         void stackCorrelations();
         void plot(bool success, double o, double s);
@@ -181,13 +181,22 @@ class Baseline : public QWidget
             context[index] = ctx;
         }
 
+        void lock()
+        {
+            while(!mutex.tryLock());
+        }
+        void unlock()
+        {
+            mutex.unlock();
+        }
     private:
+        QMutex mutex;
         bool running { false };
         void updateBufferSizes();
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        dsp_stream_p stream;
+        dsp_stream_p stream { nullptr };
         double stack {0.0};
         fftw_plan plan;
         fftw_complex *dft { nullptr };

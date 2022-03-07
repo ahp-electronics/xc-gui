@@ -339,7 +339,6 @@ MainWindow::MainWindow(QWidget *parent)
                         ui->Lines->addTab(Lines[l], name);
                         for (int i = 0; i < vlbi_total_contexts; i++) {
                             Lines[l]->setVLBIContext(getVLBIContext(i), i);
-                            Lines[l]->addToVLBIContext(i);
                         }
                     }
                     int idx = 0;
@@ -355,8 +354,6 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Baselines[idx]->getPhases());
                             for (int i = 0; i < vlbi_total_contexts; i++) {
                                 Baselines[idx]->setVLBIContext(getVLBIContext(i), i);
-                                if(i == vlbi_context_iq)
-                                    Baselines[idx]->addToVLBIContext(i);
                             }
                             idx++;
                         }
@@ -443,27 +440,31 @@ MainWindow::MainWindow(QWidget *parent)
                     for(int x = 0; x < Lines.count(); x++)
                     {
                         Line * line = Lines[x];
-                        dsp_stream_p stream = line->getStream();
-                        dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-                        dsp_stream_alloc_buffer(stream, stream->len);
-                        if(line->isActive())
+                        if(line->isActive()) {
+                            dsp_stream_p stream = line->getStream();
+                            if(stream == nullptr) continue;
+                            line->lock();
+                            dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
+                            dsp_stream_alloc_buffer(stream, stream->len);
                             stream->buf[stream->len - 1] = (double)packet->counts[x];
-                        else
-                            stream->buf[stream->len - 1] = 0.0;
-                        memcpy(&stream->location[stream->len - 1], line->getLocation(), sizeof(dsp_location));
+                            memcpy(&stream->location[stream->len - 1], line->getLocation(), sizeof(dsp_location));
+                            line->unlock();
+                        }
                         if(getMode() == HolographIQ)
                         {
                             for(int y = x + 1; y < Lines.count(); y++)
                             {
                                 Baseline * line = Baselines[idx];
-                                stream = line->getStream();
-                                dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-                                dsp_stream_alloc_buffer(stream, stream->len);
                                 if(line->isActive())
                                 {
+                                    dsp_stream_p stream = line->getStream();
+                                    if(stream == nullptr) continue;
+                                    line->lock();
+                                    dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
+                                    dsp_stream_alloc_buffer(stream, stream->len);
                                     double offset1 = 0, offset2 = 0;
-                                    vlbi_get_offsets(getVLBIContext(), packettime, Lines[x]->getName().toStdString().c_str(),
-                                                     Lines[y]->getName().toStdString().c_str(), getRa(), getDec(), &offset1, &offset2);
+                                    vlbi_get_offsets(getVLBIContext(), packettime, Lines[x]->getLastName().toStdString().c_str(),
+                                                     Lines[y]->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
                                     offset1 /= ahp_xc_get_sampletime();
                                     offset2 /= ahp_xc_get_sampletime();
                                     if(ahp_xc_has_crosscorrelator())
@@ -475,9 +476,7 @@ MainWindow::MainWindow(QWidget *parent)
                                             packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
                                     stream->dft.fftw[stream->len-1][1] = (double)
                                             packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
-                                } else {
-                                    stream->dft.fftw[stream->len-1][0] = (double)0.0;
-                                    stream->dft.fftw[stream->len-1][1] = (double)0.0;
+                                    line->unlock();
                                 }
                                 idx++;
                             }
@@ -650,9 +649,9 @@ MainWindow::MainWindow(QWidget *parent)
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            plotVLBI("coverage", getGraph()->getCoverage(), Ra, Dec, coverage_delegate);
-            plotVLBI("phase", getGraph()->getPhase(), Ra, Dec, vlbi_phase_delegate);
-            plotVLBI("magnitude", getGraph()->getMagnitude(), Ra, Dec, vlbi_magnitude_delegate);
+            plotVLBI("coverage", getGraph()->getCoverage(), coverage_delegate);
+            plotVLBI("phase", getGraph()->getPhase(), vlbi_phase_delegate);
+            plotVLBI("magnitude", getGraph()->getMagnitude(), vlbi_magnitude_delegate);
 
             vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
             QImageFromModel(getGraph()->getIdft(), "idft");
@@ -676,13 +675,13 @@ MainWindow::MainWindow(QWidget *parent)
     uiThread->start();
 }
 
-void MainWindow::plotVLBI(char *model, QImage *picture, double ra, double dec, vlbi_func2_t delegate)
+void MainWindow::plotVLBI(char *model, QImage *picture, vlbi_func2_t delegate)
 {
-    double radec[3] = { ra, dec, 0};
-    vlbi_set_location(getVLBIContext(), Latitude, Longitude, Elevation);
+    double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
+    vlbi_set_location(getVLBIContext(), getGraph()->getLatitude(), getGraph()->getLongitude(), getGraph()->getElevation());
     vlbi_get_uv_plot(getVLBIContext(), model,
                      getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                     getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, delegate);
+                     getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, delegate);
     QImageFromModel(picture, model);
 }
 
@@ -690,7 +689,7 @@ void MainWindow::QImageFromModel(QImage* picture, char* model)
 {
     unsigned char* pixels = (unsigned char*)picture->bits();
     dsp_stream_p data = dsp_stream_copy(vlbi_get_model(getVLBIContext(), model));
-    dsp_buffer_stretch(data->buf, data->len, 0.0, 0xff);
+    dsp_buffer_stretch(data->buf, data->len, 0xff, 0.0);
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);
     dsp_stream_free(data);

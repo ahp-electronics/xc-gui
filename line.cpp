@@ -369,9 +369,11 @@ void Line::setFlag(int flag, bool value)
 
 void Line::resetTimestamp()
 {
-    QDateTime now = QDateTime::currentDateTimeUtc();
-    getStream()->starttimeutc = vlbi_time_string_to_timespec((char*)now.toString(
-                                    Qt::DateFormat::ISODate).toStdString().c_str());
+    lock();
+    dsp_stream_set_dim(stream, 0, 0);
+    dsp_stream_alloc_buffer(stream, stream->len + 1);
+    getStream()->starttimeutc = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+    unlock();
 }
 
 bool Line::getFlag(int flag)
@@ -490,12 +492,10 @@ void Line::addToVLBIContext(int index)
         index = getMode() - HolographII;
         if (index < 0) return;
     }
-    if(stream == nullptr) {
-        stream = dsp_stream_new();
-        dsp_stream_add_dim(stream, 0);
-        dsp_stream_alloc_buffer(stream, stream->len + 1);
-    }
-    vlbi_add_node(getVLBIContext(index), getStream(), getName().toStdString().c_str(), false);
+    stream = dsp_stream_new();
+    dsp_stream_add_dim(stream, 0);
+    resetTimestamp();
+    vlbi_add_node(getVLBIContext(index), getStream(), getLastName().toStdString().c_str(), false);
 }
 
 void Line::removeFromVLBIContext(int index)
@@ -615,11 +615,7 @@ void Line::gotoRaDec(double ra, double dec)
 void Line::setActive(bool a)
 {
     if(a) {
-        if(stream != nullptr) {
-            stream->starttimeutc = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
-            dsp_stream_set_dim(stream, 0, 0);
-            dsp_stream_alloc_buffer(stream, stream->len + 1);
-        }
+        addToVLBIContext();
     }
     running = a;
     activeStateChanged(this);

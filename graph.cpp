@@ -34,7 +34,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     inputs(new Ui::Inputs())
 {
     settings = s;
-    setPlotSize(64);
+    setPlotSize(256);
     setAccessibleName("Graph");
     chart = new QChart();
     name = n;

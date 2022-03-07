@@ -75,13 +75,16 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         if(oldstate != newstate) {
             if(newstate){
                 if(stream != nullptr) {
+                    lock();
                     dsp_stream_set_dim(stream, 0, 0);
                     dsp_stream_alloc_buffer(stream, stream->len + 1);
+                    getLine2()->resetTimestamp();
+                    unlock();
                 }
             }
         }
         running = newstate;
-        oldstate = isActive();
+        oldstate = newstate;
     });
     connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
@@ -90,13 +93,18 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         bool newstate = getLine1()->isActive() && getLine2()->isActive();
         stop = !newstate;
         if(oldstate != newstate) {
-            if(newstate){
-                dsp_stream_set_dim(stream, 0, 0);
-                dsp_stream_alloc_buffer(stream, stream->len);
+            if(newstate) {
+                if(stream != nullptr) {
+                    lock();
+                    dsp_stream_set_dim(stream, 0, 0);
+                    dsp_stream_alloc_buffer(stream, stream->len + 1);
+                    getLine1()->resetTimestamp();
+                    unlock();
+                }
             }
         }
         running = newstate;
-        oldstate = isActive();
+        oldstate = newstate;
     });
 }
 
@@ -195,11 +203,15 @@ void Baseline::addToVLBIContext(int index)
         index = getMode() - HolographIQ;
         if(index < 0) return;
     }
-    stream = dsp_stream_new();
-    dsp_stream_add_dim(stream, 0);
-    dsp_stream_alloc_buffer(stream, stream->len + 1);
-    vlbi_set_baseline_stream(getVLBIContext(vlbi_context_iq), getLine1()->getName().toStdString().c_str(),
-                             getLine2()->getName().toStdString().c_str(), getStream());
+    lock();
+    if(stream == nullptr) {
+        stream = dsp_stream_new();
+        dsp_stream_add_dim(stream, 0);
+        dsp_stream_alloc_buffer(stream, stream->len + 1);
+    }
+    vlbi_set_baseline_stream(getVLBIContext(vlbi_context_iq), getLine1()->getLastName().toStdString().c_str(),
+                             getLine2()->getLastName().toStdString().c_str(), getStream());
+    unlock();
 }
 
 void Baseline::removeFromVLBIContext(int index)
@@ -208,12 +220,14 @@ void Baseline::removeFromVLBIContext(int index)
         index = getMode() - HolographIQ;
         if (index < 0) return;
     }
-    vlbi_unlock_baseline(getVLBIContext(index), getLine1()->getName().toStdString().c_str(),
-                         getLine2()->getName().toStdString().c_str());
+    vlbi_unlock_baseline(getVLBIContext(index), getLine1()->getLastName().toStdString().c_str(),
+                         getLine2()->getLastName().toStdString().c_str());
 }
 
-bool Baseline::isActive()
+bool Baseline::isActive(bool atleast1)
 {
+    if(atleast1)
+        return getLine1()->isActive()||getLine2()->isActive();
     return running;
 }
 
