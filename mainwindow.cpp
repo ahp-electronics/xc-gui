@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #include "types.h"
@@ -56,7 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
     ui->setupUi(this);
-    uiThread = new Thread(this, 100, 100);
+    uiThread = new Thread(this, 200, 100);
     readThread = new Thread(this, 100, 100);
     vlbiThread = new Thread(this, 4000, 1000);
     motorThread = new Thread(this, 1000, 1000);
@@ -324,7 +324,8 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                     settings->endGroup();
                     settings->beginGroup(header);
-                    for (int i = 0; i < vlbi_total_contexts; i++) {
+                    for (int i = 0; i < vlbi_total_contexts; i++)
+                    {
                         context[i] = vlbi_init();
                     }
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
@@ -337,7 +338,8 @@ MainWindow::MainWindow(QWidget *parent)
                         getGraph()->addSeries(Lines[l]->getPhases());
                         getGraph()->addSeries(Lines[l]->getCounts());
                         ui->Lines->addTab(Lines[l], name);
-                        for (int i = 0; i < vlbi_total_contexts; i++) {
+                        for (int i = 0; i < vlbi_total_contexts; i++)
+                        {
                             Lines[l]->setVLBIContext(getVLBIContext(i), i);
                         }
                     }
@@ -352,7 +354,8 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Baselines[idx]->getPhase());
                             getGraph()->addSeries(Baselines[idx]->getMagnitudes());
                             getGraph()->addSeries(Baselines[idx]->getPhases());
-                            for (int i = 0; i < vlbi_total_contexts; i++) {
+                            for (int i = 0; i < vlbi_total_contexts; i++)
+                            {
                                 Baselines[idx]->setVLBIContext(getVLBIContext(i), i);
                             }
                             idx++;
@@ -440,7 +443,8 @@ MainWindow::MainWindow(QWidget *parent)
                     for(int x = 0; x < Lines.count(); x++)
                     {
                         Line * line = Lines[x];
-                        if(line->isActive()) {
+                        if(line->isActive())
+                        {
                             dsp_stream_p stream = line->getStream();
                             if(stream == nullptr) continue;
                             line->lock();
@@ -472,10 +476,10 @@ MainWindow::MainWindow(QWidget *parent)
                                         ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 0);
                                         ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 0);
                                     }
-                                    stream->dft.fftw[stream->len-1][0] = (double)
-                                            packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                                    stream->dft.fftw[stream->len-1][1] = (double)
-                                            packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                                    stream->dft.fftw[stream->len - 1][0] = (double)
+                                                                           packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                                    stream->dft.fftw[stream->len - 1][1] = (double)
+                                                                           packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
                                     line->unlock();
                                 }
                                 idx++;
@@ -723,7 +727,8 @@ void MainWindow::stopThreads()
 
 void MainWindow::resetTimestamp()
 {
-    starttime = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+    starttime = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(
+                    Qt::DateFormat::ISODate).toStdString().c_str());
     J2000_starttime = vlbi_time_timespec_to_J2000time(starttime);
     lastpackettime = J2000_starttime;
 }

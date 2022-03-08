@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #include "line.h"
@@ -372,7 +372,8 @@ void Line::resetTimestamp()
     lock();
     dsp_stream_set_dim(stream, 0, 0);
     dsp_stream_alloc_buffer(stream, stream->len + 1);
-    getStream()->starttimeutc = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+    getStream()->starttimeutc = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(
+                                    Qt::DateFormat::ISODate).toStdString().c_str());
     unlock();
 }
 
@@ -488,7 +489,8 @@ void Line::paint()
 
 void Line::addToVLBIContext(int index)
 {
-    if(index < 0) {
+    if(index < 0)
+    {
         index = getMode() - HolographII;
         if (index < 0) return;
     }
@@ -500,11 +502,13 @@ void Line::addToVLBIContext(int index)
 
 void Line::removeFromVLBIContext(int index)
 {
-    if(index < 0) {
+    if(index < 0)
+    {
         index = getMode() - HolographII;
         if (index < 0) return;
     }
-    if(stream != nullptr) {
+    if(stream != nullptr)
+    {
         vlbi_del_node(getVLBIContext(index), getName().toStdString().c_str());
     }
 }
@@ -614,7 +618,8 @@ void Line::gotoRaDec(double ra, double dec)
 
 void Line::setActive(bool a)
 {
-    if(a) {
+    if(a)
+    {
         addToVLBIContext();
     }
     running = a;
@@ -686,19 +691,22 @@ void Line::stackCorrelations()
                 else if(mode == AutocorrelatorIQ)
                 {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / pow(spectrum[z].correlations[0].real +
-                            spectrum[z].correlations[0].imaginary, 2);;
+                                         spectrum[z].correlations[0].imaginary, 2);;
                     phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / pow(spectrum[z].correlations[0].real +
-                            spectrum[z].correlations[0].imaginary, 2);;
+                                     spectrum[z].correlations[0].imaginary, 2);;
                 }
             }
         }
         if(Idft())
         {
-            if(mode == AutocorrelatorIQ) {
+            if(mode == AutocorrelatorIQ)
+            {
                 elemental->setMagnitude(magnitude_buf, len);
                 elemental->setPhase(phase_buf, len);
                 elemental->idft();
-            } else {
+            }
+            else
+            {
                 elemental->setReal(magnitude_buf, len);
                 elemental->setImaginary(phase_buf, len);
                 elemental->dft(1);

@@ -149,7 +149,7 @@ class MainWindow : public QMainWindow
                     resetTimestamp();
                 mode = m;
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
-                ahp_xc_set_capture_flags((xc_capture_flags)((cur&~CAP_ENABLE)|CAP_RESET_TIMESTAMP));
+                ahp_xc_set_capture_flags((xc_capture_flags)((cur & ~CAP_ENABLE) | CAP_RESET_TIMESTAMP));
                 for(int i = 0; i < Baselines.count(); i++)
                 {
                     Baselines[i]->getMagnitude()->clear();
@@ -166,13 +166,15 @@ class MainWindow : public QMainWindow
                     Lines[i]->getPhases()->clear();
                     Lines[i]->getCounts()->clear();
                 }
-                if(mode == Counter || mode == HolographIQ || mode == HolographII) {
-                    for(int i = 0; i < Lines.count(); i++) {
+                if(mode == Counter || mode == HolographIQ || mode == HolographII)
+                {
+                    for(int i = 0; i < Lines.count(); i++)
+                    {
                         if(ahp_xc_has_crosscorrelator())
                             ahp_xc_set_channel_cross(i, 0, 0);
                         ahp_xc_set_channel_auto(i, 0, 0);
                     }
-                    ahp_xc_set_capture_flags((xc_capture_flags)(cur|CAP_ENABLE));
+                    ahp_xc_set_capture_flags((xc_capture_flags)(cur | CAP_ENABLE));
                     resetTimestamp();
                 }
                 for(int i = 0; i < Lines.count(); i++)
@@ -193,14 +195,35 @@ class MainWindow : public QMainWindow
         Thread *vlbiThread;
         Thread *motorThread;
 
-        inline int getMotorHandle() { return motorFD; }
-        inline void setMotorHandle(int fd) { motorFD = fd; }
-        inline QList<double> getMotorPositionMultipliers() { return position_multipliers; }
-        inline QList<int> getMotorAddresses() { return gt_addresses; }
+        inline int getMotorHandle()
+        {
+            return motorFD;
+        }
+        inline void setMotorHandle(int fd)
+        {
+            motorFD = fd;
+        }
+        inline QList<double> getMotorPositionMultipliers()
+        {
+            return position_multipliers;
+        }
+        inline QList<int> getMotorAddresses()
+        {
+            return gt_addresses;
+        }
 
-        inline int getMotorFD() { return motorFD; }
-        inline int getControlFD() { return controlFD; }
-        inline int getXcFD() { return xcFD; }
+        inline int getMotorFD()
+        {
+            return motorFD;
+        }
+        inline int getControlFD()
+        {
+            return controlFD;
+        }
+        inline int getXcFD()
+        {
+            return xcFD;
+        }
         void plotVLBI(char *model, QImage *picture, vlbi_func2_t delegate);
         void QImageFromModel(QImage* picture, char* model);
 

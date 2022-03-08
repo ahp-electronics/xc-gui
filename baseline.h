@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #ifndef BASELINE_H
@@ -70,23 +70,23 @@ class Baseline : public QWidget
         inline void setMagnitudeSize(size_t size)
         {
             if(magnitude_buf != nullptr)
-                magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size+1));
+                magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size + 1));
             else
-                magnitude_buf = (double*)malloc(sizeof(double) * (size+1));
+                magnitude_buf = (double*)malloc(sizeof(double) * (size + 1));
         }
         inline void setPhaseSize(size_t size)
         {
             if(phase_buf != nullptr)
-                phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size+1));
+                phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size + 1));
             else
-                phase_buf = (double*)malloc(sizeof(double) * (size+1));
+                phase_buf = (double*)malloc(sizeof(double) * (size + 1));
         }
         inline void setDftSize(size_t size)
         {
             if(dft != nullptr)
-                dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (size+1));
+                dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (size + 1));
             else
-                dft = (fftw_complex*)malloc(sizeof(fftw_complex) * (size+1));
+                dft = (fftw_complex*)malloc(sizeof(fftw_complex) * (size + 1));
         }
         inline QLineSeries* getMagnitude()
         {
@@ -113,7 +113,10 @@ class Baseline : public QWidget
             return dark;
         }
         void setMode(Mode m);
-        inline Mode getMode() { return mode; }
+        inline Mode getMode()
+        {
+            return mode;
+        }
         inline void setDelay(double s);
         inline double getPercent()
         {

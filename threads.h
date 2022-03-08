@@ -52,16 +52,16 @@ class Thread : public QThread
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
+                QThread::msleep(timer_ms);
                 lock();
-                timer_ms = loop_ms;
                 lastPollTime = QDateTime::currentDateTimeUtc();
                 emit threadLoop(this);
-                QThread::msleep(timer_ms);
+                timer_ms = loop_ms;
             }
         }
         void lock()
         {
-            while(!mutex.tryLock());
+            while(!mutex.tryLock(5));
         }
         void unlock()
         {
@@ -75,7 +75,10 @@ class Thread : public QThread
         {
             loop_ms = loop;
         }
-        QObject *getParent() { return parent; }
+        QObject *getParent()
+        {
+            return parent;
+        }
     private:
         QDateTime lastPollTime;
     signals:

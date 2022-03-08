@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #include "baseline.h"
@@ -72,9 +72,12 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         getCounts()->clear();
         bool newstate = getLine1()->isActive() && getLine2()->isActive();
         stop = !newstate;
-        if(oldstate != newstate) {
-            if(newstate){
-                if(stream != nullptr) {
+        if(oldstate != newstate)
+        {
+            if(newstate)
+            {
+                if(stream != nullptr)
+                {
                     lock();
                     dsp_stream_set_dim(stream, 0, 0);
                     dsp_stream_alloc_buffer(stream, stream->len + 1);
@@ -92,9 +95,12 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         getCounts()->clear();
         bool newstate = getLine1()->isActive() && getLine2()->isActive();
         stop = !newstate;
-        if(oldstate != newstate) {
-            if(newstate) {
-                if(stream != nullptr) {
+        if(oldstate != newstate)
+        {
+            if(newstate)
+            {
+                if(stream != nullptr)
+                {
                     lock();
                     dsp_stream_set_dim(stream, 0, 0);
                     dsp_stream_alloc_buffer(stream, stream->len + 1);
@@ -199,12 +205,14 @@ void Baseline::stretch(QLineSeries* series)
 
 void Baseline::addToVLBIContext(int index)
 {
-    if(index < 0) {
+    if(index < 0)
+    {
         index = getMode() - HolographIQ;
         if(index < 0) return;
     }
     lock();
-    if(stream == nullptr) {
+    if(stream == nullptr)
+    {
         stream = dsp_stream_new();
         dsp_stream_add_dim(stream, 0);
         dsp_stream_alloc_buffer(stream, stream->len + 1);
@@ -216,7 +224,8 @@ void Baseline::addToVLBIContext(int index)
 
 void Baseline::removeFromVLBIContext(int index)
 {
-    if(index < 0) {
+    if(index < 0)
+    {
         index = getMode() - HolographIQ;
         if (index < 0) return;
     }
@@ -227,7 +236,7 @@ void Baseline::removeFromVLBIContext(int index)
 bool Baseline::isActive(bool atleast1)
 {
     if(atleast1)
-        return getLine1()->isActive()||getLine2()->isActive();
+        return getLine1()->isActive() || getLine2()->isActive();
     return running;
 }
 
@@ -318,19 +327,22 @@ void Baseline::stackCorrelations()
                 else if(mode == CrosscorrelatorII)
                 {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / pow(spectrum[z].correlations[0].real +
-                            spectrum[z].correlations[0].imaginary, 2);
+                                         spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / pow(spectrum[z].correlations[0].real +
-                            spectrum[z].correlations[0].imaginary, 2);
+                                     spectrum[z].correlations[0].imaginary, 2);
                 }
             }
         }
         if(getLine1()->Idft() && getLine2()->Idft())
         {
-            if(mode == CrosscorrelatorIQ) {
+            if(mode == CrosscorrelatorIQ)
+            {
                 elemental->setMagnitude(&magnitude_buf[1], len);
                 elemental->setPhase(&phase_buf[1], len);
                 elemental->idft();
-            } else {
+            }
+            else
+            {
                 elemental->setReal(&magnitude_buf[1], len);
                 elemental->setImaginary(&phase_buf[1], len);
                 elemental->dft(1);

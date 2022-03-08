@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #ifndef GRAPH_H
@@ -87,43 +87,113 @@ class Graph : public QWidget
         void addSeries(QAbstractSeries* series);
         void removeSeries(QAbstractSeries* series);
         void setMode(Mode m);
-        inline Mode getMode() { return mode; }
-        inline int getPlotSize() { return plot_w; }
-        inline void setPlotSize(int value) {
-                                    plot_w = value;
-                                    idft = idft.scaled(plot_w, plot_w);
-                                    coverage = coverage.scaled(plot_w, plot_w);
-                                    magnitude = coverage.scaled(plot_w, plot_w);
-                                    phase = phase.scaled(plot_w, plot_w);
+        inline Mode getMode()
+        {
+            return mode;
         }
-        inline void setPlotHeight(int value) { plot_w = value; }
-        inline QImage *getMagnitude() { return &magnitude; }
-        inline QImage *getPhase() { return &phase; }
-        inline QImage *getCoverage() { return &coverage; }
-        inline QImage *getIdft() { return &idft; }
-        inline int getMotorFD() { return motorFD; }
-        inline void setMotorFD(int fd) { motorFD = fd; }
-        inline int getControlFD() { return controlFD; }
-        inline void setControlFD(int fd) { controlFD = fd; }
+        inline int getPlotSize()
+        {
+            return plot_w;
+        }
+        inline void setPlotSize(int value)
+        {
+            plot_w = value;
+            idft = idft.scaled(plot_w, plot_w);
+            coverage = coverage.scaled(plot_w, plot_w);
+            magnitude = coverage.scaled(plot_w, plot_w);
+            phase = phase.scaled(plot_w, plot_w);
+        }
+        inline void setPlotHeight(int value)
+        {
+            plot_w = value;
+        }
+        inline QImage *getMagnitude()
+        {
+            return &magnitude;
+        }
+        inline QImage *getPhase()
+        {
+            return &phase;
+        }
+        inline QImage *getCoverage()
+        {
+            return &coverage;
+        }
+        inline QImage *getIdft()
+        {
+            return &idft;
+        }
+        inline int getMotorFD()
+        {
+            return motorFD;
+        }
+        inline void setMotorFD(int fd)
+        {
+            motorFD = fd;
+        }
+        inline int getControlFD()
+        {
+            return controlFD;
+        }
+        inline void setControlFD(int fd)
+        {
+            controlFD = fd;
+        }
 
         double getJ2000Time();
         double getLST();
         double getAltitude();
         double getAzimuth();
 
-        inline double getFrequency() { return Frequency; }
-        inline double getRa() { return Ra; }
-        inline double getDec() { return Dec; }
-        inline double getLatitude() { return Latitude; }
-        inline double getLongitude() { return Longitude; }
-        inline double getElevation() { return Elevation; }
+        inline double getFrequency()
+        {
+            return Frequency;
+        }
+        inline double getRa()
+        {
+            return Ra;
+        }
+        inline double getDec()
+        {
+            return Dec;
+        }
+        inline double getLatitude()
+        {
+            return Latitude;
+        }
+        inline double getLongitude()
+        {
+            return Longitude;
+        }
+        inline double getElevation()
+        {
+            return Elevation;
+        }
 
-        inline void setFrequency(double freq) { Frequency = freq; }
-        inline void setRa(double ra) { Ra = ra; }
-        inline void setDec(double dec) { Dec = dec; }
-        inline void setLatitude(double lat) { Latitude = lat; }
-        inline void setLongitude(double lon) { Longitude = lon; }
-        inline void setElevation(double el) { Elevation = el; }
+        inline void setFrequency(double freq)
+        {
+            Frequency = freq;
+        }
+        inline void setRa(double ra)
+        {
+            Ra = ra;
+        }
+        inline void setDec(double dec)
+        {
+            Dec = dec;
+        }
+        inline void setLatitude(double lat)
+        {
+            Latitude = lat;
+        }
+        inline void setLongitude(double lon)
+        {
+            Longitude = lon;
+        }
+        inline void setElevation(double el)
+        {
+            Elevation = el;
+        }
         void loadSettings();
 
         double* toDms(double d);
@@ -134,10 +204,11 @@ class Graph : public QWidget
     private:
         Ui::Inputs *inputs;
         Mode mode { Counter };
-        inline QImage initGrayPicture(int w, int h) {
+        inline QImage initGrayPicture(int w, int h)
+        {
             QVector<QRgb> palette;
             QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
-            image.fill((1<<24)-1);
+            image.fill((1 << 24) - 1);
             return image;
         }
         double Latitude, Longitude, Elevation;
@@ -167,7 +238,7 @@ class Graph : public QWidget
         int controlFD;
         QSettings *settings;
 
-signals:
+    signals:
         void frequencyUpdated(double);
         void locationUpdated(double, double, double);
         void coordinatesUpdated(double, double, double);

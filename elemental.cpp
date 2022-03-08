@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #include "elemental.h"
@@ -37,17 +37,22 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
     dsp_stream_add_dim(stream, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
     scanThread = new Thread(this);
-    connect(scanThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [=] (Thread* thread) {
+    connect(scanThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
+    {
         Elemental* parent = (Elemental*)thread->getParent();
         dsp_stream_p stream = parent->getStream();
         success = false;
         offset = 0.0;
         scale = 1.0;
-        if(stream->stars_count > 2 && reference->stars_count > 2) {
-            dsp_align_info info = vlbi_astro_align_spectra(stream, reference, parent->getMaxDots(), parent->getDecimals(), parent->getMinScore());
+        if(stream->stars_count > 2 && reference->stars_count > 2)
+        {
+            dsp_align_info info = vlbi_astro_align_spectra(stream, reference, parent->getMaxDots(), parent->getDecimals(),
+                                  parent->getMinScore());
             success = (info.err & DSP_ALIGN_NO_MATCH) == 0;
-            if(success) {
-                pwarn("Match found - score: %lf%%\n offset: %lf\n scale: %lf\n", 100.0-info.score*100.0, info.offset[0], info.factor[0]);
+            if(success)
+            {
+                pwarn("Match found - score: %lf%%\n offset: %lf\n scale: %lf\n", 100.0 - info.score * 100.0, info.offset[0],
+                      info.factor[0]);
                 offset = info.offset[0];
                 scale = info.factor[0];
                 matches++;
@@ -85,13 +90,14 @@ void Elemental::loadCatalog()
     int catalog_size = 0;
     QString catalogPath =
 #ifdef _WIN32
-    QDir::currentPath().append("/cat/");
+        QDir::currentPath().append("/cat/");
 #else
-    VLBI_CATALOG_PATH;
+        VLBI_CATALOG_PATH;
 #endif
     vlbi_astro_load_spectra_catalog((char*)catalogPath.toStdString().c_str(), &catalog, &catalog_size);
     reference = vlbi_astro_create_reference_catalog(catalog, catalog_size);
-    for(int c = 0; c < catalog_size; c++) {
+    for(int c = 0; c < catalog_size; c++)
+    {
         elements.append(catalog[c]);
     }
 }
@@ -114,7 +120,8 @@ dsp_align_info *Elemental::stats(QString name)
 {
     for (dsp_stream_p element : getCatalog())
     {
-        if (QString(element->name) == name) {
+        if (QString(element->name) == name)
+        {
             return &element->align_info;
         }
     }

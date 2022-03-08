@@ -1,26 +1,26 @@
 /*
-    MIT License
+   MIT License
 
-    libahp_xc library to drive the AHP XC correlators
-    Copyright (C) 2020  Ilia Platone
+   libahp_xc library to drive the AHP XC correlators
+   Copyright (C) 2020  Ilia Platone
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 */
 
 #include "graph.h"
@@ -76,73 +76,85 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
 
     connect(inputs->Ra_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value())+":"+QString::number(inputs->Ra_1->value())+":"+QString::number(inputs->Ra_2->value()));
+        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
+                          QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
         emit coordinatesUpdated(Ra, Dec, 0);
     });
     connect(inputs->Ra_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value())+":"+QString::number(inputs->Ra_1->value())+":"+QString::number(inputs->Ra_2->value()));
+        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
+                          QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
         emit coordinatesUpdated(Ra, Dec, 0);
     });
     connect(inputs->Ra_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value())+":"+QString::number(inputs->Ra_1->value())+":"+QString::number(inputs->Ra_2->value()));
+        Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
+                          QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
         emit coordinatesUpdated(Ra, Dec, 0);
     });
     connect(inputs->Dec_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value())+":"+QString::number(inputs->Dec_1->value())+":"+QString::number(inputs->Dec_2->value()));
+        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
+                           QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
         emit coordinatesUpdated(Ra, Dec, 0);
     });
     connect(inputs->Dec_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value())+":"+QString::number(inputs->Dec_1->value())+":"+QString::number(inputs->Dec_2->value()));
+        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
+                           QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
         emit coordinatesUpdated(Ra, Dec, 0);
     });
     connect(inputs->Dec_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value())+":"+QString::number(inputs->Dec_1->value())+":"+QString::number(inputs->Dec_2->value()));
+        Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
+                           QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
         emit coordinatesUpdated(Ra, Dec, 0);
     });
     connect(inputs->Lat_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value())+":"+QString::number(inputs->Lat_1->value())+":"+QString::number(inputs->Lat_2->value()));
+        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value()) + ":" + QString::number(
+                                    inputs->Lat_1->value()) + ":" + QString::number(inputs->Lat_2->value()));
         saveSetting("Latitude", Latitude);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
     connect(inputs->Lat_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value())+":"+QString::number(inputs->Lat_1->value())+":"+QString::number(inputs->Lat_2->value()));
+        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value()) + ":" + QString::number(
+                                    inputs->Lat_1->value()) + ":" + QString::number(inputs->Lat_2->value()));
         saveSetting("Latitude", Latitude);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
     connect(inputs->Lat_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value())+":"+QString::number(inputs->Lat_1->value())+":"+QString::number(inputs->Lat_2->value()));
+        Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value()) + ":" + QString::number(
+                                    inputs->Lat_1->value()) + ":" + QString::number(inputs->Lat_2->value()));
         saveSetting("Latitude", Latitude);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
     connect(inputs->Lon_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value())+":"+QString::number(inputs->Lon_1->value())+":"+QString::number(inputs->Lon_2->value()));
+        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value()) + ":" + QString::number(
+                                     inputs->Lon_1->value()) + ":" + QString::number(inputs->Lon_2->value()));
         saveSetting("Longitude", Longitude);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
     connect(inputs->Lon_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value())+":"+QString::number(inputs->Lon_1->value())+":"+QString::number(inputs->Lon_2->value()));
+        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value()) + ":" + QString::number(
+                                     inputs->Lon_1->value()) + ":" + QString::number(inputs->Lon_2->value()));
         saveSetting("Longitude", Longitude);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
     connect(inputs->Lon_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value())+":"+QString::number(inputs->Lon_1->value())+":"+QString::number(inputs->Lon_2->value()));
+        Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value()) + ":" + QString::number(
+                                     inputs->Lon_1->value()) + ":" + QString::number(inputs->Lon_2->value()));
         saveSetting("Longitude", Longitude);
         emit locationUpdated(Latitude, Longitude, Elevation);
     });
@@ -195,7 +207,7 @@ void Graph::loadSettings()
     inputs->Lon_2->setValue(lon[2]);
 
     inputs->El->setValue(getElevation());
-    inputs->Frequency->setValue(getFrequency()/1000000.0);
+    inputs->Frequency->setValue(getFrequency() / 1000000.0);
 }
 
 QString Graph::toDMS(double dms)
@@ -208,13 +220,13 @@ QString Graph::toDMS(double dms)
     m = floor(dms);
     dms -= m;
     dms *= 60000.0;
-    s = floor(dms)/1000.0;
+    s = floor(dms) / 1000.0;
     return QString::number(d) + QString(":") + QString::number(m) + QString(":") + QString::number(s);
 }
 
 double* Graph::toDms(double d)
 {
-    double* dms = (double*)malloc(sizeof(double)*3);
+    double* dms = (double*)malloc(sizeof(double) * 3);
     dms[0] = floor(d);
     d -= dms[0];
     d *= 60.0;
@@ -235,7 +247,7 @@ QString Graph::toHMS(double hms)
     m = floor(hms);
     hms -= m;
     hms *= 60000.0;
-    s = floor(hms)/1000.0;
+    s = floor(hms) / 1000.0;
     return QString::number(h) + QString(":") + QString::number(m) + QString(":") + QString::number(s);
 }
 
@@ -246,9 +258,9 @@ double Graph::fromHMSorDMS(QString dms)
     double s;
     QStringList deg = dms.split(":");
     d = deg[0].toDouble();
-    m = deg[1].toDouble() / 60.0 * (d<0 ? -1 : 1);
-    s = deg[2].toDouble() / 3600.0 * (d<0 ? -1 : 1);
-    return d+m+s;
+    m = deg[1].toDouble() / 60.0 * (d < 0 ? -1 : 1);
+    s = deg[2].toDouble() / 3600.0 * (d < 0 ? -1 : 1);
+    return d + m + s;
 }
 
 void Graph::updateInfo()
@@ -381,24 +393,28 @@ void Graph::paint()
     update(rect());
 }
 
-double Graph::getJ2000Time() {
+double Graph::getJ2000Time()
+{
     QDateTime now = QDateTime::currentDateTimeUtc();
     timespec ts = vlbi_time_string_to_timespec ((char*)now.toString(Qt::DateFormat::ISODate).toStdString().c_str());
     return vlbi_time_timespec_to_J2000time(ts);
 }
 
-double Graph::getLST() {
+double Graph::getLST()
+{
     return vlbi_time_J2000time_to_lst(getJ2000Time(), Longitude);
 }
 
-double Graph::getAltitude() {
+double Graph::getAltitude()
+{
     double alt, az;
     double ha = vlbi_astro_get_local_hour_angle(getLST(), Ra);
     vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
     return alt;
 }
 
-double Graph::getAzimuth() {
+double Graph::getAzimuth()
+{
     double alt, az;
     double ha = vlbi_astro_get_local_hour_angle(getLST(), Ra);
     vlbi_astro_get_alt_az_coordinates(ha, Dec, Latitude, &alt, &az);
