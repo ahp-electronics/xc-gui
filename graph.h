@@ -208,7 +208,7 @@ class Graph : public QWidget
         {
             QVector<QRgb> palette;
             QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
-            image.fill((1 << 24) - 1);
+            image.fill(0);
             return image;
         }
         double Latitude, Longitude, Elevation;

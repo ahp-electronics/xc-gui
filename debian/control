@@ -5,6 +5,15 @@ Maintainer: Ilia Platone <info@iliaplatone.com>
 Build-Depends: debhelper (>= 8.1.3~),
  cdbs,
  cmake (>= 2.4.7),
+ qt5-default,
+ libqt5charts5-dev,
+ libqt5serialport5-dev,
+ libqt5charts5-dev,
+ libahp-gt,
+ libahp-xc,
+ libopenvlbi-dev,
+ libfftw3-dev,
+
 Standards-Version: 3.9.5
 Homepage: http://iliaplatone.github.io/OpenVLBI/
 Vcs-Git: git://github.com/iliaplatone/OpenVLBI.git
@@ -13,7 +22,7 @@ Package: xc-gui
 Section: education
 Architecture: any
 Multi-Arch: same
-Depends: libahp-gt, libahp-xc, libopenvlbi, ${shlibs:Depends}, ${misc:Depends},
+Depends: ${shlibs:Depends}, ${misc:Depends},
 Pre-Depends: ${misc:Pre-Depends}
 Description: XC Correlators test application
     Test application for the AHP XC Crosscorrelators.
