@@ -82,6 +82,10 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                     dsp_stream_set_dim(stream, 0, 0);
                     dsp_stream_alloc_buffer(stream, stream->len + 1);
                     getLine2()->resetTimestamp();
+                    if(getMode() == HolographIQ)
+                        addToVLBIContext();
+                    else
+                        removeFromVLBIContext();
                     unlock();
                 }
             }
@@ -105,6 +109,10 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                     dsp_stream_set_dim(stream, 0, 0);
                     dsp_stream_alloc_buffer(stream, stream->len + 1);
                     getLine1()->resetTimestamp();
+                    if(getMode() == HolographIQ)
+                        addToVLBIContext();
+                    else
+                        removeFromVLBIContext();
                     unlock();
                 }
             }
