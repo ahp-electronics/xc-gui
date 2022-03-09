@@ -34,7 +34,6 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     inputs(new Ui::Inputs())
 {
     settings = s;
-    setPlotSize(256);
     setAccessibleName("Graph");
     chart = new QChart();
     name = n;
@@ -73,6 +72,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     idftLabel = new QLabel(correlator);
     idftLabel->setVisible(true);
     idftLabel->setText("IDFT");
+    setPlotSize(256);
 
     connect(inputs->Ra_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {

@@ -140,8 +140,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Scale->setEnabled(false);
         ui->Range->setEnabled(false);
         ui->Mode->setEnabled(false);
-        for (int i = 0; i < vlbi_total_contexts; i++)
-            vlbi_exit(getVLBIContext(i));
         getGraph()->clearSeries();
         for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
         {
@@ -175,6 +173,8 @@ MainWindow::MainWindow(QWidget *parent)
         {
             control_socket.disconnectFromHost();
         }
+        for (int i = 0; i < vlbi_total_contexts; i++)
+            vlbi_exit(getVLBIContext(i));
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
@@ -717,10 +717,13 @@ void MainWindow::stopThreads()
 {
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
+    vlbiThread->unlock();
     vlbiThread->requestInterruption();
     vlbiThread->wait();
+    readThread->unlock();
     readThread->requestInterruption();
     readThread->wait();
+    motorThread->unlock();
     motorThread->requestInterruption();
     motorThread->wait();
 }
@@ -742,12 +745,13 @@ void MainWindow::setVoltage(unsigned char level)
 
 MainWindow::~MainWindow()
 {
+    uiThread->unlock();
+    uiThread->requestInterruption();
+    uiThread->wait();
     if(connected)
     {
         ui->Disconnect->clicked(false);
     }
-    uiThread->requestInterruption();
-    uiThread->wait();
     uiThread->~Thread();
     vlbiThread->~Thread();
     readThread->~Thread();

@@ -228,7 +228,7 @@ class Graph : public QWidget
         QLabel *magnitudeView;
         QLabel *phaseView;
         QLabel *coverageView;
-        int plot_w;
+        int plot_w { 256 };
         QValueAxis *axisX;
         QValueAxis *axisY;
         QChart *chart;
