@@ -173,8 +173,7 @@ MainWindow::MainWindow(QWidget *parent)
         {
             control_socket.disconnectFromHost();
         }
-        for (int i = 0; i < vlbi_total_contexts; i++)
-            vlbi_exit(getVLBIContext(i));
+        vlbi_exit(getVLBIContext());
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
@@ -324,11 +323,7 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                     settings->endGroup();
                     settings->beginGroup(header);
-                    for (int i = 0; i < vlbi_total_contexts; i++)
-                    {
-                        context[i] = vlbi_init();
-                        getGraph()->setVLBIContext(getVLBIContext(i), i);
-                    }
+                    context = vlbi_init();
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
                         QString name = "Line " + QString::number(l + 1);
@@ -339,10 +334,6 @@ MainWindow::MainWindow(QWidget *parent)
                         getGraph()->addSeries(Lines[l]->getPhases());
                         getGraph()->addSeries(Lines[l]->getCounts());
                         ui->Lines->addTab(Lines[l], name);
-                        for (int i = 0; i < vlbi_total_contexts; i++)
-                        {
-                            Lines[l]->setVLBIContext(getVLBIContext(i), i);
-                        }
                     }
                     int idx = 0;
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
@@ -355,10 +346,6 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Baselines[idx]->getPhase());
                             getGraph()->addSeries(Baselines[idx]->getMagnitudes());
                             getGraph()->addSeries(Baselines[idx]->getPhases());
-                            for (int i = 0; i < vlbi_total_contexts; i++)
-                            {
-                                Baselines[idx]->setVLBIContext(getVLBIContext(i), i);
-                            }
                             idx++;
                         }
                     }
@@ -417,8 +404,7 @@ MainWindow::MainWindow(QWidget *parent)
         Latitude = lat;
         Longitude = lon;
         Elevation = el;
-        for (int i = 0; i < vlbi_total_contexts; i++)
-            vlbi_set_location(getVLBIContext(i), Latitude, Longitude, Elevation);
+        vlbi_set_location(getVLBIContext(), Latitude, Longitude, Elevation);
     });
     connect(getGraph(), static_cast<void (Graph::*)(double)>(&Graph::frequencyUpdated),
             [ = ](double freq)
@@ -658,13 +644,13 @@ MainWindow::MainWindow(QWidget *parent)
             vlbi_set_location(getVLBIContext(), getGraph()->getLatitude(), getGraph()->getLongitude(), getGraph()->getElevation());
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, coverage_delegate);
             vlbi_get_uv_plot(getVLBIContext(), "phase",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate);
             vlbi_get_uv_plot(getVLBIContext(), "magnitude",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_magnitude_delegate);
             vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
 
             getGraph()->plotModel(getGraph()->getCoverage(), "coverage");

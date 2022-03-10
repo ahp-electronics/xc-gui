@@ -100,7 +100,7 @@ class Graph : public QWidget
             plot_w = value;
             idft = idft.scaled(plot_w, plot_w);
             coverage = coverage.scaled(plot_w, plot_w);
-            magnitude = coverage.scaled(plot_w, plot_w);
+            magnitude = magnitude.scaled(plot_w, plot_w);
             phase = phase.scaled(plot_w, plot_w);
         }
         inline void setPlotHeight(int value)
@@ -203,24 +203,14 @@ class Graph : public QWidget
 
         void plotModel(QImage* picture, char* model);
 
-        inline void* getVLBIContext(int index = -1)
+        inline void* getVLBIContext()
         {
-            if(index < 0)
-            {
-                index = getMode() - HolographII;
-                if(index < 0) return nullptr;
-            }
-            return context[index];
+            return context;
         }
 
-        inline void setVLBIContext(void* ctx, int index = -1)
+        inline void setVLBIContext(void* ctx)
         {
-            if(index < 0)
-            {
-                index = getMode() - HolographII;
-                if(index < 0) return;
-            }
-            context[index] = ctx;
+            context = ctx;
         }
 
     private:
@@ -254,7 +244,7 @@ class Graph : public QWidget
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
-        void* context[vlbi_total_contexts];
+        void* context;
         int plot_w { 256 };
         QString name;
         int motorFD;

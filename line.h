@@ -271,27 +271,17 @@ class Line : public QWidget
             return Motors.count() - 1;
         }
 
-        void addToVLBIContext(int index = -1);
-        void removeFromVLBIContext(int index = -1);
+        void addToVLBIContext();
+        void removeFromVLBIContext();
 
-        inline void* getVLBIContext(int index = -1)
+        inline void* getVLBIContext()
         {
-            if(index < 0)
-            {
-                index = getMode() - HolographII;
-                if(index < 0) return nullptr;
-            }
-            return context[index];
+            return context;
         }
 
-        inline void setVLBIContext(void* ctx, int index = -1)
+        inline void setVLBIContext(void* ctx)
         {
-            if(index < 0)
-            {
-                index = getMode() - HolographII;
-                if(index < 0) return;
-            }
-            context[index] = ctx;
+            context = ctx;
         }
 
         inline int getMotorIndex()
@@ -357,7 +347,7 @@ class Line : public QWidget
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        void* context[vlbi_total_contexts] { nullptr };
+        void* context { nullptr };
 
         fftw_plan plan { 0 };
         fftw_complex *dft { nullptr };

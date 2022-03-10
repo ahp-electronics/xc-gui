@@ -225,7 +225,7 @@ void Baseline::addToVLBIContext(int index)
         dsp_stream_add_dim(stream, 0);
         dsp_stream_alloc_buffer(stream, stream->len + 1);
     }
-    vlbi_set_baseline_stream(getVLBIContext(vlbi_context_iq), getLine1()->getLastName().toStdString().c_str(),
+    vlbi_set_baseline_stream(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
                              getLine2()->getLastName().toStdString().c_str(), getStream());
     unlock();
 }
@@ -237,7 +237,7 @@ void Baseline::removeFromVLBIContext(int index)
         index = getMode() - HolographIQ;
         if (index < 0) return;
     }
-    vlbi_unlock_baseline(getVLBIContext(index), getLine1()->getLastName().toStdString().c_str(),
+    vlbi_unlock_baseline(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
                          getLine2()->getLastName().toStdString().c_str());
 }
 

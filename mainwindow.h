@@ -123,17 +123,10 @@ class MainWindow : public QMainWindow
         {
             return mode;
         }
-        inline void* getVLBIContext(int index = -1)
+
+        inline void* getVLBIContext()
         {
-            if(index < 0)
-                index = getMode() - HolographII;
-            return context[index];
-        }
-        inline void setVLBIContext(void *ctx, int index = -1)
-        {
-            if(index < 0)
-                return;
-            context[index] = ctx;
+            return context;
         }
         inline double getStartTime()
         {
@@ -158,6 +151,7 @@ class MainWindow : public QMainWindow
                     Baselines[i]->getMagnitudes()->clear();
                     Baselines[i]->getPhases()->clear();
                     Baselines[i]->getCounts()->clear();
+                    Baselines[i]->setVLBIContext(getVLBIContext());
                 }
                 for(int i = 0; i < Lines.count(); i++)
                 {
@@ -166,6 +160,7 @@ class MainWindow : public QMainWindow
                     Lines[i]->getMagnitudes()->clear();
                     Lines[i]->getPhases()->clear();
                     Lines[i]->getCounts()->clear();
+                    Lines[i]->setVLBIContext(getVLBIContext());
                 }
                 if(mode == Counter || mode == HolographIQ || mode == HolographII)
                 {
@@ -183,6 +178,7 @@ class MainWindow : public QMainWindow
                 for(int i = 0; i < Baselines.count(); i++)
                     Baselines[i]->setMode(mode);
                 getGraph()->setMode(m);
+                getGraph()->setVLBIContext(getVLBIContext());
                 if(mode == HolographIQ || mode == HolographII)
                     vlbiThread->start();
                 startThreads();
@@ -247,7 +243,8 @@ class MainWindow : public QMainWindow
         double Ra, Dec;
         double Latitude, Longitude, Elevation;
         double wavelength;
-        void* context[vlbi_total_contexts];
+        int current_context { 0 };
+        void* context;
         ahp_xc_packet *packet;
         QSettings *settings;
         QTcpSocket xc_socket;

@@ -464,13 +464,13 @@ void Line::setMode(Mode m)
     }
     resetPercentPtr();
     ui->Counter->setEnabled(m == Counter);
-    mode = m;
     if(!isActive())
     {
         ui->Correlator->setEnabled(m != Counter);
     }
     else
         runClicked();
+    mode = m;
 }
 
 void Line::paint()
@@ -487,29 +487,19 @@ void Line::paint()
     update(rect());
 }
 
-void Line::addToVLBIContext(int index)
+void Line::addToVLBIContext()
 {
-    if(index < 0)
-    {
-        index = getMode() - HolographII;
-        if (index < 0) return;
-    }
     stream = dsp_stream_new();
     dsp_stream_add_dim(stream, 0);
     resetTimestamp();
-    vlbi_add_node(getVLBIContext(index), getStream(), getLastName().toStdString().c_str(), false);
+    vlbi_add_node(getVLBIContext(), getStream(), getLastName().toStdString().c_str(), false);
 }
 
-void Line::removeFromVLBIContext(int index)
+void Line::removeFromVLBIContext()
 {
-    if(index < 0)
-    {
-        index = getMode() - HolographII;
-        if (index < 0) return;
-    }
     if(stream != nullptr)
     {
-        vlbi_del_node(getVLBIContext(index), getName().toStdString().c_str());
+        vlbi_del_node(getVLBIContext(), getLastName().toStdString().c_str());
     }
 }
 
@@ -618,9 +608,13 @@ void Line::gotoRaDec(double ra, double dec)
 
 void Line::setActive(bool a)
 {
-    if(a)
+    if(a && ! running)
     {
         addToVLBIContext();
+    }
+    else if(!a && running)
+    {
+        removeFromVLBIContext();
     }
     running = a;
     activeStateChanged(this);

@@ -76,6 +76,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
 
     connect(inputs->Ra_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Ra_0->setValue(23);
+        if(value > 23)
+            inputs->Ra_0->setValue(0);
         Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
                           QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
@@ -83,6 +87,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Ra_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Ra_1->setValue(59);
+        if(value > 59)
+            inputs->Ra_1->setValue(0);
         Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
                           QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
@@ -90,6 +98,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Ra_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Ra_2->setValue(59);
+        if(value > 59)
+            inputs->Ra_2->setValue(0);
         Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
                           QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
@@ -104,6 +116,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Dec_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Dec_1->setValue(59);
+        if(value > 59)
+            inputs->Dec_1->setValue(0);
         Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
                            QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
@@ -111,6 +127,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Dec_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Dec_2->setValue(59);
+        if(value > 59)
+            inputs->Dec_2->setValue(0);
         Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
                            QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
@@ -125,6 +145,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Lat_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Lat_1->setValue(59);
+        if(value > 59)
+            inputs->Lat_1->setValue(0);
         Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value()) + ":" + QString::number(
                                     inputs->Lat_1->value()) + ":" + QString::number(inputs->Lat_2->value()));
         saveSetting("Latitude", Latitude);
@@ -132,6 +156,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Lat_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Lat_2->setValue(59);
+        if(value > 59)
+            inputs->Lat_2->setValue(0);
         Latitude = fromHMSorDMS(QString::number(inputs->Lat_0->value()) + ":" + QString::number(
                                     inputs->Lat_1->value()) + ":" + QString::number(inputs->Lat_2->value()));
         saveSetting("Latitude", Latitude);
@@ -139,6 +167,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Lon_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Lon_0->setValue(359);
+        if(value > 359)
+            inputs->Lon_0->setValue(0);
         Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value()) + ":" + QString::number(
                                      inputs->Lon_1->value()) + ":" + QString::number(inputs->Lon_2->value()));
         saveSetting("Longitude", Longitude);
@@ -146,6 +178,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Lon_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Lon_1->setValue(59);
+        if(value > 59)
+            inputs->Lon_1->setValue(0);
         Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value()) + ":" + QString::number(
                                      inputs->Lon_1->value()) + ":" + QString::number(inputs->Lon_2->value()));
         saveSetting("Longitude", Longitude);
@@ -153,6 +189,10 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Lon_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
+        if(value < 0)
+            inputs->Lon_2->setValue(59);
+        if(value > 59)
+            inputs->Lon_2->setValue(0);
         Longitude = fromHMSorDMS(QString::number(inputs->Lon_0->value()) + ":" + QString::number(
                                      inputs->Lon_1->value()) + ":" + QString::number(inputs->Lon_2->value()));
         saveSetting("Longitude", Longitude);
@@ -325,7 +365,8 @@ void Graph::clearSeries()
 void Graph::plotModel(QImage* picture, char* model)
 {
     unsigned char* pixels = (unsigned char*)picture->bits();
-    dsp_stream_p data = dsp_stream_copy(vlbi_get_model(getVLBIContext(), model));
+    dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
+    dsp_stream_p data = dsp_stream_copy(stream);
     dsp_buffer_stretch(data->buf, data->len, 0xff, 0.0);
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);

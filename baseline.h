@@ -174,24 +174,14 @@ class Baseline : public QWidget
             stream = s;
         }
 
-        inline void* getVLBIContext(int index = -1)
+        inline void* getVLBIContext()
         {
-            if(index < 0)
-            {
-                index = getMode() - HolographII;
-                if(index < 0) return nullptr;
-            }
-            return context[index];
+            return context;
         }
 
-        inline void setVLBIContext(void* ctx, int index = -1)
+        inline void setVLBIContext(void* ctx)
         {
-            if(index < 0)
-            {
-                index = getMode() - HolographII;
-                if(index < 0) return;
-            }
-            context[index] = ctx;
+            context = ctx;
         }
 
         void lock()
@@ -231,7 +221,7 @@ class Baseline : public QWidget
         int stop;
         double percent;
         Mode mode;
-        void* context[vlbi_total_contexts];
+        void* context;
         Elemental *elemental;
         QMap<double, double>* dark;
         QMap<double, double>* magnitudeStack;

@@ -98,8 +98,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="Ra_1">
@@ -111,8 +114,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QLabel" name="label_6">
@@ -137,8 +143,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>359</number>
+     <number>360</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="El">
@@ -166,8 +175,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
@@ -205,8 +217,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="Lon_2">
@@ -218,8 +233,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="Ra_0">
@@ -231,8 +249,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>23</number>
+     <number>24</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="Dec_2">
@@ -244,8 +265,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QLabel" name="label">
@@ -283,8 +307,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="Frequency">
@@ -312,8 +339,11 @@
       <height>21</height>
      </rect>
     </property>
+    <property name="minimum">
+     <number>-1</number>
+    </property>
     <property name="maximum">
-     <number>59</number>
+     <number>60</number>
     </property>
    </widget>
   </widget>
