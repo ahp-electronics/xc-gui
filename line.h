@@ -273,14 +273,24 @@ class Line : public QWidget
 
         void addToVLBIContext(int index = -1);
         void removeFromVLBIContext(int index = -1);
+
         inline void* getVLBIContext(int index = -1)
         {
             if(index < 0)
+            {
                 index = getMode() - HolographII;
+                if(index < 0) return nullptr;
+            }
             return context[index];
         }
-        inline void setVLBIContext(void* ctx, int index = 0)
+
+        inline void setVLBIContext(void* ctx, int index = -1)
         {
+            if(index < 0)
+            {
+                index = getMode() - HolographII;
+                if(index < 0) return;
+            }
             context[index] = ctx;
         }
 

@@ -327,6 +327,7 @@ MainWindow::MainWindow(QWidget *parent)
                     for (int i = 0; i < vlbi_total_contexts; i++)
                     {
                         context[i] = vlbi_init();
+                        getGraph()->setVLBIContext(getVLBIContext(i), i);
                     }
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
@@ -653,12 +654,23 @@ MainWindow::MainWindow(QWidget *parent)
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            plotVLBI("coverage", getGraph()->getCoverage(), coverage_delegate);
-            plotVLBI("phase", getGraph()->getPhase(), vlbi_phase_delegate);
-            plotVLBI("magnitude", getGraph()->getMagnitude(), vlbi_magnitude_delegate);
-
+            double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
+            vlbi_set_location(getVLBIContext(), getGraph()->getLatitude(), getGraph()->getLongitude(), getGraph()->getElevation());
+            vlbi_get_uv_plot(getVLBIContext(), "coverage",
+                             getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate);
+            vlbi_get_uv_plot(getVLBIContext(), "phase",
+                             getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate);
+            vlbi_get_uv_plot(getVLBIContext(), "magnitude",
+                             getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate);
             vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
-            QImageFromModel(getGraph()->getIdft(), "idft");
+
+            getGraph()->plotModel(getGraph()->getCoverage(), "coverage");
+            getGraph()->plotModel(getGraph()->getMagnitude(), "magnitude");
+            getGraph()->plotModel(getGraph()->getPhase(), "phase");
+            getGraph()->plotModel(getGraph()->getIdft(), "idft");
         }
         thread->unlock();
     });
@@ -679,33 +691,14 @@ MainWindow::MainWindow(QWidget *parent)
     uiThread->start();
 }
 
-void MainWindow::plotVLBI(char *model, QImage *picture, vlbi_func2_t delegate)
-{
-    double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
-    vlbi_set_location(getVLBIContext(), getGraph()->getLatitude(), getGraph()->getLongitude(), getGraph()->getElevation());
-    vlbi_get_uv_plot(getVLBIContext(), model,
-                     getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                     getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, delegate);
-    QImageFromModel(picture, model);
-}
-
-void MainWindow::QImageFromModel(QImage* picture, char* model)
-{
-    unsigned char* pixels = (unsigned char*)picture->bits();
-    dsp_stream_p data = dsp_stream_copy(vlbi_get_model(getVLBIContext(), model));
-    dsp_buffer_stretch(data->buf, data->len, 0.0, 0xff);
-    dsp_buffer_copy(data->buf, pixels, data->len);
-    dsp_stream_free_buffer(data);
-    dsp_stream_free(data);
-}
-
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
     int starty = 90;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
-    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
+    ui->statusbar->setGeometry(0, this->height() - ui->statusbar->height(), width(), 20);
+    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10 - ui->statusbar->height());
 }
 
 void MainWindow::startThreads()

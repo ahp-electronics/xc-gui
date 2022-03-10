@@ -322,6 +322,16 @@ void Graph::clearSeries()
     chart->series().clear();
 }
 
+void Graph::plotModel(QImage* picture, char* model)
+{
+    unsigned char* pixels = (unsigned char*)picture->bits();
+    dsp_stream_p data = dsp_stream_copy(vlbi_get_model(getVLBIContext(), model));
+    dsp_buffer_stretch(data->buf, data->len, 0xff, 0.0);
+    dsp_buffer_copy(data->buf, pixels, data->len);
+    dsp_stream_free_buffer(data);
+    dsp_stream_free(data);
+}
+
 void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)

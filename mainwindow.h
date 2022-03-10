@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <QThread>
+#include <QStatusBar>
 #include <QCoreApplication>
 #include <QMainWindow>
 #include <QTcpSocket>
@@ -224,8 +225,6 @@ class MainWindow : public QMainWindow
         {
             return xcFD;
         }
-        void plotVLBI(char *model, QImage *picture, vlbi_func2_t delegate);
-        void QImageFromModel(QImage* picture, char* model);
 
         void lock()
         {
@@ -236,6 +235,7 @@ class MainWindow : public QMainWindow
             mutex.unlock();
         }
     private:
+        void plotModel(QImage* picture, char* model);
         QMutex mutex;
         void stopThreads();
         void startThreads();

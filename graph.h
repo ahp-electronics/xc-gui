@@ -201,6 +201,28 @@ class Graph : public QWidget
         QString toDMS(double dms);
         double fromHMSorDMS(QString dms);
 
+        void plotModel(QImage* picture, char* model);
+
+        inline void* getVLBIContext(int index = -1)
+        {
+            if(index < 0)
+            {
+                index = getMode() - HolographII;
+                if(index < 0) return nullptr;
+            }
+            return context[index];
+        }
+
+        inline void setVLBIContext(void* ctx, int index = -1)
+        {
+            if(index < 0)
+            {
+                index = getMode() - HolographII;
+                if(index < 0) return;
+            }
+            context[index] = ctx;
+        }
+
     private:
         Ui::Inputs *inputs;
         Mode mode { Counter };
@@ -208,7 +230,7 @@ class Graph : public QWidget
         {
             QVector<QRgb> palette;
             QImage image = QImage(w, h, QImage::Format::Format_Grayscale8);
-            image.fill(0);
+            image.fill((1 << 24) - 1);
             return image;
         }
         double Latitude, Longitude, Elevation;
@@ -228,11 +250,12 @@ class Graph : public QWidget
         QLabel *magnitudeView;
         QLabel *phaseView;
         QLabel *coverageView;
-        int plot_w { 256 };
         QValueAxis *axisX;
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
+        void* context[vlbi_total_contexts];
+        int plot_w { 256 };
         QString name;
         int motorFD;
         int controlFD;

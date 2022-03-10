@@ -1,4 +1,4 @@
-/*
+﻿/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -174,13 +174,23 @@ class Baseline : public QWidget
             stream = s;
         }
 
-        inline void* getVLBIContext(int index = 0)
+        inline void* getVLBIContext(int index = -1)
         {
+            if(index < 0)
+            {
+                index = getMode() - HolographII;
+                if(index < 0) return nullptr;
+            }
             return context[index];
         }
 
-        inline void setVLBIContext(void* ctx, int index = 0)
+        inline void setVLBIContext(void* ctx, int index = -1)
         {
+            if(index < 0)
+            {
+                index = getMode() - HolographII;
+                if(index < 0) return;
+            }
             context[index] = ctx;
         }
 
