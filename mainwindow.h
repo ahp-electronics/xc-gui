@@ -124,7 +124,7 @@ class MainWindow : public QMainWindow
             return mode;
         }
 
-        inline void* getVLBIContext()
+        inline vlbi_context getVLBIContext()
         {
             return context;
         }
@@ -179,6 +179,7 @@ class MainWindow : public QMainWindow
                     Baselines[i]->setMode(mode);
                 getGraph()->setMode(m);
                 getGraph()->setVLBIContext(getVLBIContext());
+                threadsStopped = false;
                 if(mode == HolographIQ || mode == HolographII)
                     vlbiThread->start();
                 startThreads();
@@ -231,6 +232,7 @@ class MainWindow : public QMainWindow
             mutex.unlock();
         }
     private:
+        int threadsStopped { 1 };
         void plotModel(QImage* picture, char* model);
         QMutex mutex;
         void stopThreads();
@@ -244,7 +246,7 @@ class MainWindow : public QMainWindow
         double Latitude, Longitude, Elevation;
         double wavelength;
         int current_context { 0 };
-        void* context;
+        vlbi_context context;
         ahp_xc_packet *packet;
         QSettings *settings;
         QTcpSocket xc_socket;

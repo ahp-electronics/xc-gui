@@ -174,12 +174,12 @@ class Baseline : public QWidget
             stream = s;
         }
 
-        inline void* getVLBIContext()
+        inline vlbi_context getVLBIContext()
         {
             return context;
         }
 
-        inline void setVLBIContext(void* ctx)
+        inline void setVLBIContext(vlbi_context ctx)
         {
             context = ctx;
         }
@@ -221,7 +221,7 @@ class Baseline : public QWidget
         int stop;
         double percent;
         Mode mode;
-        void* context;
+        vlbi_context context;
         Elemental *elemental;
         QMap<double, double>* dark;
         QMap<double, double>* magnitudeStack;

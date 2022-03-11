@@ -236,17 +236,33 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     connect(ui->MotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         motorIndex = value;
+        if(ahp_gt_is_connected()) {
+            ahp_gt_select_device(ui->MotorIndex->value());
+            ahp_gt_detect_device();
+        }
         saveSetting("MotorIndex", value);
     });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.x = (double)value / 1000.0;
         saveSetting("location_x", location.xyz.x);
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(ui->MotorIndex->value())) {
+                ahp_gt_select_device(ui->MotorIndex->value());
+                ahp_gt_goto_absolute(0, M_PI*2.0/ahp_gt_get_totalsteps(0)/value, 800.0);
+            }
+        }
     });
     connect(ui->y_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.y = (double)value / 1000.0;
         saveSetting("location_y", location.xyz.y);
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(ui->MotorIndex->value())) {
+                ahp_gt_select_device(ui->MotorIndex->value());
+                ahp_gt_goto_absolute(1, M_PI*2.0/ahp_gt_get_totalsteps(1)/value, 800.0);
+            }
+        }
     });
     connect(ui->z_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -521,9 +537,6 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int id
 
 void Line::setLocation(dsp_location l)
 {
-    ui->x_location->setValue(l.xyz.x * 1000.0);
-    ui->y_location->setValue(l.xyz.y * 1000.0);
-    ui->z_location->setValue(l.xyz.z * 1000.0);
     saveSetting("location_x", l.xyz.x);
     saveSetting("location_y", l.xyz.y);
     saveSetting("location_z", l.xyz.z);

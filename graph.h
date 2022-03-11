@@ -203,12 +203,12 @@ class Graph : public QWidget
 
         void plotModel(QImage* picture, char* model);
 
-        inline void* getVLBIContext()
+        inline vlbi_context getVLBIContext()
         {
             return context;
         }
 
-        inline void setVLBIContext(void* ctx)
+        inline void setVLBIContext(vlbi_context ctx)
         {
             context = ctx;
         }
@@ -244,7 +244,7 @@ class Graph : public QWidget
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
-        void* context;
+        vlbi_context context;
         int plot_w { 256 };
         QString name;
         int motorFD;

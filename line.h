@@ -274,12 +274,12 @@ class Line : public QWidget
         void addToVLBIContext();
         void removeFromVLBIContext();
 
-        inline void* getVLBIContext()
+        inline vlbi_context getVLBIContext()
         {
             return context;
         }
 
-        inline void setVLBIContext(void* ctx)
+        inline void setVLBIContext(vlbi_context ctx)
         {
             context = ctx;
         }
@@ -347,7 +347,7 @@ class Line : public QWidget
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        void* context { nullptr };
+        vlbi_context context { nullptr };
 
         fftw_plan plan { 0 };
         fftw_complex *dft { nullptr };
