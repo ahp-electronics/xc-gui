@@ -55,6 +55,10 @@ MainWindow::MainWindow(QWidget *parent)
     settings = new QSettings(ini, QSettings::Format::IniFormat);
     connected = false;
     TimeRange = 10;
+    f_stdout = tmpfile();
+    str = new QTextStream(f_stdout);
+    dsp_set_stdout(f_stdout);
+    dsp_set_stderr(f_stdout);
     ui->setupUi(this);
     uiThread = new Thread(this, 200, 100);
     readThread = new Thread(this, 100, 100);
@@ -633,6 +637,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
+        ui->statusbar->showMessage(str->readLine());
         getGraph()->paint();
         thread->unlock();
     });
@@ -739,4 +744,5 @@ MainWindow::~MainWindow()
     getGraph()->~Graph();
     settings->~QSettings();
     delete ui;
+    fclose(f_stdout);
 }
