@@ -637,7 +637,9 @@ MainWindow::MainWindow(QWidget *parent)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
-        ui->statusbar->showMessage(str->readLine());
+        rewind(f_stdout);
+        QString text = str->readLine();
+        statusBar()->showMessage(text);
         getGraph()->paint();
         thread->unlock();
     });
