@@ -12,6 +12,7 @@ Build-Depends: debhelper (>= 8.1.3~),
  libahp-gt,
  libahp-xc,
  libopenvlbi-dev,
+ libcfitsio-dev,
  libfftw3-dev,
 Standards-Version: 3.9.5
 Homepage: http://iliaplatone.com/xc
