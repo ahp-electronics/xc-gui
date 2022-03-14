@@ -123,6 +123,22 @@ class Graph : public QWidget
         {
             return &idft;
         }
+        inline QLabel *getMagnitudeView()
+        {
+            return magnitudeView;
+        }
+        inline QLabel *getPhaseView()
+        {
+            return phaseView;
+        }
+        inline QLabel *getCoverageView()
+        {
+            return coverageView;
+        }
+        inline QLabel *getIdftView()
+        {
+            return idftView;
+        }
         inline int getMotorFD()
         {
             return motorFD;
@@ -201,7 +217,7 @@ class Graph : public QWidget
         QString toDMS(double dms);
         double fromHMSorDMS(QString dms);
 
-        void plotModel(QImage* picture, char* model);
+        void plotModel(QImage* picture, QLabel *view, char* model);
 
         inline vlbi_context getVLBIContext()
         {
@@ -212,10 +228,19 @@ class Graph : public QWidget
         {
             context = ctx;
         }
+        void lock()
+        {
+            while(!mutex.tryLock());
+        }
+        void unlock()
+        {
+            mutex.unlock();
+        }
 
     private:
         Ui::Inputs *inputs;
         Mode mode { Counter };
+        QMutex mutex;
         inline QImage initGrayPicture(int w, int h)
         {
             QVector<QRgb> palette;

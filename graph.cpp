@@ -362,7 +362,7 @@ void Graph::clearSeries()
     chart->series().clear();
 }
 
-void Graph::plotModel(QImage* picture, char* model)
+void Graph::plotModel(QImage* picture, QLabel* view, char* model)
 {
     unsigned char* pixels = (unsigned char*)picture->bits();
     dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
@@ -372,20 +372,13 @@ void Graph::plotModel(QImage* picture, char* model)
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);
     dsp_stream_free(data);
+    view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
 }
 
 void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)
     {
-        if(getCoverage() != nullptr)
-            coverageView->setPixmap(QPixmap::fromImage(getCoverage()->scaled(coverageView->geometry().size())));
-        if(getMagnitude() != nullptr)
-            magnitudeView->setPixmap(QPixmap::fromImage(getMagnitude()->scaled(magnitudeView->geometry().size())));
-        if(getPhase() != nullptr)
-            phaseView->setPixmap(QPixmap::fromImage(getPhase()->scaled(phaseView->geometry().size())));
-        if(getIdft() != nullptr)
-            idftView->setPixmap(QPixmap::fromImage(getIdft()->scaled(idftView->geometry().size())));
         updateInfo();
     }
     else

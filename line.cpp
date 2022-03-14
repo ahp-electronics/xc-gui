@@ -96,7 +96,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         flags |= ui->flag4->isChecked() << 4;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), ui->flag4->isChecked());
-        if(getFlag(4) && mode == (AutocorrelatorIQ || mode == AutocorrelatorI))
+        if(getFlag(4) && mode != Counter)
         {
             ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
             ui->ElementalAlign->setEnabled(true);
@@ -695,12 +695,12 @@ void Line::stackCorrelations()
                                          spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
-                else if(mode == AutocorrelatorIQ)
+                else
                 {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / pow(spectrum[z].correlations[0].real +
-                                         spectrum[z].correlations[0].imaginary, 2);;
+                                         spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / pow(spectrum[z].correlations[0].real +
-                                     spectrum[z].correlations[0].imaginary, 2);;
+                                     spectrum[z].correlations[0].imaginary, 2);
                 }
             }
         }

@@ -462,10 +462,12 @@ MainWindow::MainWindow(QWidget *parent)
                                                      Lines[y]->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
                                     offset1 /= ahp_xc_get_sampletime();
                                     offset2 /= ahp_xc_get_sampletime();
+                                    offset1 ++;
+                                    offset2 ++;
                                     if(ahp_xc_has_crosscorrelator())
                                     {
-                                        ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 0);
-                                        ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 0);
+                                        ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 1);
+                                        ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 1);
                                     }
                                     stream->dft.fftw[stream->len - 1][0] = (double)
                                                                            packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
@@ -540,19 +542,19 @@ MainWindow::MainWindow(QWidget *parent)
                         for(int y = x + 1; y < Lines.count(); y++)
                         {
                             Baseline * line = Baselines[idx];
-                            QLineSeries *counts[2] =
-                            {
-                                line->getMagnitudes(),
-                                line->getPhases(),
-                            };
                             if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
                             {
-                                double mag = 0.0;
-                                for (int z = 0; z < 2; z++)
+                                QLineSeries *counts[2] =
                                 {
-                                    QLineSeries *Counts = counts[z];
-                                    if(line->isActive())
+                                    line->getMagnitudes(),
+                                    line->getPhases(),
+                                };
+                                double mag = 0.0;
+                                if(line->isActive())
+                                {
+                                    for (int z = 0; z < 2; z++)
                                     {
+                                        QLineSeries *Counts = counts[z];
                                         if(Counts->count() > 0)
                                         {
                                             for(int d = Counts->count() - 1; d >= 0; d--)
@@ -561,44 +563,34 @@ MainWindow::MainWindow(QWidget *parent)
                                                     Counts->remove(d);
                                             }
                                         }
-                                        switch (z)
-                                        {
-                                            case 0:
-                                                if(ahp_xc_has_crosscorrelator())
-                                                    Counts->append(packettime, (double)packet->crosscorrelations[idx].correlations[0].magnitude * M_PI * 2 / pow(
-                                                                       packet->crosscorrelations[idx].correlations[0].real + packet->crosscorrelations[idx].correlations[0].imaginary, 2));
-                                                else
-                                                {
-                                                    mag = (double)sqrt(pow(packet->counts[x], 2) + pow(packet->counts[y],
-                                                                       2)) * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2);
-                                                    Counts->append(packettime, mag);
-                                                }
-                                                break;
-                                            case 1:
-                                                if(ahp_xc_has_crosscorrelator())
-                                                    Counts->append(packettime, (double)packet->crosscorrelations[idx].correlations[0].phase);
-                                                else
-                                                {
-                                                    double rad = 0.0;
-                                                    if(mag > 0.0)
-                                                    {
-                                                        double r = packet->counts[x] * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2) / mag;
-                                                        double i = packet->counts[y] * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2) / mag;
-                                                        double rad = acos(i);
-                                                        if(r < 0.0)
-                                                            rad = M_PI * 2 - rad;
-                                                    }
-                                                    Counts->append(packettime, rad);
-                                                }
-                                                break;
-                                            default:
-                                                break;
-                                        }
+                                    }
+                                    if(ahp_xc_has_crosscorrelator()) {
+                                        mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude / (pow(packet->crosscorrelations[idx].correlations[0].real+packet->crosscorrelations[idx].correlations[0].imaginary, 2));
+                                        double rad = (double)packet->crosscorrelations[idx].correlations[0].phase;
+                                        counts[0]->append(packettime, mag);
+                                        counts[1]->append(packettime, rad);
                                     }
                                     else
                                     {
-                                        Counts->clear();
+                                        mag = (double)sqrt(pow(packet->counts[x], 2) + pow(packet->counts[y],
+                                                           2)) * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2);
+                                        counts[0]->append(packettime, mag);
+                                        double rad = 0.0;
+                                        if(mag > 0.0)
+                                        {
+                                            double r = packet->counts[x] * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2) / mag;
+                                            double i = packet->counts[y] * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2) / mag;
+                                            double rad = acos(i);
+                                            if(r < 0.0)
+                                                rad = M_PI * 2 - rad;
+                                        }
+                                        counts[1]->append(packettime, rad);
                                     }
+                                }
+                                else
+                                {
+                                    counts[0]->clear();
+                                    counts[1]->clear();
                                 }
                             }
                             idx++;
@@ -639,7 +631,7 @@ MainWindow::MainWindow(QWidget *parent)
             Lines.at(x)->paint();
         QString text = str->readLine();
         if(!text.isEmpty()) {
-            statusBar()->showMessage(text);
+            statusBar()->showMessage(text.replace("\n", ""));
             rewind(f_stdout);
             ftruncate(fileno(f_stdout), 0);
         }
@@ -650,6 +642,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
+            getGraph()->lock();
             double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
             vlbi_set_location(getVLBIContext(), getGraph()->getLatitude(), getGraph()->getLongitude(), getGraph()->getElevation());
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
@@ -661,12 +654,13 @@ MainWindow::MainWindow(QWidget *parent)
             vlbi_get_uv_plot(getVLBIContext(), "phase",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate, &threadsStopped, nullptr);
-            vlbi_get_ifft(getVLBIContext(), "idft", "coverage", "phase");
+            vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
 
-            getGraph()->plotModel(getGraph()->getCoverage(), "coverage");
-            getGraph()->plotModel(getGraph()->getMagnitude(), "magnitude");
-            getGraph()->plotModel(getGraph()->getPhase(), "phase");
-            getGraph()->plotModel(getGraph()->getIdft(), "idft");
+            getGraph()->plotModel(getGraph()->getCoverage(), getGraph()->getCoverageView(), "coverage");
+            getGraph()->plotModel(getGraph()->getMagnitude(), getGraph()->getMagnitudeView(), "magnitude");
+            getGraph()->plotModel(getGraph()->getPhase(), getGraph()->getPhaseView(), "phase");
+            getGraph()->plotModel(getGraph()->getIdft(), getGraph()->getIdftView(), "idft");
+            getGraph()->unlock();
         }
         thread->unlock();
     });
