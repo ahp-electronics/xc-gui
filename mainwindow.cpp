@@ -26,7 +26,7 @@
 #include "types.h"
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-
+vlbi_context context;
 static double coverage_delegate(double x, double y)
 {
     (void)x;
@@ -637,9 +637,12 @@ MainWindow::MainWindow(QWidget *parent)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
-        rewind(f_stdout);
         QString text = str->readLine();
-        statusBar()->showMessage(text);
+        if(!text.isEmpty()) {
+            statusBar()->showMessage(text);
+            rewind(f_stdout);
+            ftruncate(fileno(f_stdout), 0);
+        }
         getGraph()->paint();
         thread->unlock();
     });

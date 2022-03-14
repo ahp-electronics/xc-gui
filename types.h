@@ -34,6 +34,8 @@
 #include "threads.h"
 #include <fftw3.h>
 
+extern vlbi_context context;
+
 enum VlbiContext
 {
     vlbi_context_ii = 0,

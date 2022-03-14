@@ -347,8 +347,6 @@ class Line : public QWidget
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
-        vlbi_context context { nullptr };
-
         fftw_plan plan { 0 };
         fftw_complex *dft { nullptr };
         double *magnitude_buf { nullptr };

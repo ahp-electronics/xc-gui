@@ -244,7 +244,6 @@ class Graph : public QWidget
         QValueAxis *axisY;
         QChart *chart;
         QChartView *view;
-        vlbi_context context;
         int plot_w { 256 };
         QString name;
         int motorFD;

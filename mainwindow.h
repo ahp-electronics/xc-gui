@@ -248,7 +248,6 @@ class MainWindow : public QMainWindow
         double Latitude, Longitude, Elevation;
         double wavelength;
         int current_context { 0 };
-        vlbi_context context;
         ahp_xc_packet *packet;
         QSettings *settings;
         QTcpSocket xc_socket;

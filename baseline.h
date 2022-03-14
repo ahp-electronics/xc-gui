@@ -221,7 +221,6 @@ class Baseline : public QWidget
         int stop;
         double percent;
         Mode mode;
-        vlbi_context context;
         Elemental *elemental;
         QMap<double, double>* dark;
         QMap<double, double>* magnitudeStack;
