@@ -147,6 +147,7 @@ MainWindow::MainWindow(QWidget *parent)
         getGraph()->clearSeries();
         for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
         {
+            Lines[l]->setActive(false);
             ahp_xc_set_leds(l, 0);
         }
         Baselines.clear();

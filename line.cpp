@@ -755,7 +755,6 @@ void Line::plot(bool success, double o, double s)
 
 Line::~Line()
 {
-    setActive(false);
     elemental->~Elemental();
     delete ui;
 }
