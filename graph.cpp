@@ -210,6 +210,18 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
         saveSetting("Frequency", Frequency);
         emit frequencyUpdated(getFrequency());
     });
+    connect(inputs->Goto, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
+    {
+        emit gotoRaDec(getRa(), getDec());
+    });
+    connect(inputs->Halt, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
+    {
+        emit haltMotors();
+    });
+    connect(inputs->Track, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
+    {
+        emit startTracking(getRaRate(), getDecRate());
+    });
 }
 
 Graph::~Graph()
@@ -370,7 +382,7 @@ void Graph::setPixmap(QImage *picture, QLabel *view)
     unlock();
 }
 
-void Graph::plotModel(QImage* picture, QLabel* view, char* model)
+void Graph::plotModel(QImage* picture, char* model)
 {
     unsigned char* pixels = (unsigned char*)picture->bits();
     dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);

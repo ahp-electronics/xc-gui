@@ -67,9 +67,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>160</y>
+      <y>190</y>
       <width>261</width>
-      <height>191</height>
+      <height>161</height>
      </rect>
     </property>
     <property name="text">
@@ -344,6 +344,45 @@
     </property>
     <property name="maximum">
      <number>60</number>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Track">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>150</y>
+      <width>89</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Track</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Goto">
+    <property name="geometry">
+     <rect>
+      <x>100</x>
+      <y>150</y>
+      <width>89</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>GoTo</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Halt">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>150</y>
+      <width>89</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Halt</string>
     </property>
    </widget>
   </widget>

@@ -96,32 +96,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         flags |= ui->flag4->isChecked() << 4;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), ui->flag4->isChecked());
-        if(getFlag(4) && mode != Counter)
-        {
-            ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
-            ui->ElementalAlign->setEnabled(true);
-            ui->maxdots->setEnabled(true);
-            ui->decimals->setEnabled(true);
-            ui->minscore->setEnabled(true);
-            ui->samplesize->setEnabled(true);
-            ui->MaxDots->setEnabled(true);
-            ui->Decimals->setEnabled(true);
-            ui->MinScore->setEnabled(true);
-            ui->SampleSize->setEnabled(true);
-        }
-        else
-        {
-            ui->ElementalAlign->setChecked(false);
-            ui->ElementalAlign->setEnabled(false);
-            ui->maxdots->setEnabled(false);
-            ui->decimals->setEnabled(false);
-            ui->minscore->setEnabled(false);
-            ui->samplesize->setEnabled(false);
-            ui->MaxDots->setEnabled(false);
-            ui->Decimals->setEnabled(false);
-            ui->MinScore->setEnabled(false);
-            ui->SampleSize->setEnabled(false);
-        }
     });
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::runClicked);
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -233,23 +207,32 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             ahp_xc_set_channel_cross(line, 0, value);
         saveSetting("LineDelay", value);
     });
-    connect(ui->MotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->MountMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        motorIndex = value;
+        MountMotorIndex = value;
         if(ahp_gt_is_connected()) {
-            ahp_gt_select_device(ui->MotorIndex->value());
+            ahp_gt_select_device(ui->MountMotorIndex->value());
             ahp_gt_detect_device();
         }
-        saveSetting("MotorIndex", value);
+        saveSetting("MountMotorIndex", value);
+    });
+    connect(ui->RailMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        RailMotorIndex = value;
+        if(ahp_gt_is_connected()) {
+            ahp_gt_select_device(ui->RailMotorIndex->value());
+            ahp_gt_detect_device();
+        }
+        saveSetting("RailMotorIndex", value);
     });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getLocation()->xyz.x = (double)value / 1000.0;
         saveSetting("location_x", location.xyz.x);
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(ui->MotorIndex->value())) {
-                ahp_gt_select_device(ui->MotorIndex->value());
-                ahp_gt_goto_absolute(0, M_PI*2.0/ahp_gt_get_totalsteps(0)/value, 800.0);
+            if(ahp_gt_is_detected(ui->RailMotorIndex->value())) {
+                ahp_gt_select_device(ui->RailMotorIndex->value());
+                ahp_gt_goto_absolute(0, value*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
             }
         }
     });
@@ -258,9 +241,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.y = (double)value / 1000.0;
         saveSetting("location_y", location.xyz.y);
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(ui->MotorIndex->value())) {
-                ahp_gt_select_device(ui->MotorIndex->value());
-                ahp_gt_goto_absolute(1, M_PI*2.0/ahp_gt_get_totalsteps(1)/value, 800.0);
+            if(ahp_gt_is_detected(ui->RailMotorIndex->value())) {
+                ahp_gt_select_device(ui->RailMotorIndex->value());
+                ahp_gt_goto_absolute(1, value*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
             }
         }
     });
@@ -272,7 +255,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
     ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
     ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
-    ui->MotorIndex->setValue(readInt("MotorIndex", getLineIndex() + 1));
+    ui->MountMotorIndex->setValue(readInt("MountMotorIndex", getLineIndex() * 2 + 1));
+    ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
@@ -446,44 +430,16 @@ void Line::setMode(Mode m)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         connect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
-        if((flags & 0x10) != 0)
-        {
-            ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
-            ui->ElementalAlign->setEnabled(true);
-            ui->maxdots->setEnabled(true);
-            ui->decimals->setEnabled(true);
-            ui->minscore->setEnabled(true);
-            ui->samplesize->setEnabled(true);
-            ui->MaxDots->setEnabled(true);
-            ui->Decimals->setEnabled(true);
-            ui->MinScore->setEnabled(true);
-            ui->SampleSize->setEnabled(true);
-        }
-        else
-        {
-            ui->ElementalAlign->setChecked(false);
-            ui->ElementalAlign->setEnabled(false);
-            ui->maxdots->setEnabled(false);
-            ui->decimals->setEnabled(false);
-            ui->minscore->setEnabled(false);
-            ui->samplesize->setEnabled(false);
-            ui->MaxDots->setEnabled(false);
-            ui->Decimals->setEnabled(false);
-            ui->MinScore->setEnabled(false);
-            ui->SampleSize->setEnabled(false);
-        }
     }
     else
     {
         disconnect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         disconnect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
     }
-    resetPercentPtr();
     ui->Counter->setEnabled(m == Counter);
+    resetPercentPtr();
     if(!isActive())
-    {
         ui->Correlator->setEnabled(m != Counter);
-    }
     else
         runClicked();
     mode = m;
@@ -506,7 +462,7 @@ void Line::paint()
 void Line::addToVLBIContext()
 {
     stream = dsp_stream_new();
-    dsp_stream_add_dim(stream, 0);
+    dsp_stream_add_dim(stream, 1);
     resetTimestamp();
     vlbi_add_node(getVLBIContext(), getStream(), getLastName().toStdString().c_str(), false);
 }
@@ -614,9 +570,13 @@ bool Line::DarkTaken()
 
 void Line::gotoRaDec(double ra, double dec)
 {
-    ahp_gt_set_address(ui->MotorIndex->value());
-    ahp_gt_goto_absolute(0, ra, 800);
-    ahp_gt_goto_absolute(1, dec, 800);
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
+            ahp_gt_select_device(ui->MountMotorIndex->value());
+            ahp_gt_goto_absolute(0, ra*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
+            ahp_gt_goto_absolute(1, dec*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
+        }
+    }
 }
 
 void Line::setActive(bool a)
@@ -635,7 +595,7 @@ void Line::setActive(bool a)
 
 void Line::startTracking(double ra_rate, double dec_rate)
 {
-    ahp_gt_set_address(ui->MotorIndex->value());
+    ahp_gt_set_address(ui->RailMotorIndex->value());
     ahp_gt_stop_motion(0, 1);
     ahp_gt_stop_motion(1, 1);
     ahp_gt_start_motion(0, ra_rate);

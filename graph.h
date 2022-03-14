@@ -218,7 +218,7 @@ class Graph : public QWidget
         QString toDMS(double dms);
         double fromHMSorDMS(QString dms);
 
-        void plotModel(QImage* picture, QLabel *view, char* model);
+        void plotModel(QImage* picture, char* model);
 
         inline vlbi_context getVLBIContext()
         {
@@ -237,8 +237,25 @@ class Graph : public QWidget
         {
             mutex.unlock();
         }
+        double getRaRate()
+        {
+            return RaTrackRate;
+        }
+        double getDecRate()
+        {
+            return DecTrackRate;
+        }
+        void setRaRate(double rate)
+        {
+            RaTrackRate = rate;
+        }
+        void setDecRate(double rate)
+        {
+            DecTrackRate = rate;
+        }
 
     private:
+        Thread *motorThread;
         Ui::Inputs *inputs;
         Mode mode { Counter };
         QMutex mutex;
@@ -252,6 +269,7 @@ class Graph : public QWidget
         double Latitude, Longitude, Elevation;
         double Ra, Dec;
         double Frequency;
+        double RaTrackRate, DecTrackRate;
         QGroupBox *infos;
         QImage idft;
         QImage magnitude;
@@ -283,6 +301,8 @@ class Graph : public QWidget
         void connectMotors();
         void disconnectMotors();
         void gotoRaDec(double, double);
+        void startTracking(double, double);
+        void haltMotors();
 
 };
 

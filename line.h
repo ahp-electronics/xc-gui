@@ -284,9 +284,14 @@ class Line : public QWidget
             context = ctx;
         }
 
-        inline int getMotorIndex()
+        inline int getMountMotorIndex()
         {
-            return motorIndex;
+            return MountMotorIndex;
+        }
+
+        inline int getRailMotorIndex()
+        {
+            return RailMotorIndex;
         }
 
         inline int getStartLine()
@@ -358,7 +363,8 @@ class Line : public QWidget
         dsp_location location { 0 };
         QString name;
         int stop { 1 };
-        int motorIndex {0};
+        int RailMotorIndex {0};
+        int MountMotorIndex {0};
         Mode mode { Counter };
         QSettings *settings { nullptr };
         QList<Line*> *parents { nullptr };
