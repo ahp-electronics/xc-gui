@@ -273,7 +273,7 @@ double* Graph::toDms(double d)
     dms[1] = floor(d);
     d -= dms[1];
     d *= 60.0;
-    dms[1] = d;
+    dms[2] = d;
     return dms;
 }
 

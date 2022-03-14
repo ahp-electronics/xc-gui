@@ -106,12 +106,22 @@
     </item>
     <item>
      <property name="text">
-      <string>Crosscorrelator (II)</string>
+      <string>Crosscorrelator (I/I)</string>
      </property>
     </item>
     <item>
      <property name="text">
       <string>Crosscorrelator (I/Q)</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Holograph (I/I)</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Holograph (I/Q)</string>
      </property>
     </item>
    </widget>

@@ -386,7 +386,7 @@ void Line::setFlag(int flag, bool value)
 void Line::resetTimestamp()
 {
     lock();
-    dsp_stream_set_dim(stream, 0, 0);
+    dsp_stream_set_dim(stream, 0, 1);
     dsp_stream_alloc_buffer(stream, stream->len + 1);
     getStream()->starttimeutc = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(
                                     Qt::DateFormat::ISODate).toStdString().c_str());

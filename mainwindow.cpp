@@ -652,14 +652,14 @@ MainWindow::MainWindow(QWidget *parent)
             vlbi_get_uv_plot(getVLBIContext(), "phase",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate, &threadsStopped, nullptr);
-            //vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
+            vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
 
-            lock();
+            getGraph()->lock();
             getGraph()->plotModel(getGraph()->getCoverage(), getGraph()->getCoverageView(), "coverage");
             getGraph()->plotModel(getGraph()->getMagnitude(), getGraph()->getMagnitudeView(), "magnitude");
             getGraph()->plotModel(getGraph()->getPhase(), getGraph()->getPhaseView(), "phase");
             getGraph()->plotModel(getGraph()->getIdft(), getGraph()->getIdftView(), "idft");
-            unlock();
+            getGraph()->unlock();
         }
         thread->unlock();
     });
