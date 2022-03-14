@@ -375,11 +375,13 @@ void Graph::plotModel(QImage* picture, QLabel* view, char* model)
     unsigned char* pixels = (unsigned char*)picture->bits();
     dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
     if(stream == nullptr) return;
+    lock();
     dsp_stream_p data = dsp_stream_copy(stream);
     dsp_buffer_stretch(data->buf, data->len, 0xff, 0.0);
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);
     dsp_stream_free(data);
+    unlock();
 }
 
 void Graph::paint()
