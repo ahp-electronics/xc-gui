@@ -114,16 +114,6 @@
       <string>Crosscorrelator (I/Q)</string>
      </property>
     </item>
-    <item>
-     <property name="text">
-      <string>Holograph (II)</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Holograph (I/Q)</string>
-     </property>
-    </item>
    </widget>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
