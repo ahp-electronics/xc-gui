@@ -83,6 +83,7 @@ class Graph : public QWidget
 
         void updateInfo();
         void clearSeries();
+        void setPixmap(QImage *picture, QLabel *view);
         bool threadRunning;
         void addSeries(QAbstractSeries* series);
         void removeSeries(QAbstractSeries* series);

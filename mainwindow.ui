@@ -101,12 +101,7 @@
     </item>
     <item>
      <property name="text">
-      <string>Autocorrelator (I)</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Autocorrelator (I/Q)</string>
+      <string>Autocorrelator</string>
      </property>
     </item>
     <item>

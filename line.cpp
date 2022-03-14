@@ -203,7 +203,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getPhase()->clear();
         getMagnitudeStack()->clear();
         getPhaseStack()->clear();
-        if(mode == AutocorrelatorIQ || mode == AutocorrelatorI)
+        if(mode == Autocorrelator)
         {
             stack = 0.0;
             mx = 0.0;
@@ -442,7 +442,7 @@ void Line::setMode(Mode m)
         stack = 0.0;
         mx = 0.0;
     }
-    if(m == AutocorrelatorIQ || m == AutocorrelatorI)
+    if(m == Autocorrelator)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         connect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
@@ -494,7 +494,7 @@ void Line::paint()
     stop = !isActive();
     if(ui->Progress != nullptr)
     {
-        if(mode == AutocorrelatorIQ || mode == AutocorrelatorI || mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
+        if(mode == Autocorrelator || mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
         {
             if(getPercent() > ui->Progress->minimum() && getPercent() < ui->Progress->maximum())
                 ui->Progress->setValue(getPercent());
@@ -689,34 +689,21 @@ void Line::stackCorrelations()
                     phase_buf[y] = phase_buf[lag];
                 }
                 lag = _lag;
-                if(mode == AutocorrelatorIQ)
+                if(mode == Autocorrelator)
                 {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real +
                                          spectrum[z].correlations[0].imaginary, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
-                else
-                {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / pow(spectrum[z].correlations[0].real +
-                                         spectrum[z].correlations[0].imaginary, 2);
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / pow(spectrum[z].correlations[0].real +
-                                     spectrum[z].correlations[0].imaginary, 2);
-                }
             }
         }
         if(Idft())
         {
-            if(mode == AutocorrelatorIQ)
+            if(mode == Autocorrelator)
             {
                 elemental->setMagnitude(magnitude_buf, len);
                 elemental->setPhase(phase_buf, len);
                 elemental->idft();
-            }
-            else
-            {
-                elemental->setReal(magnitude_buf, len);
-                elemental->setImaginary(phase_buf, len);
-                elemental->dft(1);
             }
         }
         else
@@ -764,8 +751,6 @@ void Line::plot(bool success, double o, double s)
     }
     elemental->getStream()->len ++;
     stretch(getMagnitude());
-    if(mode == AutocorrelatorI)
-        stretch(getPhase());
 }
 
 Line::~Line()

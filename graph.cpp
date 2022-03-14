@@ -362,6 +362,14 @@ void Graph::clearSeries()
     chart->series().clear();
 }
 
+void Graph::setPixmap(QImage *picture, QLabel *view)
+{
+    lock();
+    if(picture != nullptr)
+        view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
+    unlock();
+}
+
 void Graph::plotModel(QImage* picture, QLabel* view, char* model)
 {
     unsigned char* pixels = (unsigned char*)picture->bits();
@@ -372,13 +380,16 @@ void Graph::plotModel(QImage* picture, QLabel* view, char* model)
     dsp_buffer_copy(data->buf, pixels, data->len);
     dsp_stream_free_buffer(data);
     dsp_stream_free(data);
-    view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
 }
 
 void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)
     {
+        setPixmap(getCoverage(), getCoverageView());
+        setPixmap(getMagnitude(), getMagnitudeView());
+        setPixmap(getPhase(), getPhaseView());
+        setPixmap(getIdft(), getIdftView());
         updateInfo();
     }
     else

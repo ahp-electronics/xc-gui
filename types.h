@@ -46,8 +46,7 @@ enum VlbiContext
 enum Mode
 {
     Counter = 0,
-    AutocorrelatorI,
-    AutocorrelatorIQ,
+    Autocorrelator,
     CrosscorrelatorII,
     CrosscorrelatorIQ,
     HolographII,
