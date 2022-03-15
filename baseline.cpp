@@ -88,6 +88,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                         removeFromVLBIContext();
                     unlock();
                 }
+                emit activeStateChanged(this);
             }
         }
         running = newstate;
@@ -115,6 +116,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                         removeFromVLBIContext();
                     unlock();
                 }
+                emit activeStateChanged(this);
             }
         }
         running = newstate;

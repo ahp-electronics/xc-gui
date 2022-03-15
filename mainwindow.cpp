@@ -55,8 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
     settings = new QSettings(ini, QSettings::Format::IniFormat);
     connected = false;
     TimeRange = 10;
-    f_stdout = tmpfile();
-    str = new QTextStream(f_stdout);
+    f_stdout = stderr;//tmpfile();
     dsp_set_stdout(f_stdout);
     dsp_set_stderr(f_stdout);
     ui->setupUi(this);
@@ -332,12 +331,24 @@ MainWindow::MainWindow(QWidget *parent)
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
                         QString name = "Line " + QString::number(l + 1);
+                        fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
-                        getGraph()->addSeries(Lines[l]->getMagnitude());
-                        getGraph()->addSeries(Lines[l]->getPhase());
-                        getGraph()->addSeries(Lines[l]->getMagnitudes());
-                        getGraph()->addSeries(Lines[l]->getPhases());
-                        getGraph()->addSeries(Lines[l]->getCounts());
+                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+                                [ = ](Line* sender) {
+                            if(sender->isActive()) {
+                                getGraph()->addSeries(sender->getMagnitude());
+                                getGraph()->addSeries(sender->getPhase());
+                                getGraph()->addSeries(sender->getMagnitudes());
+                                getGraph()->addSeries(sender->getPhases());
+                                getGraph()->addSeries(sender->getCounts());
+                            } else {
+                                getGraph()->removeSeries(sender->getMagnitude());
+                                getGraph()->removeSeries(sender->getPhase());
+                                getGraph()->removeSeries(sender->getMagnitudes());
+                                getGraph()->removeSeries(sender->getPhases());
+                                getGraph()->removeSeries(sender->getCounts());
+                            }
+                        });
                         ui->Lines->addTab(Lines[l], name);
                     }
                     int idx = 0;
@@ -346,11 +357,22 @@ MainWindow::MainWindow(QWidget *parent)
                         for(unsigned int i = l + 1; i < ahp_xc_get_nlines(); i++)
                         {
                             QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
+                            fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
-                            getGraph()->addSeries(Baselines[idx]->getMagnitude());
-                            getGraph()->addSeries(Baselines[idx]->getPhase());
-                            getGraph()->addSeries(Baselines[idx]->getMagnitudes());
-                            getGraph()->addSeries(Baselines[idx]->getPhases());
+                            connect(Baselines[idx], static_cast<void (Baseline::*)(Baseline*)>(&Baseline::activeStateChanged),
+                                    [ = ](Baseline* sender) {
+                                if(sender->isActive()) {
+                                    getGraph()->addSeries(sender->getMagnitude());
+                                    getGraph()->addSeries(sender->getPhase());
+                                    getGraph()->addSeries(sender->getMagnitudes());
+                                    getGraph()->addSeries(sender->getPhases());
+                                } else {
+                                    getGraph()->removeSeries(sender->getMagnitude());
+                                    getGraph()->removeSeries(sender->getPhase());
+                                    getGraph()->removeSeries(sender->getMagnitudes());
+                                    getGraph()->removeSeries(sender->getPhases());
+                                }
+                            });
                             idx++;
                         }
                     }
@@ -417,7 +439,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
-        ahp_xc_packet* packet = getPacket();
+        ahp_xc_packet* sepacket = getPacket();
         switch (getMode())
         {
             case HolographIQ:
@@ -629,10 +651,13 @@ MainWindow::MainWindow(QWidget *parent)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
-        QString text = str->readLine();
-        if(!text.isEmpty()) {
-            statusBar()->showMessage(text.replace("\n", ""));
-            rewind(f_stdout);
+        QTextStream str(f_stdout);
+        QString text = str.readLine();
+        if(text.isEmpty())
+            ui->statusbar->showMessage("Ready");
+        else {
+            ui->statusbar->showMessage(text.replace("\n", ""));
+            fseek(f_stdout, 0, SEEK_SET);
             ftruncate(fileno(f_stdout), 0);
         }
         getGraph()->paint();

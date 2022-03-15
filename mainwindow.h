@@ -233,7 +233,6 @@ class MainWindow : public QMainWindow
         }
     private:
         FILE *f_stdout;
-        QTextStream *str;
         int threadsStopped { 1 };
         void plotModel(QImage* picture, char* model);
         QMutex mutex;

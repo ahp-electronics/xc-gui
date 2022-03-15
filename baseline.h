@@ -232,6 +232,8 @@ class Baseline : public QWidget
         QList<double>* complex;
         Line* line1;
         Line* line2;
+signals:
+        void activeStateChanged(Baseline*);
 };
 
 #endif // BASELINE_H
