@@ -1,4 +1,4 @@
-/*
+﻿/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -136,6 +136,7 @@ MainWindow::MainWindow(QWidget *parent)
         (void)checked;
         if(!connected)
             return;
+        ui->Mode->setCurrentIndex(0);
         stopThreads();
         settings->endGroup();
         ui->Connect->setEnabled(true);
@@ -159,7 +160,7 @@ MainWindow::MainWindow(QWidget *parent)
         }
         if(controlFD >= 0)
         {
-            setVoltage(0);
+            ui->Voltage->setValue(0);
             fdclose(controlFD, "rw");
         }
         freePacket();
@@ -177,6 +178,8 @@ MainWindow::MainWindow(QWidget *parent)
         {
             control_socket.disconnectFromHost();
         }
+        motorFD = -1;
+        controlFD = -1;
         vlbi_exit(getVLBIContext());
         connected = false;
     });
@@ -335,7 +338,6 @@ MainWindow::MainWindow(QWidget *parent)
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanging),
                                 [ = ](Line* sender) {
-                            threadsStopped = true;
                             lock_vlbi();
                         });
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
@@ -675,7 +677,6 @@ MainWindow::MainWindow(QWidget *parent)
         {
             double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
             lock_vlbi();
-            threadsStopped = false;
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, coverage_delegate, &threadsStopped);
