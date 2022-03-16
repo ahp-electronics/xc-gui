@@ -369,12 +369,10 @@ void Line::setFlag(int flag, bool value)
 
 void Line::resetTimestamp()
 {
-    lock();
     dsp_stream_set_dim(stream, 0, 1);
     dsp_stream_alloc_buffer(stream, stream->len + 1);
     getStream()->starttimeutc = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(
                                     Qt::DateFormat::ISODate).toStdString().c_str());
-    unlock();
 }
 
 bool Line::getFlag(int flag)
@@ -462,17 +460,21 @@ void Line::paint()
 
 void Line::addToVLBIContext()
 {
+    lock();
     stream = dsp_stream_new();
     dsp_stream_add_dim(stream, 1);
     resetTimestamp();
     vlbi_add_node(getVLBIContext(), getStream(), getLastName().toStdString().c_str(), false);
+    unlock();
 }
 
 void Line::removeFromVLBIContext()
 {
     if(stream != nullptr)
     {
+        lock();
         vlbi_del_node(getVLBIContext(), getLastName().toStdString().c_str());
+        unlock();
     }
 }
 
@@ -582,6 +584,7 @@ void Line::gotoRaDec(double ra, double dec)
 
 void Line::setActive(bool a)
 {
+    activeStateChanging(this);
     if(a && ! running)
     {
         addToVLBIContext();

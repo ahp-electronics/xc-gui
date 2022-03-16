@@ -74,6 +74,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         stop = !newstate;
         if(oldstate != newstate)
         {
+            emit activeStateChanging(this);
             if(newstate)
             {
                 if(stream != nullptr)

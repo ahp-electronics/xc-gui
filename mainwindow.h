@@ -223,6 +223,15 @@ class MainWindow : public QMainWindow
             return xcFD;
         }
 
+        void lock_vlbi()
+        {
+            while(!vlbi_mutex.tryLock(1));
+        }
+        void unlock_vlbi()
+        {
+            vlbi_mutex.unlock();
+        }
+
         void lock()
         {
             while(!mutex.tryLock());

@@ -233,6 +233,7 @@ class Baseline : public QWidget
         Line* line1;
         Line* line2;
 signals:
+        void activeStateChanging(Baseline*);
         void activeStateChanged(Baseline*);
 };
 

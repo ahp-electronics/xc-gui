@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
     settings = new QSettings(ini, QSettings::Format::IniFormat);
     connected = false;
     TimeRange = 10;
-    f_stdout = stderr;//tmpfile();
+    f_stdout = tmpfile();
     dsp_set_stdout(f_stdout);
     dsp_set_stderr(f_stdout);
     ui->setupUi(this);
@@ -333,6 +333,11 @@ MainWindow::MainWindow(QWidget *parent)
                         QString name = "Line " + QString::number(l + 1);
                         fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
+                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanging),
+                                [ = ](Line* sender) {
+                            threadsStopped = true;
+                            lock_vlbi();
+                        });
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
                                 [ = ](Line* sender) {
                             if(sender->isActive()) {
@@ -348,6 +353,7 @@ MainWindow::MainWindow(QWidget *parent)
                                 getGraph()->removeSeries(sender->getPhases());
                                 getGraph()->removeSeries(sender->getCounts());
                             }
+                            unlock_vlbi();
                         });
                         ui->Lines->addTab(Lines[l], name);
                     }
@@ -654,9 +660,9 @@ MainWindow::MainWindow(QWidget *parent)
         QTextStream str(f_stdout);
         QString text = str.readLine();
         if(text.isEmpty())
-            ui->statusbar->showMessage("Ready");
+            statusBar()->showMessage("Ready");
         else {
-            ui->statusbar->showMessage(text.replace("\n", ""));
+            statusBar()->showMessage(text.replace("\n", ""));
             fseek(f_stdout, 0, SEEK_SET);
             ftruncate(fileno(f_stdout), 0);
         }
@@ -668,7 +674,8 @@ MainWindow::MainWindow(QWidget *parent)
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
             double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
-            vlbi_set_location(getVLBIContext(), getGraph()->getLatitude(), getGraph()->getLongitude(), getGraph()->getElevation());
+            lock_vlbi();
+            threadsStopped = false;
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, coverage_delegate, &threadsStopped);
@@ -684,6 +691,7 @@ MainWindow::MainWindow(QWidget *parent)
             getGraph()->plotModel(getGraph()->getMagnitude(), "magnitude");
             getGraph()->plotModel(getGraph()->getPhase(), "phase");
             getGraph()->plotModel(getGraph()->getIdft(), "idft");
+            unlock_vlbi();
         }
         thread->unlock();
     });
@@ -710,8 +718,8 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     int starty = 90;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
-    ui->statusbar->setGeometry(0, this->height() - ui->statusbar->height(), width(), 20);
-    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10 - ui->statusbar->height());
+    statusBar()->setGeometry(0, this->height() - statusBar()->height(), width(), 20);
+    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10 - statusBar()->height());
 }
 
 void MainWindow::startThreads()

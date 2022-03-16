@@ -399,6 +399,7 @@ class Line : public QWidget
         void SavePlot();
 
     signals:
+        void activeStateChanging(Line*);
         void activeStateChanged(Line*);
         void updateBufferSizes();
         void savePlot();
