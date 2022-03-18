@@ -345,20 +345,18 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
                                 [ = ](Line* sender) {
                             if(sender->isActive()) {
-                                getGraph()->addSeries(sender->getMagnitude());
-                                getGraph()->addSeries(sender->getPhase());
                                 getGraph()->addSeries(sender->getMagnitudes());
                                 getGraph()->addSeries(sender->getPhases());
                                 getGraph()->addSeries(sender->getCounts());
                             } else {
-                                getGraph()->removeSeries(sender->getMagnitude());
-                                getGraph()->removeSeries(sender->getPhase());
                                 getGraph()->removeSeries(sender->getMagnitudes());
                                 getGraph()->removeSeries(sender->getPhases());
                                 getGraph()->removeSeries(sender->getCounts());
                             }
                             unlock_vlbi();
                         });
+                        getGraph()->addSeries(Lines[l]->getMagnitude());
+                        getGraph()->addSeries(Lines[l]->getPhase());
                         ui->Lines->addTab(Lines[l], name);
                     }
                     int idx = 0;
@@ -372,17 +370,15 @@ MainWindow::MainWindow(QWidget *parent)
                             connect(Baselines[idx], static_cast<void (Baseline::*)(Baseline*)>(&Baseline::activeStateChanged),
                                     [ = ](Baseline* sender) {
                                 if(sender->isActive()) {
-                                    getGraph()->addSeries(sender->getMagnitude());
-                                    getGraph()->addSeries(sender->getPhase());
                                     getGraph()->addSeries(sender->getMagnitudes());
                                     getGraph()->addSeries(sender->getPhases());
                                 } else {
-                                    getGraph()->removeSeries(sender->getMagnitude());
-                                    getGraph()->removeSeries(sender->getPhase());
                                     getGraph()->removeSeries(sender->getMagnitudes());
                                     getGraph()->removeSeries(sender->getPhases());
                                 }
                             });
+                            getGraph()->addSeries(Baselines[idx]->getMagnitude());
+                            getGraph()->addSeries(Baselines[idx]->getPhase());
                             idx++;
                         }
                     }
