@@ -34,7 +34,6 @@
 #include "threads.h"
 #include <fftw3.h>
 
-extern vlbi_context context;
 
 enum VlbiContext
 {
@@ -59,4 +58,6 @@ enum Scale
     Sqrt,
     Log
 };
+
+extern vlbi_context context[vlbi_total_contexts];
 #endif // TYPES_H

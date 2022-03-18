@@ -124,9 +124,14 @@ class MainWindow : public QMainWindow
             return mode;
         }
 
-        inline vlbi_context getVLBIContext()
+        inline vlbi_context getVLBIContext(int index = -1)
         {
-            return context;
+            if(index < 0) {
+                index = getMode() - HolographII;
+                if(index < 0)
+                    return nullptr;
+            }
+            return context[index];
         }
         inline double getStartTime()
         {
@@ -151,7 +156,6 @@ class MainWindow : public QMainWindow
                     Baselines[i]->getMagnitudes()->clear();
                     Baselines[i]->getPhases()->clear();
                     Baselines[i]->getCounts()->clear();
-                    Baselines[i]->setVLBIContext(getVLBIContext());
                 }
                 for(int i = 0; i < Lines.count(); i++)
                 {
@@ -160,7 +164,6 @@ class MainWindow : public QMainWindow
                     Lines[i]->getMagnitudes()->clear();
                     Lines[i]->getPhases()->clear();
                     Lines[i]->getCounts()->clear();
-                    Lines[i]->setVLBIContext(getVLBIContext());
                 }
                 if(mode == Counter || mode == HolographIQ || mode == HolographII)
                 {
@@ -178,7 +181,6 @@ class MainWindow : public QMainWindow
                 for(int i = 0; i < Baselines.count(); i++)
                     Baselines[i]->setMode(mode);
                 getGraph()->setMode(m);
-                getGraph()->setVLBIContext(getVLBIContext());
                 threadsStopped = false;
                 if(mode == HolographIQ || mode == HolographII)
                     vlbiThread->start();

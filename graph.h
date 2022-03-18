@@ -220,14 +220,14 @@ class Graph : public QWidget
 
         void plotModel(QImage* picture, char* model);
 
-        inline vlbi_context getVLBIContext()
+        inline vlbi_context getVLBIContext(int index = -1)
         {
-            return context;
-        }
-
-        inline void setVLBIContext(vlbi_context ctx)
-        {
-            context = ctx;
+            if(index < 0) {
+                index = getMode() - HolographII;
+                if(index < 0)
+                    return nullptr;
+            }
+            return context[index];
         }
         void lock()
         {
