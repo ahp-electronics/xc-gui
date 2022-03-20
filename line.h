@@ -325,6 +325,7 @@ class Line : public QWidget
         void gotoRaDec(double ra, double dec);
         void startTracking(double ra_rate, double dec_rate);
         void stopMotors();
+        inline bool isForkMount() { return fork; }
         void lock()
         {
             while(!mutex.tryLock());
@@ -414,6 +415,7 @@ class Line : public QWidget
         bool scanning { false };
         bool flipped { false };
         bool scalingDone { false };
+        bool fork { false };
         void getMinMax();
         void plot(bool success, double o, double s);
         void SavePlot();

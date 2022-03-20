@@ -213,6 +213,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         if(ahp_gt_is_connected()) {
             ahp_gt_select_device(ui->MountMotorIndex->value());
             ahp_gt_detect_device();
+            switch (ahp_gt_get_mount_type()) {
+            case isMF:
+            case isDOB:
+                fork = true;
+                break;
+            default:
+                fork = false;
+                break;
+            }
         }
         saveSetting("MountMotorIndex", value);
     });
@@ -589,7 +598,7 @@ void Line::gotoRaDec(double ra, double dec)
             } else if(current_ha < 0.0 && ha > 0.0) {
                 flipped = false;
             }
-            if(flipped)
+            if(flipped && !isForkMount())
                 ha = M_PI - ha;
             else
                 dec = -dec;
