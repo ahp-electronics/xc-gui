@@ -302,12 +302,29 @@ class Line : public QWidget
         {
             return end;
         }
+        inline double getLatitude()
+        {
+            return Latitude;
+        }
+        inline double getLongitude()
+        {
+            return Longitude;
+        }
+        inline double setLatitude(double latitude)
+        {
+            Latitude = latitude;
+        }
+        inline void setLongitude(double longitude)
+        {
+            Longitude = longitude;
+        }
         void TakeDark(Line* sender);
         bool DarkTaken();
         void runClicked(bool checked = false);
         void resetTimestamp();
         void gotoRaDec(double ra, double dec);
         void startTracking(double ra_rate, double dec_rate);
+        void stopMotors();
         void lock()
         {
             while(!mutex.tryLock());
@@ -388,11 +405,14 @@ class Line : public QWidget
         double offset { 0.0 };
         double timespan { 1.0 };
         double stack { 0.0 };
+        double Latitude { 0.0 };
+        double Longitude { 0.0 };
         timespec starttime { 0 };
         bool applysigmaclipping { false };
         bool applymedian { false };
         bool running { false };
         bool scanning { false };
+        bool flipped { false };
         bool scalingDone { false };
         void getMinMax();
         void plot(bool success, double o, double s);

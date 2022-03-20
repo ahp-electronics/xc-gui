@@ -1,4 +1,4 @@
-/*
+﻿/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -575,9 +575,62 @@ void Line::gotoRaDec(double ra, double dec)
 {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
+            timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+            double j2000 = vlbi_time_timespec_to_J2000time(ts);
+            double lst = vlbi_time_J2000time_to_lst(j2000, getLongitude());
+            double ha = vlbi_astro_get_local_hour_angle(lst, ra);
+            double current_ha = ahp_gt_get_position(0);
+            ha *= M_PI / 24.0;
+            dec *= M_PI / 180.0;
+            ha += M_PI / 2.0;
+            dec -= M_PI / 2.0;
+            if(current_ha > 0.0 && ha < 0.0) {
+                flipped = true;
+            } else if(current_ha < 0.0 && ha > 0.0) {
+                flipped = false;
+            }
+            if(flipped)
+                ha = M_PI - ha;
+            else
+                dec = -dec;
             ahp_gt_select_device(ui->MountMotorIndex->value());
-            ahp_gt_goto_absolute(0, ra*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
-            ahp_gt_goto_absolute(1, dec*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
+            ahp_gt_goto_absolute(0, ha, 800.0);
+            ahp_gt_goto_absolute(1, dec, 800.0);
+        }
+    }
+}
+
+void Line::startTracking(double ra_rate, double dec_rate)
+{
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
+            ahp_gt_set_address(ui->MountMotorIndex->value());
+            if(ra_rate != 0.0) {
+                ahp_gt_stop_motion(0, 1);
+                ahp_gt_start_motion(0, ra_rate);
+            }
+            if(dec_rate != 0.0) {
+                ahp_gt_stop_motion(1, 1);
+                ahp_gt_start_motion(1, dec_rate);
+            }
+        }
+    }
+}
+
+void Line::stopMotors()
+{
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
+            ahp_gt_set_address(ui->MountMotorIndex->value());
+            ahp_gt_stop_motion(0, 1);
+            ahp_gt_stop_motion(1, 1);
+        }
+    }
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(ui->RailMotorIndex->value())) {
+            ahp_gt_set_address(ui->RailMotorIndex->value());
+            ahp_gt_stop_motion(0, 1);
+            ahp_gt_stop_motion(1, 1);
         }
     }
 }
@@ -595,15 +648,6 @@ void Line::setActive(bool a)
     }
     running = a;
     activeStateChanged(this);
-}
-
-void Line::startTracking(double ra_rate, double dec_rate)
-{
-    ahp_gt_set_address(ui->RailMotorIndex->value());
-    ahp_gt_stop_motion(0, 1);
-    ahp_gt_stop_motion(1, 1);
-    ahp_gt_start_motion(0, ra_rate);
-    ahp_gt_start_motion(1, dec_rate);
 }
 
 void Line::TakeDark(Line *sender)
@@ -665,9 +709,9 @@ void Line::stackCorrelations()
         {
             if(mode == Autocorrelator)
             {
-                elemental->setMagnitude(magnitude_buf, len);
-                elemental->setPhase(phase_buf, len);
-                elemental->idft();
+                elemental->setReal(magnitude_buf, len);
+                elemental->setImaginary(phase_buf, len);
+                elemental->dft(1);
             }
         }
         else

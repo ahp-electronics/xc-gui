@@ -276,7 +276,9 @@ MainWindow::MainWindow(QWidget *parent)
                 motorFD = open(motorport.toUtf8(), O_RDWR);
                 if(motorFD != -1)
                 {
-                    settings->setValue("motor_connection", motorport);
+                    getGraph()->setMotorFD(motorFD);
+                    if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
+                        settings->setValue("motor_connection", motorport);
                 }
             }
         }
@@ -355,6 +357,9 @@ MainWindow::MainWindow(QWidget *parent)
                             }
                             unlock_vlbi();
                         });
+                        connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), Lines[l], &Line::gotoRaDec);
+                        connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startTracking), Lines[l], &Line::startTracking);
+                        connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::stopMotors);
                         getGraph()->addSeries(Lines[l]->getMagnitude());
                         getGraph()->addSeries(Lines[l]->getPhase());
                         ui->Lines->addTab(Lines[l], name);
@@ -415,16 +420,6 @@ MainWindow::MainWindow(QWidget *parent)
             [ = ]()
     {
     });
-    connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec),
-            [ = ](double ra, double dec)
-    {
-        ra *= M_PI / 12.0;
-        dec *= M_PI / 180.0;
-        for(int x = 0; x < Lines.count(); x++)
-        {
-            Lines[x]->gotoRaDec(ra, dec);
-        }
-    });
     connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::coordinatesUpdated),
             [ = ](double ra, double dec, double radius)
     {
@@ -437,6 +432,11 @@ MainWindow::MainWindow(QWidget *parent)
         Latitude = lat;
         Longitude = lon;
         Elevation = el;
+        for(int x = 0; x < Lines.count(); x++)
+        {
+            Lines[x]->setLatitude(Latitude);
+            Lines[x]->setLongitude(Longitude);
+        }
         for(int i = 0; i < vlbi_total_contexts; i++)
             vlbi_set_location(getVLBIContext(i), Latitude, Longitude, Elevation);
     });

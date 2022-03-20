@@ -269,7 +269,8 @@ class Graph : public QWidget
         double Latitude, Longitude, Elevation;
         double Ra, Dec;
         double Frequency;
-        double RaTrackRate, DecTrackRate;
+        double RaTrackRate {1.0};
+        double DecTrackRate {1.0};
         QGroupBox *infos;
         QImage idft;
         QImage magnitude;

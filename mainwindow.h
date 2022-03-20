@@ -167,12 +167,6 @@ class MainWindow : public QMainWindow
                 }
                 if(mode == Counter || mode == HolographIQ || mode == HolographII)
                 {
-                    for(int i = 0; i < Lines.count(); i++)
-                    {
-                        if(ahp_xc_has_crosscorrelator())
-                            ahp_xc_set_channel_cross(i, 0, 0);
-                        ahp_xc_set_channel_auto(i, 0, 0);
-                    }
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur | CAP_ENABLE));
                     resetTimestamp();
                 }
