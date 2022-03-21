@@ -211,7 +211,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         MountMotorIndex = value;
         if(ahp_gt_is_connected()) {
-            ahp_gt_select_device(ui->MountMotorIndex->value());
+            ahp_gt_select_device(MountMotorIndex);
             ahp_gt_detect_device();
             switch (ahp_gt_get_mount_type()) {
             case isMF:
@@ -229,7 +229,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         RailMotorIndex = value;
         if(ahp_gt_is_connected()) {
-            ahp_gt_select_device(ui->RailMotorIndex->value());
+            ahp_gt_select_device(RailMotorIndex);
             ahp_gt_detect_device();
         }
         saveSetting("RailMotorIndex", value);
@@ -239,8 +239,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.x = (double)value / 1000.0;
         saveSetting("location_x", location.xyz.x);
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(ui->RailMotorIndex->value())) {
-                ahp_gt_select_device(ui->RailMotorIndex->value());
+            if(ahp_gt_is_detected(RailMotorIndex)) {
+                ahp_gt_select_device(RailMotorIndex);
                 ahp_gt_goto_absolute(0, value*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
             }
         }
@@ -250,8 +250,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.y = (double)value / 1000.0;
         saveSetting("location_y", location.xyz.y);
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(ui->RailMotorIndex->value())) {
-                ahp_gt_select_device(ui->RailMotorIndex->value());
+            if(ahp_gt_is_detected(RailMotorIndex)) {
+                ahp_gt_select_device(RailMotorIndex);
                 ahp_gt_goto_absolute(1, value*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
             }
         }
@@ -270,16 +270,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 1);
+    ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
+    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
     ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 1);
     ui->LineDelay->setRange(0, ahp_xc_get_delaysize() - 1);
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->LineDelay->setValue(readInt("LineDelay", ui->LineDelay->minimum()));
     ui->IDFT->setChecked(readBool("IDFT", false));
     ui->Histogram->setChecked(readBool("Histogram", false));
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
-    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
     ui->flag4->setEnabled(!ahp_xc_has_differential_only());
     ui->Crosscorrelations->setEnabled(ahp_xc_has_crosscorrelator());
     ahp_xc_set_leds(line, flags);
@@ -583,7 +583,7 @@ bool Line::DarkTaken()
 void Line::gotoRaDec(double ra, double dec)
 {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
+        if(ahp_gt_is_detected(MountMotorIndex)) {
             timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
             double j2000 = vlbi_time_timespec_to_J2000time(ts);
             double lst = vlbi_time_J2000time_to_lst(j2000, getLongitude());
@@ -602,7 +602,7 @@ void Line::gotoRaDec(double ra, double dec)
                 ha = M_PI - ha;
             else
                 dec = -dec;
-            ahp_gt_select_device(ui->MountMotorIndex->value());
+            ahp_gt_select_device(MountMotorIndex);
             ahp_gt_goto_absolute(0, ha, 800.0);
             ahp_gt_goto_absolute(1, dec, 800.0);
         }
@@ -612,8 +612,8 @@ void Line::gotoRaDec(double ra, double dec)
 void Line::startTracking(double ra_rate, double dec_rate)
 {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
-            ahp_gt_set_address(ui->MountMotorIndex->value());
+        if(ahp_gt_is_detected(MountMotorIndex)) {
+            ahp_gt_set_address(MountMotorIndex);
             if(ra_rate != 0.0) {
                 ahp_gt_stop_motion(0, 1);
                 ahp_gt_start_motion(0, ra_rate);
@@ -629,15 +629,15 @@ void Line::startTracking(double ra_rate, double dec_rate)
 void Line::stopMotors()
 {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(ui->MountMotorIndex->value())) {
-            ahp_gt_set_address(ui->MountMotorIndex->value());
+        if(ahp_gt_is_detected(MountMotorIndex)) {
+            ahp_gt_set_address(MountMotorIndex);
             ahp_gt_stop_motion(0, 1);
             ahp_gt_stop_motion(1, 1);
         }
     }
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(ui->RailMotorIndex->value())) {
-            ahp_gt_set_address(ui->RailMotorIndex->value());
+        if(ahp_gt_is_detected(RailMotorIndex)) {
+            ahp_gt_set_address(RailMotorIndex);
             ahp_gt_stop_motion(0, 1);
             ahp_gt_stop_motion(1, 1);
         }
@@ -708,8 +708,7 @@ void Line::stackCorrelations()
                 lag = _lag;
                 if(mode == Autocorrelator)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / pow(spectrum[z].correlations[0].real +
-                                         spectrum[z].correlations[0].imaginary, 2);
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts;
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
             }
