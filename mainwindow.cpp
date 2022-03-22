@@ -138,17 +138,17 @@ MainWindow::MainWindow(QWidget *parent)
             return;
         ui->Mode->setCurrentIndex(0);
         stopThreads();
-        settings->endGroup();
-        ui->Connect->setEnabled(true);
-        ui->Disconnect->setEnabled(false);
-        ui->Scale->setEnabled(false);
-        ui->Range->setEnabled(false);
-        ui->Mode->setEnabled(false);
-        getGraph()->clearSeries();
         for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
         {
             Lines[l]->setActive(false);
             ahp_xc_set_leds(l, 0);
+        }
+        freePacket();
+        ahp_xc_set_capture_flags(CAP_NONE);
+        ahp_xc_disconnect();
+        if(xc_socket.isOpen())
+        {
+            xc_socket.disconnectFromHost();
         }
         Baselines.clear();
         ui->Lines->clear();
@@ -158,21 +158,14 @@ MainWindow::MainWindow(QWidget *parent)
             if(ahp_gt_is_connected())
                 ahp_gt_disconnect();
         }
+        if(motor_socket.isOpen())
+        {
+            motor_socket.disconnectFromHost();
+        }
         if(controlFD >= 0)
         {
             ui->Voltage->setValue(0);
             fdclose(controlFD, "rw");
-        }
-        freePacket();
-        ahp_xc_set_capture_flags(CAP_NONE);
-        ahp_xc_disconnect();
-        if(xc_socket.isOpen())
-        {
-            xc_socket.disconnectFromHost();
-        }
-        if(motor_socket.isOpen())
-        {
-            motor_socket.disconnectFromHost();
         }
         if(control_socket.isOpen())
         {
@@ -182,6 +175,13 @@ MainWindow::MainWindow(QWidget *parent)
         controlFD = -1;
         for(int i = 0; i < vlbi_total_contexts; i++)
             vlbi_exit(getVLBIContext(i));
+        settings->endGroup();
+        ui->Connect->setEnabled(true);
+        ui->Disconnect->setEnabled(false);
+        ui->Scale->setEnabled(false);
+        ui->Range->setEnabled(false);
+        ui->Mode->setEnabled(false);
+        getGraph()->clearSeries();
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
@@ -195,97 +195,11 @@ MainWindow::MainWindow(QWidget *parent)
         motorport = ui->MotorPort->currentText();
         controlport = ui->ControlPort->currentText();
         settings->beginGroup("Connection");
-        controlFD = -1;
-        if(controlport == "no connection")
-        {
-            settings->setValue("control_connection", controlport);
-        }
-        else
-        {
-            if(controlport.contains(':'))
-            {
-                address = controlport.split(":")[0];
-                port = controlport.split(":")[1].toInt();
-                ui->Connect->setEnabled(false);
-                update();
-                control_socket.connectToHost(address, port);
-                control_socket.waitForConnected();
-                if(control_socket.isValid())
-                {
-                    control_socket.setReadBufferSize(4096);
-                    controlFD = control_socket.socketDescriptor();
-                    if(controlFD != -1)
-                    {
-                        getGraph()->setControlFD(controlFD);
-                        if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
-                            if(controlFD != -1)
-                            {
-                                settings->setValue("control_connection", controlport);
-                            }
-                    }
-                }
-                else
-                {
-                    ui->Connect->setEnabled(true);
-                    update();
-                }
-            }
-            else
-            {
-                controlFD = open(controlport.toUtf8(), O_RDWR);
-                if(controlFD != -1)
-                {
-                    settings->setValue("control_connection", controlport);
-                }
-            }
-        }
-        motorFD = -1;
-        if(motorport == "no connection")
-        {
-            settings->setValue("motor_connection", motorport);
-        }
-        else
-        {
-            if(motorport.contains(':'))
-            {
-                address = motorport.split(":")[0];
-                port = motorport.split(":")[1].toInt();
-                ui->Connect->setEnabled(false);
-                update();
-                motor_socket.connectToHost(address, port);
-                motor_socket.waitForConnected();
-                if(motor_socket.isValid())
-                {
-                    motor_socket.setReadBufferSize(4096);
-                    motorFD = motor_socket.socketDescriptor();
-                    if(motorFD != -1)
-                    {
-                        getGraph()->setMotorFD(motorFD);
-                        if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
-                            settings->setValue("motor_connection", motorport);
-                    }
-                }
-                else
-                {
-                    ui->Connect->setEnabled(true);
-                    update();
-                }
-            }
-            else
-            {
-                motorFD = open(motorport.toUtf8(), O_RDWR);
-                if(motorFD != -1)
-                {
-                    getGraph()->setMotorFD(motorFD);
-                    if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
-                        settings->setValue("motor_connection", motorport);
-                }
-            }
-        }
         xcFD = -1;
         if(xcport == "no connection")
         {
             settings->setValue("xc_connection", xcport);
+            return;
         }
         else
         {
@@ -404,12 +318,98 @@ MainWindow::MainWindow(QWidget *parent)
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
+                } else {
+                    ahp_xc_disconnect();
+                    return;
+                }
+            }
+            else {
+                ahp_xc_disconnect();
+                return;
+            }
+        }
+        motorFD = -1;
+        if(motorport == "no connection")
+        {
+            settings->setValue("motor_connection", motorport);
+        }
+        else
+        {
+            if(motorport.contains(':'))
+            {
+                address = motorport.split(":")[0];
+                port = motorport.split(":")[1].toInt();
+                ui->Connect->setEnabled(false);
+                update();
+                motor_socket.connectToHost(address, port);
+                motor_socket.waitForConnected();
+                if(motor_socket.isValid())
+                {
+                    motor_socket.setReadBufferSize(4096);
+                    motorFD = motor_socket.socketDescriptor();
+                    if(motorFD != -1)
+                    {
+                        getGraph()->setMotorFD(motorFD);
+                        if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
+                            settings->setValue("motor_connection", motorport);
+                    }
                 }
                 else
-                    ahp_xc_disconnect();
+                {
+                    ui->Connect->setEnabled(true);
+                    update();
+                }
             }
             else
-                ahp_xc_disconnect();
+            {
+                if(!ahp_gt_connect(motorport.toUtf8()))
+                    settings->setValue("motor_connection", motorport);
+                xcFD = ahp_xc_get_fd();
+            }
+        }
+        controlFD = -1;
+        if(controlport == "no connection")
+        {
+            settings->setValue("control_connection", controlport);
+        }
+        else
+        {
+            if(controlport.contains(':'))
+            {
+                address = controlport.split(":")[0];
+                port = controlport.split(":")[1].toInt();
+                ui->Connect->setEnabled(false);
+                update();
+                control_socket.connectToHost(address, port);
+                control_socket.waitForConnected();
+                if(control_socket.isValid())
+                {
+                    control_socket.setReadBufferSize(4096);
+                    controlFD = control_socket.socketDescriptor();
+                    if(controlFD != -1)
+                    {
+                        getGraph()->setControlFD(controlFD);
+                        if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
+                            if(controlFD != -1)
+                            {
+                                settings->setValue("control_connection", controlport);
+                            }
+                    }
+                }
+                else
+                {
+                    ui->Connect->setEnabled(true);
+                    update();
+                }
+            }
+            else
+            {
+                controlFD = open(controlport.toUtf8(), O_RDWR);
+                if(controlFD != -1)
+                {
+                    settings->setValue("control_connection", controlport);
+                }
+            }
         }
     });
     connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::connectMotors),
@@ -773,6 +773,6 @@ MainWindow::~MainWindow()
     motorThread->~Thread();
     getGraph()->~Graph();
     settings->~QSettings();
-    delete ui;
     fclose(f_stdout);
+    delete ui;
 }
