@@ -310,7 +310,7 @@ class Line : public QWidget
         {
             return Longitude;
         }
-        inline double setLatitude(double latitude)
+        inline void setLatitude(double latitude)
         {
             Latitude = latitude;
         }
