@@ -233,6 +233,89 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 if(!ahp_xc_get_properties())
                 {
+                    motorFD = -1;
+                    if(motorport == "no connection")
+                    {
+                        settings->setValue("motor_connection", motorport);
+                    }
+                    else
+                    {
+                        if(motorport.contains(':'))
+                        {
+                            address = motorport.split(":")[0];
+                            port = motorport.split(":")[1].toInt();
+                            ui->Connect->setEnabled(false);
+                            update();
+                            motor_socket.connectToHost(address, port);
+                            motor_socket.waitForConnected();
+                            if(motor_socket.isValid())
+                            {
+                                motor_socket.setReadBufferSize(4096);
+                                motorFD = motor_socket.socketDescriptor();
+                                if(motorFD != -1)
+                                {
+                                    getGraph()->setMotorFD(motorFD);
+                                    if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
+                                        settings->setValue("motor_connection", motorport);
+                                }
+                            }
+                            else
+                            {
+                                ui->Connect->setEnabled(true);
+                                update();
+                            }
+                        }
+                        else
+                        {
+                            if(!ahp_gt_connect(motorport.toUtf8()))
+                                settings->setValue("motor_connection", motorport);
+                            xcFD = ahp_xc_get_fd();
+                        }
+                    }
+                    controlFD = -1;
+                    if(controlport == "no connection")
+                    {
+                        settings->setValue("control_connection", controlport);
+                    }
+                    else
+                    {
+                        if(controlport.contains(':'))
+                        {
+                            address = controlport.split(":")[0];
+                            port = controlport.split(":")[1].toInt();
+                            ui->Connect->setEnabled(false);
+                            update();
+                            control_socket.connectToHost(address, port);
+                            control_socket.waitForConnected();
+                            if(control_socket.isValid())
+                            {
+                                control_socket.setReadBufferSize(4096);
+                                controlFD = control_socket.socketDescriptor();
+                                if(controlFD != -1)
+                                {
+                                    getGraph()->setControlFD(controlFD);
+                                    if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
+                                        if(controlFD != -1)
+                                        {
+                                            settings->setValue("control_connection", controlport);
+                                        }
+                                }
+                            }
+                            else
+                            {
+                                ui->Connect->setEnabled(true);
+                                update();
+                            }
+                        }
+                        else
+                        {
+                            controlFD = open(controlport.toUtf8(), O_RDWR);
+                            if(controlFD != -1)
+                            {
+                                settings->setValue("control_connection", controlport);
+                            }
+                        }
+                    }
                     connected = true;
                     createPacket();
                     settings->setValue("xc_connection", xcport);
@@ -326,89 +409,6 @@ MainWindow::MainWindow(QWidget *parent)
             else {
                 ahp_xc_disconnect();
                 return;
-            }
-        }
-        motorFD = -1;
-        if(motorport == "no connection")
-        {
-            settings->setValue("motor_connection", motorport);
-        }
-        else
-        {
-            if(motorport.contains(':'))
-            {
-                address = motorport.split(":")[0];
-                port = motorport.split(":")[1].toInt();
-                ui->Connect->setEnabled(false);
-                update();
-                motor_socket.connectToHost(address, port);
-                motor_socket.waitForConnected();
-                if(motor_socket.isValid())
-                {
-                    motor_socket.setReadBufferSize(4096);
-                    motorFD = motor_socket.socketDescriptor();
-                    if(motorFD != -1)
-                    {
-                        getGraph()->setMotorFD(motorFD);
-                        if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
-                            settings->setValue("motor_connection", motorport);
-                    }
-                }
-                else
-                {
-                    ui->Connect->setEnabled(true);
-                    update();
-                }
-            }
-            else
-            {
-                if(!ahp_gt_connect(motorport.toUtf8()))
-                    settings->setValue("motor_connection", motorport);
-                xcFD = ahp_xc_get_fd();
-            }
-        }
-        controlFD = -1;
-        if(controlport == "no connection")
-        {
-            settings->setValue("control_connection", controlport);
-        }
-        else
-        {
-            if(controlport.contains(':'))
-            {
-                address = controlport.split(":")[0];
-                port = controlport.split(":")[1].toInt();
-                ui->Connect->setEnabled(false);
-                update();
-                control_socket.connectToHost(address, port);
-                control_socket.waitForConnected();
-                if(control_socket.isValid())
-                {
-                    control_socket.setReadBufferSize(4096);
-                    controlFD = control_socket.socketDescriptor();
-                    if(controlFD != -1)
-                    {
-                        getGraph()->setControlFD(controlFD);
-                        if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
-                            if(controlFD != -1)
-                            {
-                                settings->setValue("control_connection", controlport);
-                            }
-                    }
-                }
-                else
-                {
-                    ui->Connect->setEnabled(true);
-                    update();
-                }
-            }
-            else
-            {
-                controlFD = open(controlport.toUtf8(), O_RDWR);
-                if(controlFD != -1)
-                {
-                    settings->setValue("control_connection", controlport);
-                }
             }
         }
     });
