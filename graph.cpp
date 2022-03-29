@@ -222,7 +222,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Track, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
-        emit startTracking(getRaRate(), getDecRate());
+        emit startTracking();
     });
 }
 

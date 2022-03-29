@@ -302,7 +302,8 @@ class Graph : public QWidget
         void connectMotors();
         void disconnectMotors();
         void gotoRaDec(double, double);
-        void startTracking(double, double);
+        void startSlewing(double, double);
+        void startTracking();
         void haltMotors();
 
 };

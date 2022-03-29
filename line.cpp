@@ -31,6 +31,8 @@
 #include <QTextStream>
 #include <QDateTime>
 
+QMutex Line::motor_mutex;
+
 Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     QWidget(parent),
     ui(new Ui::Line)
@@ -212,15 +214,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         MountMotorIndex = value;
         if(ahp_gt_is_connected()) {
             ahp_gt_select_device(MountMotorIndex);
-            ahp_gt_detect_device();
-            switch (ahp_gt_get_mount_type()) {
-            case isMF:
-            case isDOB:
-                fork = true;
-                break;
-            default:
-                fork = false;
-                break;
+            if(!ahp_gt_detect_device()) {
+                switch (ahp_gt_get_mount_type()) {
+                case isMF:
+                case isDOB:
+                    fork = true;
+                    break;
+                default:
+                    fork = false;
+                    break;
+                }
             }
         }
         saveSetting("MountMotorIndex", value);
@@ -261,11 +264,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("location_z", location.xyz.z);
     });
+    ui->MountMotorIndex->setValue(readInt("MountMotorIndex", getLineIndex() * 2 + 1));
+    ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
+
     ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
     ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
     ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
-    ui->MountMotorIndex->setValue(readInt("MountMotorIndex", getLineIndex() * 2 + 1));
-    ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
@@ -331,6 +335,85 @@ void Line::runClicked(bool checked)
         ui->Correlator->setEnabled(!isActive());
     }
 }
+
+void Line::gotoRaDec(double ra, double dec) {
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(MountMotorIndex)) {
+            timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+            double j2000 = vlbi_time_timespec_to_J2000time(ts);
+            double lst = vlbi_time_J2000time_to_lst(j2000, getLongitude());
+            double ha = vlbi_astro_get_local_hour_angle(lst, ra);
+            double current_ha = ahp_gt_get_position(0);
+            double current_dec = ahp_gt_get_position(1);
+            ha *= M_PI / 24.0;
+            ha += M_PI / 2;
+            dec *= M_PI / 180.0;
+            dec -= M_PI / 2.0;
+            if(current_ha > 0.0 && ha < 0.0) {
+                flipped = true;
+            } else if(current_ha < 0.0 && ha > 0.0) {
+                flipped = false;
+            }
+            if(flipped && !isForkMount())
+                ha = M_PI - ha;
+            else
+                dec = -dec;
+            ahp_gt_select_device(MountMotorIndex);
+            ahp_gt_goto_absolute(0, ha, 800.0);
+            ahp_gt_goto_absolute(1, dec, 800.0);
+        }
+    }
+}
+
+void Line::startTracking() {
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(getMountIndex())) {
+            Line::motor_lock();
+            ahp_gt_set_address(getMountIndex());
+            ahp_gt_stop_motion(0, 1);
+            ahp_gt_start_tracking(0);
+            Line::motor_unlock();
+        }
+    }
+}
+
+void Line::startSlewing(double ra_rate, double dec_rate) {
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(getMountIndex())) {
+            Line::motor_lock();
+            ahp_gt_set_address(getMountIndex());
+            if(ra_rate != 0.0) {
+                ahp_gt_stop_motion(0, 1);
+                ahp_gt_start_motion(0, ra_rate);
+            }
+            if(dec_rate != 0.0) {
+                ahp_gt_stop_motion(1, 1);
+                ahp_gt_start_motion(1, dec_rate);
+            }
+            Line::motor_unlock();
+        }
+    }
+}
+
+void Line::haltMotors() {
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(getMountIndex())) {
+            Line::motor_lock();
+            ahp_gt_set_address(getMountIndex());
+            ahp_gt_stop_motion(0, 1);
+            ahp_gt_stop_motion(1, 1);
+            Line::motor_unlock();
+        }
+        if(ahp_gt_is_detected(getRailIndex())) {
+            Line::motor_lock();
+            ahp_gt_set_address(getRailIndex());
+            ahp_gt_stop_motion(0, 1);
+            ahp_gt_stop_motion(1, 1);
+            Line::motor_unlock();
+        }
+    }
+}
+
 bool Line::haveSetting(QString setting)
 {
     return settings->contains(QString(name + "_" + setting).replace(' ', ""));
@@ -428,6 +511,10 @@ void Line::setMode(Mode m)
     getPhases()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
+    if(!isActive())
+        ui->Correlator->setEnabled(m != Counter);
+    else
+        runClicked();
     if(m != Counter)
     {
         stack = 0.0;
@@ -446,10 +533,6 @@ void Line::setMode(Mode m)
     ui->Leds->setEnabled(ahp_xc_has_leds());
     ui->Counter->setEnabled(m == Counter);
     resetPercentPtr();
-    if(!isActive())
-        ui->Correlator->setEnabled(m != Counter);
-    else
-        runClicked();
     mode = m;
 }
 
@@ -580,68 +663,14 @@ bool Line::DarkTaken()
     }
 }
 
-void Line::gotoRaDec(double ra, double dec)
+void Line::motor_lock()
 {
-    if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(MountMotorIndex)) {
-            timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
-            double j2000 = vlbi_time_timespec_to_J2000time(ts);
-            double lst = vlbi_time_J2000time_to_lst(j2000, getLongitude());
-            double ha = vlbi_astro_get_local_hour_angle(lst, ra);
-            double current_ha = ahp_gt_get_position(0);
-            ha *= M_PI / 24.0;
-            dec *= M_PI / 180.0;
-            ha += M_PI / 2.0;
-            dec -= M_PI / 2.0;
-            if(current_ha > 0.0 && ha < 0.0) {
-                flipped = true;
-            } else if(current_ha < 0.0 && ha > 0.0) {
-                flipped = false;
-            }
-            if(flipped && !isForkMount())
-                ha = M_PI - ha;
-            else
-                dec = -dec;
-            ahp_gt_select_device(MountMotorIndex);
-            ahp_gt_goto_absolute(0, ha, 800.0);
-            ahp_gt_goto_absolute(1, dec, 800.0);
-        }
-    }
+    while(!motor_mutex.tryLock());
 }
 
-void Line::startTracking(double ra_rate, double dec_rate)
+void Line::motor_unlock()
 {
-    if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(MountMotorIndex)) {
-            ahp_gt_set_address(MountMotorIndex);
-            if(ra_rate != 0.0) {
-                ahp_gt_stop_motion(0, 1);
-                ahp_gt_start_motion(0, ra_rate);
-            }
-            if(dec_rate != 0.0) {
-                ahp_gt_stop_motion(1, 1);
-                ahp_gt_start_motion(1, dec_rate);
-            }
-        }
-    }
-}
-
-void Line::stopMotors()
-{
-    if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(MountMotorIndex)) {
-            ahp_gt_set_address(MountMotorIndex);
-            ahp_gt_stop_motion(0, 1);
-            ahp_gt_stop_motion(1, 1);
-        }
-    }
-    if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(RailMotorIndex)) {
-            ahp_gt_set_address(RailMotorIndex);
-            ahp_gt_stop_motion(0, 1);
-            ahp_gt_stop_motion(1, 1);
-        }
-    }
+    motor_mutex.unlock();
 }
 
 void Line::setActive(bool a)

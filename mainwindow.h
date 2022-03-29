@@ -159,25 +159,24 @@ class MainWindow : public QMainWindow
                 }
                 for(int i = 0; i < Lines.count(); i++)
                 {
+                    Lines[i]->setMode(mode);
                     Lines[i]->getMagnitude()->clear();
                     Lines[i]->getPhase()->clear();
                     Lines[i]->getMagnitudes()->clear();
                     Lines[i]->getPhases()->clear();
                     Lines[i]->getCounts()->clear();
                 }
+                for(int i = 0; i < Baselines.count(); i++)
+                    Baselines[i]->setMode(mode);
+                getGraph()->setMode(m);
                 if(mode == Counter || mode == HolographIQ || mode == HolographII)
                 {
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur | CAP_ENABLE));
                     resetTimestamp();
+                    threadsStopped = false;
+                    if(mode == HolographIQ || mode == HolographII)
+                        vlbiThread->start();
                 }
-                for(int i = 0; i < Lines.count(); i++)
-                    Lines[i]->setMode(mode);
-                for(int i = 0; i < Baselines.count(); i++)
-                    Baselines[i]->setMode(mode);
-                getGraph()->setMode(m);
-                threadsStopped = false;
-                if(mode == HolographIQ || mode == HolographII)
-                    vlbiThread->start();
                 startThreads();
             }
         }

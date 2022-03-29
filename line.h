@@ -235,42 +235,6 @@ class Line : public QWidget
         double localpercent;
         void setPercent();
 
-
-        inline bool hasMotorbBus()
-        {
-            return ahp_gt_is_connected();
-        }
-        inline bool queryMotor(int index, int axis = -1)
-        {
-            if(!hasMotorbBus())
-                return false;
-            ahp_gt_select_device(index);
-            if(axis < 0)
-            {
-                ahp_gt_read_values(0);
-                ahp_gt_read_values(1);
-            }
-            else
-                ahp_gt_read_values(axis);
-            return (ahp_gt_get_mc_version() > 0x31);
-        }
-
-        inline bool selectMotor(int index, int axis)
-        {
-            if(!hasMotorbBus())
-                return false;
-            return queryMotor(Motors[index], axis);
-        }
-
-        inline int addMotor(int address)
-        {
-            if(!hasMotorbBus())
-                return -1;
-            if(queryMotor(address))
-                Motors.append(address);
-            return Motors.count() - 1;
-        }
-
         void addToVLBIContext();
         void removeFromVLBIContext();
 
@@ -322,9 +286,6 @@ class Line : public QWidget
         bool DarkTaken();
         void runClicked(bool checked = false);
         void resetTimestamp();
-        void gotoRaDec(double ra, double dec);
-        void startTracking(double ra_rate, double dec_rate);
-        void stopMotors();
         inline bool isForkMount() { return fork; }
         void lock()
         {
@@ -334,39 +295,29 @@ class Line : public QWidget
         {
             mutex.unlock();
         }
+        static void motor_lock();
+        static void motor_unlock();
+        int getRailIndex() {
+            return RailMotorIndex;
+        }
+        int getMountIndex() {
+            return MountMotorIndex;
+        }
+        void flipMount(bool flip) {
+            flipped = flip;
+        }
+        bool isFlipped() {
+            return flipped;
+        }
+        void gotoRaDec(double ra, double dec);
+        void startSlewing(double ra_rate, double dec_rate);
+        void startTracking();
+        void haltMotors();
+
     private:
+        static QMutex motor_mutex;
         QMutex mutex;
         double Frequency { LIGHTSPEED };
-        inline double getMotorAxisPosition(int axis, int index = 0)
-        {
-            if(!hasMotorbBus()) return 0.0;
-            selectMotor(axis, index);
-            return ahp_gt_get_position(axis);
-        }
-        inline void setMotorAxisPosition(int axis, double value, int index = 0)
-        {
-            if(!hasMotorbBus()) return;
-            selectMotor(axis, index);
-            ahp_gt_set_position(axis, value);
-        }
-        inline void moveMotorAxisBy(int axis, double value, double speed, int index = 0)
-        {
-            if(!hasMotorbBus()) return;
-            selectMotor(axis, index);
-            ahp_gt_goto_relative(axis, value, speed);
-        }
-        inline void moveMotorAxisTo(int axis, double value, double speed, int index = 0)
-        {
-            if(!hasMotorbBus()) return;
-            selectMotor(axis, index);
-            ahp_gt_goto_absolute(axis, value, speed);
-        }
-        inline void stopMotorAxis(int axis, int index = 0)
-        {
-            if(!hasMotorbBus()) return;
-            selectMotor(axis, index);
-            ahp_gt_stop_motion(axis, false);
-        }
         void stretch(QLineSeries* series);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
@@ -381,8 +332,8 @@ class Line : public QWidget
         dsp_location location { 0 };
         QString name;
         int stop { 1 };
-        int RailMotorIndex {0};
-        int MountMotorIndex {0};
+        int RailMotorIndex {1};
+        int MountMotorIndex {1};
         Mode mode { Counter };
         QSettings *settings { nullptr };
         QList<Line*> *parents { nullptr };

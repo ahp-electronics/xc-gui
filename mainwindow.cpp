@@ -295,10 +295,12 @@ MainWindow::MainWindow(QWidget *parent)
                                 {
                                     getGraph()->setControlFD(controlFD);
                                     if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
+                                    {
                                         if(controlFD != -1)
                                         {
                                             settings->setValue("control_connection", controlport);
                                         }
+                                    }
                                 }
                             }
                             else
@@ -354,9 +356,6 @@ MainWindow::MainWindow(QWidget *parent)
                             }
                             unlock_vlbi();
                         });
-                        connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), Lines[l], &Line::gotoRaDec);
-                        connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startTracking), Lines[l], &Line::startTracking);
-                        connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::stopMotors);
                         getGraph()->addSeries(Lines[l]->getMagnitude());
                         getGraph()->addSeries(Lines[l]->getPhase());
                         ui->Lines->addTab(Lines[l], name);
@@ -443,6 +442,51 @@ MainWindow::MainWindow(QWidget *parent)
     connect(getGraph(), static_cast<void (Graph::*)(double)>(&Graph::frequencyUpdated),
             [ = ](double freq)
     {
+    });
+    connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), this, [=] (double ra, double dec) {
+        for(int l = 0; l < Lines.count(); l++) {
+            if(ahp_gt_is_connected()) {
+                if(ahp_gt_is_detected(Lines[l]->getMountIndex())) {
+                    timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
+                    double j2000 = vlbi_time_timespec_to_J2000time(ts);
+                    double lst = vlbi_time_J2000time_to_lst(j2000, Lines[l]->getLongitude());
+                    double ha = vlbi_astro_get_local_hour_angle(lst, ra);
+                    ha *= M_PI / 12.0;
+                    ha += M_PI / 2.0;
+                    dec *= M_PI / 180.0;
+                    dec -= M_PI / 2.0;
+                    if(!Lines[l]->isForkMount()) {
+                        if(ha < M_PI * 3.0 / 2.0 && ha > M_PI / 2.0)
+                            dec = -dec;
+                        if((ha > M_PI / 2.0 && ha < M_PI) || (ha > M_PI * 3.0 / 2.0 && ha < M_PI * 2.0)) {
+                            Lines[l]->flipMount(true);
+                            ha = M_PI - ha;
+                            dec = -dec;
+                        } else {
+                            Lines[l]->flipMount(false);
+                        }
+                        if(ha > M_PI) {
+                            ha -= M_PI;
+                        }
+                    }
+                    ahp_gt_select_device(Lines[l]->getMountIndex());
+                    ahp_gt_goto_absolute(0, ha, 800.0);
+                    ahp_gt_goto_absolute(1, dec, 800.0);
+                }
+            }
+        }
+    });
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), this, [=] () {
+        for(int l = 0; l < Lines.count(); l++)
+            Lines[l]->startTracking();
+    });
+    connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), this, [=] (double ra, double dec) {
+        for(int l = 0; l < Lines.count(); l++)
+            Lines[l]->startSlewing(ra, dec);
+    });
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), this, [=]() {
+        for(int l = 0; l < Lines.count(); l++)
+            Lines[l]->haltMotors();
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
