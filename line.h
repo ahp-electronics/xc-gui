@@ -231,6 +231,11 @@ class Line : public QWidget
         }
 
         void setLocation(dsp_location location);
+        void updateLocation();
+        void updateRa();
+        void updateDec();
+        bool isRailBusy();
+        bool isMountBusy();
         double *percent;
         double localpercent;
         void setPercent();
@@ -313,8 +318,13 @@ class Line : public QWidget
         void startSlewing(double ra_rate, double dec_rate);
         void startTracking();
         void haltMotors();
+        double getRa() { return Ra; }
+        double getDec() { return Dec; }
+        void setRa(double ra) { Ra = ra; }
+        void setDec(double dec) { Dec = dec; }
 
     private:
+        double Ra, Dec;
         static QMutex motor_mutex;
         QMutex mutex;
         double Frequency { LIGHTSPEED };

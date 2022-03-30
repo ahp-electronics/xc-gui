@@ -333,29 +333,122 @@ void Line::runClicked(bool checked)
     }
 }
 
+void Line::setLocation(dsp_location l)
+{
+    saveSetting("location_x", l.xyz.x);
+    saveSetting("location_y", l.xyz.y);
+    saveSetting("location_z", l.xyz.z);
+}
+
+void Line::updateLocation()
+{
+    if(stream != nullptr)
+    {
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(getRailIndex())) {
+                lock();
+                double x = ahp_gt_get_position(0);
+                x *= ahp_gt_get_totalsteps(0);
+                x /= M_PI / 2;
+                x /= 1000.0;
+                double y = ahp_gt_get_position(1);
+                y *= ahp_gt_get_totalsteps(1);
+                y /= M_PI / 2;
+                y /= 1000.0;
+                stream->location->xyz.x = x;
+                stream->location->xyz.y = y;
+                unlock();
+            }
+        }
+    }
+}
+
+void Line::updateRa()
+{
+    if(stream != nullptr)
+    {
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(getMountIndex())) {
+                double v = ahp_gt_get_position(0);
+                v *= 12.0;
+                v /= M_PI;
+                setRa(v);
+            }
+        }
+    }
+}
+
+void Line::updateDec()
+{
+    if(stream != nullptr)
+    {
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(getMountIndex())) {
+                double v = ahp_gt_get_position(1);
+                v *= 180.0;
+                v /= M_PI;
+                setDec(v);
+            }
+        }
+    }
+}
+
+bool Line::isRailBusy()
+{
+    if(stream != nullptr)
+    {
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(getRailIndex())) {
+                bool busy = ahp_gt_is_axis_moving(0);
+                busy |= ahp_gt_is_axis_moving(0);
+                return busy;
+            }
+        }
+    }
+    return false;
+}
+
+bool Line::isMountBusy()
+{
+    if(stream != nullptr)
+    {
+        if(ahp_gt_is_connected()) {
+            if(ahp_gt_is_detected(getMountIndex())) {
+                bool busy = ahp_gt_is_axis_moving(0);
+                busy |= ahp_gt_is_axis_moving(0);
+                return busy;
+            }
+        }
+    }
+    return false;
+}
+
 void Line::gotoRaDec(double ra, double dec) {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(MountMotorIndex)) {
+        if(ahp_gt_is_detected(getMountIndex())) {
             timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
             double j2000 = vlbi_time_timespec_to_J2000time(ts);
             double lst = vlbi_time_J2000time_to_lst(j2000, getLongitude());
             double ha = vlbi_astro_get_local_hour_angle(lst, ra);
-            double current_ha = ahp_gt_get_position(0);
-            double current_dec = ahp_gt_get_position(1);
-            ha *= M_PI / 24.0;
-            ha += M_PI / 2;
+            ha *= M_PI / 12.0;
+            ha += M_PI / 2.0;
             dec *= M_PI / 180.0;
             dec -= M_PI / 2.0;
-            if(current_ha > 0.0 && ha < 0.0) {
-                flipped = true;
-            } else if(current_ha < 0.0 && ha > 0.0) {
-                flipped = false;
+            if(!isForkMount()) {
+                if(ha < M_PI * 3.0 / 2.0 && ha > M_PI / 2.0)
+                    dec = -dec;
+                if((ha > M_PI / 2.0 && ha < M_PI) || (ha > M_PI * 3.0 / 2.0 && ha < M_PI * 2.0)) {
+                    flipMount(true);
+                    ha = M_PI - ha;
+                    dec = -dec;
+                } else {
+                    flipMount(false);
+                }
+                if(ha > M_PI) {
+                    ha -= M_PI;
+                }
             }
-            if(flipped && !isForkMount())
-                ha = M_PI - ha;
-            else
-                dec = -dec;
-            ahp_gt_select_device(MountMotorIndex);
+            ahp_gt_select_device(getMountIndex());
             ahp_gt_goto_absolute(0, ha, 800.0);
             ahp_gt_goto_absolute(1, dec, 800.0);
         }
@@ -581,13 +674,6 @@ void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int id
         stacked->insert(x, y);
     }
     series->append(x, y);
-}
-
-void Line::setLocation(dsp_location l)
-{
-    saveSetting("location_x", l.xyz.x);
-    saveSetting("location_y", l.xyz.y);
-    saveSetting("location_z", l.xyz.z);
 }
 
 void Line::stretch(QLineSeries* series)
