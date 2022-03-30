@@ -52,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
         f->close();
         f->~QFile();
     }
-    settings = new QSettings(ini, QSettings::Format::IniFormat);
+    settings = new QSettings(ini, QSettings::Format::NativeFormat);
     connected = false;
     TimeRange = 10;
     f_stdout = tmpfile();
@@ -255,6 +255,7 @@ MainWindow::MainWindow(QWidget *parent)
                                 if(motorFD != -1)
                                 {
                                     getGraph()->setMotorFD(motorFD);
+                                    ahp_gt_select_device(0);
                                     if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
                                         settings->setValue("motor_connection", motorport);
                                 }

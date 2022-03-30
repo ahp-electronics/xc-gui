@@ -38,6 +38,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui(new Ui::Line)
 {
     setAccessibleName("Line");
+    ui->setupUi(this);
     settings = s;
     localpercent = 0;
     parents = p;
@@ -60,10 +61,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getMagnitudes()->setName(name + " (phases)");
     line = n;
     flags = 0;
-    ui->setupUi(this);
-    start = ui->StartLine->value();
-    end = ui->EndLine->value();
-    len = end - start;
+    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 1);
+    ui->LineDelay->setRange(0, ahp_xc_get_delaysize() - 1);
+    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
+    ui->StartLine->setRange(0, ahp_xc_get_delaysize() - 6);
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
         flags &= ~(1 << 0);
@@ -274,12 +275,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 1);
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize() * 2 - 7);
-    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
-    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
-    ui->LineDelay->setRange(0, ahp_xc_get_delaysize() - 1);
+    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->LineDelay->setValue(readInt("LineDelay", ui->LineDelay->minimum()));
     ui->IDFT->setChecked(readBool("IDFT", false));
