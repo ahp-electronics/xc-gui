@@ -400,7 +400,7 @@ bool Line::isRailBusy()
         if(ahp_gt_is_connected()) {
             if(ahp_gt_is_detected(getRailIndex())) {
                 bool busy = ahp_gt_is_axis_moving(0);
-                busy |= ahp_gt_is_axis_moving(0);
+                busy |= ahp_gt_is_axis_moving(1);
                 return busy;
             }
         }
@@ -415,7 +415,7 @@ bool Line::isMountBusy()
         if(ahp_gt_is_connected()) {
             if(ahp_gt_is_detected(getMountIndex())) {
                 bool busy = ahp_gt_is_axis_moving(0);
-                busy |= ahp_gt_is_axis_moving(0);
+                busy |= ahp_gt_is_axis_moving(1);
                 return busy;
             }
         }
