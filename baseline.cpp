@@ -313,25 +313,15 @@ void Baseline::stackCorrelations()
     if(spectrum != nullptr && npackets >= len)
     {
         int lag = head_size;
+        int _lag = lag;
         for (int x = 0, z = 0; x < len; x++, z++)
         {
-            if(x == head_size)
+            lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() + head_size;
+            if(lag < len && lag >= 0)
             {
-                lag = head_size;
-                continue;
-            }
-            int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() + head_size;
-            if(_lag < len && _lag >= 0)
-            {
-                for(int y = lag; y != _lag; y += (lag > _lag ? -1 : (lag < _lag) ? 1 : 0))
-                {
-                    magnitude_buf[y] = magnitude_buf[lag];
-                    phase_buf[y] = phase_buf[lag];
-                }
-                lag = _lag;
                 if(mode == CrosscorrelatorIQ)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts;
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
                 else if(mode == CrosscorrelatorII)
@@ -339,6 +329,12 @@ void Baseline::stackCorrelations()
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
                     phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / spectrum[z].correlations[0].counts;
                 }
+                for(int y = lag; y > 0 && y < len; y += (_lag > lag ? -1 : 1))
+                {
+                    magnitude_buf[y] = magnitude_buf[lag];
+                    phase_buf[y] = phase_buf[lag];
+                }
+                _lag = lag;
             }
         }
         if(getLine1()->Idft() && getLine2()->Idft())

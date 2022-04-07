@@ -820,7 +820,7 @@ void Line::stackCorrelations()
                 lag = _lag;
                 if(mode == Autocorrelator)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts;
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
             }
