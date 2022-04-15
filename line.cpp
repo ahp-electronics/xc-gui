@@ -141,18 +141,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         elemental->setSampleSize(value);
         saveSetting("SampleSize", ui->SampleSize->value());
     });
+    connect(this, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Line::UpdateBufferSizes);
     connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         if(ui->StartLine->value() >= ui->EndLine->value() - 5)
         {
             ui->EndLine->setValue(ui->StartLine->value() + 5);
         }
-        start = ui->StartLine->value();
-        end = ui->EndLine->value();
-        len = end - start;
-        setMagnitudeSize(len);
-        setPhaseSize(len);
-        setDftSize(len);
         emit updateBufferSizes();
         saveSetting("StartLine", ui->StartLine->value());
     });
@@ -162,12 +157,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         {
             ui->StartLine->setValue(ui->EndLine->value() - 5);
         }
-        start = ui->StartLine->value();
-        end = ui->EndLine->value();
-        len = end - start;
-        setMagnitudeSize(len);
-        setPhaseSize(len);
-        setDftSize(len);
         emit updateBufferSizes();
         saveSetting("EndLine", ui->EndLine->value());
     });
@@ -291,25 +280,20 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     setFlag(4, readBool(ui->flag4->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
-    if(haveSetting("Dark"))
-    {
-        QStringList darkstring = readString("Dark", "").split(";");
-        for(int x = 0; x < darkstring.length(); x++)
-        {
-            QStringList lag_value = darkstring[x].split(",");
-            if(lag_value.length() == 2)
-                getDark()->insert(lag_value[0].toDouble(), lag_value[1].toDouble());
-        }
-        if(getDark()->count() > 0)
-        {
-            ui->TakeDark->setText("Clear Dark");
-            getMagnitude()->setName(name + " magnitude (residuals)");
-        }
-    }
-    getDark()->clear();
+    GetDark();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
     setActive(false);
+}
+
+void Line::UpdateBufferSizes()
+{
+    start = ui->StartLine->value();
+    end = ui->EndLine->value();
+    len = end - start;
+    setMagnitudeSize(len);
+    setPhaseSize(len);
+    setDftSize(len);
 }
 
 void Line::runClicked(bool checked)
@@ -663,6 +647,8 @@ void Line::removeFromVLBIContext()
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
     y /= stack;
+    if(getDark()->contains(x))
+        y -= getDark()->value(x);
     if(stacked->count() > idx)
     {
         y += stacked->values().at(idx) * (stack - 1) / stack;
@@ -732,20 +718,6 @@ bool Line::Align()
     return ui->ElementalAlign->isChecked();
 }
 
-bool Line::DarkTaken()
-{
-    if(ui->TakeDark->text() == "Apply Dark")
-    {
-        ui->TakeDark->setText("Clear Dark");
-        return true;
-    }
-    else
-    {
-        ui->TakeDark->setText("Apply Dark");
-        return false;
-    }
-}
-
 void Line::motor_lock()
 {
     while(!motor_mutex.tryLock());
@@ -769,6 +741,39 @@ void Line::setActive(bool a)
     }
     running = a;
     activeStateChanged(this);
+}
+
+bool Line::DarkTaken()
+{
+    if(ui->TakeDark->text() == "Apply Dark")
+    {
+        ui->TakeDark->setText("Clear Dark");
+        return true;
+    }
+    else
+    {
+        ui->TakeDark->setText("Apply Dark");
+        return false;
+    }
+}
+
+void Line::GetDark()
+{
+    if(haveSetting("Dark"))
+    {
+        QStringList darkstring = readString("Dark", "").split(";");
+        for(int x = 0; x < darkstring.length(); x++)
+        {
+            QStringList lag_value = darkstring[x].split(",");
+            if(lag_value.length() == 2)
+                getDark()->insert(lag_value[0].toDouble(), lag_value[1].toDouble());
+        }
+        if(getDark()->count() > 0)
+        {
+            ui->TakeDark->setText("Clear Dark");
+            getMagnitude()->setName(name + " magnitude (residuals)");
+        }
+    }
 }
 
 void Line::TakeDark(Line *sender)

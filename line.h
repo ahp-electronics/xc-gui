@@ -289,6 +289,8 @@ class Line : public QWidget
         }
         void TakeDark(Line* sender);
         bool DarkTaken();
+        void GetDark();
+        void UpdateBufferSizes();
         void runClicked(bool checked = false);
         void resetTimestamp();
         inline bool isForkMount() { return fork; }

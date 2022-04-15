@@ -185,6 +185,8 @@ void Baseline::setMode(Mode m)
 void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
     y /= stack;
+    if(getDark()->contains(x))
+        y -= getDark()->value(x);
     if(stacked->count() > idx)
     {
         y += stacked->values().at(idx) * (stack - 1) / stack;
@@ -394,15 +396,14 @@ void Baseline::plot(bool success, double o, double s)
         for (int x = 0; x < elemental->getStream()->len; x++)
         {
             stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-            if(!getLine1()->Idft() || !getLine2()->Idft())
+            if(!getLine1()->Idft() || !getLine2()->Idft() || mode == CrosscorrelatorII)
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
         }
     }
     elemental->getStream()->len ++;
     elemental->getStream()->len ++;
     stretch(getMagnitude());
-    if(mode == CrosscorrelatorII)
-        stretch(getPhase());
+    stretch(getPhase());
 }
 
 Baseline::~Baseline()
