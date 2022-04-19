@@ -141,22 +141,23 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         elemental->setSampleSize(value);
         saveSetting("SampleSize", ui->SampleSize->value());
     });
-    connect(this, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Line::UpdateBufferSizes);
     connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(ui->StartLine->value() >= ui->EndLine->value() - 5)
+        if(ui->StartLine->value() + ui->EndLine->value() > ahp_xc_get_delaysize() - 2)
         {
-            ui->EndLine->setValue(ui->StartLine->value() + 5);
+            ui->EndLine->setValue(ahp_xc_get_delaysize() - ui->StartLine->value());
         }
+        UpdateBufferSizes();
         emit updateBufferSizes();
         saveSetting("StartLine", ui->StartLine->value());
     });
     connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(ui->StartLine->value() >= ui->EndLine->value() - 5)
+        if(ui->StartLine->value() + ui->EndLine->value() > ahp_xc_get_delaysize() - 2)
         {
-            ui->StartLine->setValue(ui->EndLine->value() - 5);
+            ui->EndLine->setValue(ahp_xc_get_delaysize() - ui->StartLine->value());
         }
+        UpdateBufferSizes();
         emit updateBufferSizes();
         saveSetting("EndLine", ui->EndLine->value());
     });
@@ -289,8 +290,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
 void Line::UpdateBufferSizes()
 {
     start = ui->StartLine->value();
-    end = ui->EndLine->value();
-    len = end - start;
+    len = ui->EndLine->value();
     setMagnitudeSize(len);
     setPhaseSize(len);
     setDftSize(len);
@@ -812,22 +812,23 @@ void Line::stackCorrelations()
     if(spectrum != nullptr && npackets == len)
     {
         int lag = 1;
+        int _lag = lag;
         for (int x = 0, z = 0; x < len; x++, z++)
         {
-            int _lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() - start;
-            if(_lag < len && _lag >= 0)
+            int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
+            if(lag < len && lag >= 0)
             {
-                for(int y = lag + 1; y < _lag && y < len; y++)
-                {
-                    magnitude_buf[y] = magnitude_buf[lag];
-                    phase_buf[y] = phase_buf[lag];
-                }
-                lag = _lag;
                 if(mode == Autocorrelator)
                 {
                     magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
+                for(int y = lag; y < len; y++)
+                {
+                    magnitude_buf[y] = magnitude_buf[lag];
+                    phase_buf[y] = phase_buf[lag];
+                }
+                _lag = lag;
             }
         }
         if(Idft())
@@ -853,6 +854,7 @@ void Line::stackCorrelations()
 void Line::plot(bool success, double o, double s)
 {
     double timespan = ahp_xc_get_sampletime();
+    offset = start * timespan;
     if(success)
     {
         timespan = ahp_xc_get_sampletime() / s;

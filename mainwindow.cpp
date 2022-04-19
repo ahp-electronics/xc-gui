@@ -196,6 +196,8 @@ MainWindow::MainWindow(QWidget *parent)
         controlport = ui->ControlPort->currentText();
         settings->beginGroup("Connection");
         xcFD = -1;
+        bool local = false;
+        bool try_high = false;
         if(xcport == "no connection")
         {
             settings->setValue("xc_connection", xcport);
@@ -226,7 +228,10 @@ MainWindow::MainWindow(QWidget *parent)
             }
             else
             {
-                ahp_xc_connect(xcport.toUtf8(), false);
+                local = true;
+try_high_rate:
+                ahp_xc_connect(xcport.toUtf8(), try_high);
+                try_high = true;
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
@@ -411,6 +416,8 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             }
             else {
+                if(local & try_high)
+                    goto try_high_rate;
                 ahp_xc_disconnect();
                 return;
             }
@@ -479,38 +486,35 @@ MainWindow::MainWindow(QWidget *parent)
                             memcpy(&stream->location[stream->len - 1], line->getLocation(), sizeof(dsp_location));
                             line->unlock();
                         }
-                        if(getMode() == HolographIQ)
+                        for(int y = x + 1; y < Lines.count(); y++)
                         {
-                            for(int y = x + 1; y < Lines.count(); y++)
+                            Baseline * line = Baselines[idx];
+                            if(line->isActive())
                             {
-                                Baseline * line = Baselines[idx];
-                                if(line->isActive())
+                                dsp_stream_p stream = line->getStream();
+                                if(stream == nullptr) continue;
+                                line->lock();
+                                dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
+                                dsp_stream_alloc_buffer(stream, stream->len);
+                                double offset1 = 0, offset2 = 0;
+                                vlbi_get_offsets(getVLBIContext(), packettime, Lines[x]->getLastName().toStdString().c_str(),
+                                                 Lines[y]->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
+                                offset1 /= ahp_xc_get_sampletime();
+                                offset2 /= ahp_xc_get_sampletime();
+                                offset1 ++;
+                                offset2 ++;
+                                if(ahp_xc_has_crosscorrelator())
                                 {
-                                    dsp_stream_p stream = line->getStream();
-                                    if(stream == nullptr) continue;
-                                    line->lock();
-                                    dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-                                    dsp_stream_alloc_buffer(stream, stream->len);
-                                    double offset1 = 0, offset2 = 0;
-                                    vlbi_get_offsets(getVLBIContext(), packettime, Lines[x]->getLastName().toStdString().c_str(),
-                                                     Lines[y]->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
-                                    offset1 /= ahp_xc_get_sampletime();
-                                    offset2 /= ahp_xc_get_sampletime();
-                                    offset1 ++;
-                                    offset2 ++;
-                                    if(ahp_xc_has_crosscorrelator())
-                                    {
-                                        ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 1);
-                                        ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 1);
-                                    }
-                                    stream->dft.fftw[stream->len - 1][0] = (double)
-                                                                           packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                                    stream->dft.fftw[stream->len - 1][1] = (double)
-                                                                           packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
-                                    line->unlock();
+                                    ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 1);
+                                    ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 1);
                                 }
-                                idx++;
+                                stream->dft.fftw[stream->len - 1][0] = (double)
+                                                                       packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                                stream->dft.fftw[stream->len - 1][1] = (double)
+                                                                       packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                                line->unlock();
                             }
+                            idx++;
                         }
                     }
                 }

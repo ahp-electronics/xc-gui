@@ -210,9 +210,9 @@ class Baseline : public QWidget
         int Index;
         int start1 {0};
         int start2 {0};
-        int end1 {0};
-        int end2 {0};
         int len {1};
+        int tail_size {1};
+        int head_size {1};
         QSettings *settings;
         QString name;
         bool scanning;

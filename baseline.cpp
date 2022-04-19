@@ -129,9 +129,9 @@ void Baseline::updateBufferSizes()
 {
     start1 = getLine1()->getStartLine();
     start2 = getLine2()->getStartLine();
-    end1 = getLine1()->getEndLine();
-    end2 = getLine2()->getEndLine();
-    len = end1 - start1 + end2 - start2;
+    head_size = getLine1()->getEndLine();
+    tail_size = getLine2()->getEndLine();
+    len = head_size + tail_size;
     setMagnitudeSize(len);
     setPhaseSize(len);
 }
@@ -305,33 +305,28 @@ void Baseline::stackCorrelations()
     getLine1()->setPercentPtr(&percent);
     getLine2()->setPercentPtr(&percent);
     updateBufferSizes();
-    int tail_size = end2 - start2;
-    int head_size = end1 - start1;
 
     stop = 0;
     int npackets = 0;
     npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
                head_size, start2, tail_size, &stop, &percent);
-    if(spectrum != nullptr && npackets >= len)
+    if(spectrum != nullptr && npackets > 0)
     {
-        int lag = head_size;
+        int lag = head_size-1;
         int _lag = lag;
-        for (int x = 0, z = 0; x < len; x++, z++)
+        bool tail = false;
+        for (int x = 0, z = 0; x < npackets; x++, z++)
         {
-            lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime() + head_size;
-            if(lag < len && lag >= 0)
+            lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
+            tail = (lag >= 0);
+            if (tail)
+                lag --;
+            lag += head_size;
+            if(lag < npackets && lag >= 0)
             {
-                if(mode == CrosscorrelatorIQ)
-                {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
-                }
-                else if(mode == CrosscorrelatorII)
-                {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].real / spectrum[z].correlations[0].counts;
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].imaginary / spectrum[z].correlations[0].counts;
-                }
-                for(int y = lag; y > 0 && y < len; y += (_lag > lag ? -1 : 1))
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
+                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {
                     magnitude_buf[y] = magnitude_buf[lag];
                     phase_buf[y] = phase_buf[lag];
@@ -341,21 +336,12 @@ void Baseline::stackCorrelations()
         }
         if(getLine1()->Idft() && getLine2()->Idft())
         {
-            if(mode == CrosscorrelatorIQ)
-            {
-                elemental->setMagnitude(&magnitude_buf[1], len);
-                elemental->setPhase(&phase_buf[1], len);
-                elemental->idft();
-            }
-            else
-            {
-                elemental->setReal(&magnitude_buf[1], len);
-                elemental->setImaginary(&phase_buf[1], len);
-                elemental->dft(1);
-            }
+            elemental->setMagnitude(magnitude_buf, len);
+            elemental->setPhase(phase_buf, len);
+            elemental->idft();
         }
         else
-            elemental->setBuffer(&magnitude_buf[1], len);
+            elemental->setBuffer(magnitude_buf, len);
         if(getLine1()->Align() && getLine2()->Align())
             elemental->run();
         else
@@ -395,9 +381,17 @@ void Baseline::plot(bool success, double o, double s)
     {
         for (int x = 0; x < elemental->getStream()->len; x++)
         {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-            if(!getLine1()->Idft() || !getLine2()->Idft() || mode == CrosscorrelatorII)
+            if(getLine1()->Idft() && getLine2()->Idft()) {
+                if(mode == CrosscorrelatorII) {
+                    stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->magnitude->magnitude->buf[x]);
+                    stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)elemental->getStream()->magnitude->phase->buf[x]);
+                } else if(mode == CrosscorrelatorIQ) {
+                    stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+                }
+            } else {
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)magnitude_buf[x]);
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+            }
         }
     }
     elemental->getStream()->len ++;

@@ -269,7 +269,7 @@ class Line : public QWidget
         }
         inline int getEndLine()
         {
-            return end;
+            return len;
         }
         inline double getLatitude()
         {
