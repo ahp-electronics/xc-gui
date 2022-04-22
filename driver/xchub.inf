@@ -1,0 +1,55 @@
+;
+;
+; Installs WinUsb
+;
+
+[Version]
+Signature = "$Windows NT$"
+Class     = USBDevice
+ClassGUID = {50906cb8-ba12-11d1-bf5d-0000f805f530}
+Provider  = %ManufacturerName%
+CatalogFile = xchub.cat
+DriverVer=09/04/2012,13.54.20.543
+
+; ========== Manufacturer/Models sections ===========
+
+[Manufacturer]
+%ManufacturerName% = MultiPort,NTamd64
+
+[MultiPort.NTamd64]
+%DeviceName%=MultiPort_Install, USB\Vid_a0a0&Pid_0004
+
+; ========== Class definition (for Windows 8 and ealier versions)===========
+
+[ClassInstall32]
+AddReg = ClassInstall_AddReg
+
+[ClassInstall_AddReg]
+HKR,,,,%ClassName%
+HKR,,NoInstallClass,,1
+HKR,,IconPath,%REG_MULTI_SZ%,"%systemroot%\system32\setupapi.dll,-20"
+HKR,,LowerLogoVersion,,5.2
+
+; =================== Installation ===================
+
+[MultiPort_Install]
+Include=usb.inf,port.inf
+Needs=Composite.Dev,Port.NTamd64
+Services=MultiPort_Install.Services
+AddReg=MultiPort_Install.AddReg
+
+[MultiPort_Install.Services]
+Include=usb.inf
+Needs=Composite.Dev.Services
+
+[MultiPort_Install.AddReg]
+HKR,,EnumeratorClass,0x00000001,02,00,00
+
+[Strings]
+ManufacturerName="AHP"
+ClassName="Universal Serial Bus devices"
+DeviceName="AHP XC Hub"
+XCCommPort="XC Communication Port"
+SyncCommPort="Synchronized Communication Port"
+CtlCommPort="Control Communication Port"
+REG_MULTI_SZ = 0x00010000
