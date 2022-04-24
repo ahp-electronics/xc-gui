@@ -113,6 +113,7 @@ class MainWindow : public QMainWindow
         }
         inline void freePacket()
         {
+            ahp_xc_enable_intensity_crosscorrelator(false);
             ahp_xc_free_packet(packet);
         }
         inline Graph *getGraph()
@@ -180,13 +181,14 @@ class MainWindow : public QMainWindow
                 startThreads();
             }
         }
-        void setVoltage(unsigned char level);
+        void setVoltage(int level);
         void resetTimestamp();
         QDateTime start;
         Thread *readThread;
         Thread *uiThread;
         Thread *vlbiThread;
         Thread *motorThread;
+        Thread *controlThread;
 
         inline int getMotorHandle()
         {
@@ -236,6 +238,7 @@ class MainWindow : public QMainWindow
             mutex.unlock();
         }
     private:
+        int currentVoltage {0};
         FILE *f_stdout;
         int threadsStopped { 1 };
         void plotModel(QImage* picture, char* model);

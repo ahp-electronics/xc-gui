@@ -322,7 +322,7 @@ void Baseline::stackCorrelations()
             if (tail)
                 lag --;
             lag += head_size;
-            if(lag < npackets && lag >= 0)
+            if(lag < len && lag >= 0)
             {
                 magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
@@ -382,12 +382,7 @@ void Baseline::plot(bool success, double o, double s)
         for (int x = 0; x < elemental->getStream()->len; x++)
         {
             if(getLine1()->Idft() && getLine2()->Idft()) {
-                if(mode == CrosscorrelatorII) {
-                    stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->magnitude->magnitude->buf[x]);
-                    stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)elemental->getStream()->magnitude->phase->buf[x]);
-                } else if(mode == CrosscorrelatorIQ) {
-                    stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
-                }
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
             } else {
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)magnitude_buf[x]);
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);

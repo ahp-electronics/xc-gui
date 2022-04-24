@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
     uiThread = new Thread(this, 200, 100);
     readThread = new Thread(this, 100, 100);
     vlbiThread = new Thread(this, 4000, 1000);
-    motorThread = new Thread(this, 1000, 1000);
+    motorThread = new Thread(this, 500, 500);
     Elemental::loadCatalog();
     graph = new Graph(settings, this);
     int starty = 90;
@@ -120,9 +120,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
     {
-        ui->voltageLabel->setText("Voltage: " + QString::number(value * 150 / 127) + " V~");
         settings->setValue("Voltage", value);
-        setVoltage(value);
     });
     connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [ = ](int value)
@@ -676,6 +674,8 @@ try_high_rate:
             ftruncate(fileno(f_stdout), 0);
         }
         getGraph()->paint();
+        ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 150 / 127) + " V~");
+        ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
@@ -706,7 +706,15 @@ try_high_rate:
     connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
         MainWindow* main = (MainWindow*)thread->getParent();
-        int fd = main->getMotorFD();
+        int fd = -1;
+        fd = main->getControlFD();
+        if(fd >= 0) {
+            if(currentVoltage != ui->Voltage->value()) {
+                currentVoltage = currentVoltage < ui->Voltage->value() ? currentVoltage + 3 : currentVoltage -5;
+                setVoltage(currentVoltage);
+            }
+        }
+        fd = main->getMotorFD();
         if(fd >= 0)
         {
             if(ahp_gt_is_connected())
@@ -717,6 +725,7 @@ try_high_rate:
         thread->unlock();
     });
     resize(1280, 720);
+    motorThread->start();
     uiThread->start();
 }
 
@@ -733,6 +742,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 void MainWindow::startThreads()
 {
     readThread->start();
+    motorThread->start();
 }
 
 void MainWindow::stopThreads()
@@ -759,11 +769,13 @@ void MainWindow::resetTimestamp()
     lastpackettime = J2000_starttime;
 }
 
-void MainWindow::setVoltage(unsigned char level)
+void MainWindow::setVoltage(int level)
 {
-    unsigned char v = 0x80 | (level & 0x7f);
-    if(controlFD >= 0)
+    level = Min(255, Max(0, level));
+    unsigned char v = 0xff - (level & 0x7f);
+    if(controlFD >= 0) {
         write(controlFD, &v, 1);
+    }
 }
 
 MainWindow::~MainWindow()

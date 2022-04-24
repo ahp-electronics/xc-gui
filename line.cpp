@@ -820,8 +820,8 @@ void Line::stackCorrelations()
             {
                 if(mode == Autocorrelator)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude /sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary); //real;
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase; //imaginary
                 }
                 for(int y = lag; y < len; y++)
                 {
@@ -879,7 +879,7 @@ void Line::plot(bool success, double o, double s)
     {
         for (int x = 1; x < elemental->getStream()->len - 1; x++)
         {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)magnitude_buf[x]);
             if(!Idft())
                 stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
         }
