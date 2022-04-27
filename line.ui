@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1211</width>
+    <width>1102</width>
     <height>150</height>
    </rect>
   </property>
@@ -189,7 +189,7 @@
      <rect>
       <x>10</x>
       <y>90</y>
-      <width>61</width>
+      <width>51</width>
       <height>21</height>
      </rect>
     </property>
@@ -453,7 +453,7 @@
    <widget class="QCheckBox" name="Histogram">
     <property name="geometry">
      <rect>
-      <x>70</x>
+      <x>60</x>
       <y>90</y>
       <width>91</width>
       <height>21</height>
@@ -490,6 +490,19 @@
     </property>
     <property name="maximum">
      <number>256</number>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="Active">
+    <property name="geometry">
+     <rect>
+      <x>160</x>
+      <y>90</y>
+      <width>51</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>scan</string>
     </property>
    </widget>
   </widget>
@@ -606,26 +619,13 @@
     </property>
    </widget>
   </widget>
-  <widget class="QPushButton" name="Run">
-   <property name="geometry">
-    <rect>
-     <x>1100</x>
-     <y>20</y>
-     <width>91</width>
-     <height>81</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Run</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="Save">
    <property name="geometry">
     <rect>
-     <x>1100</x>
-     <y>110</y>
-     <width>91</width>
-     <height>31</height>
+     <x>930</x>
+     <y>120</y>
+     <width>81</width>
+     <height>21</height>
     </rect>
    </property>
    <property name="text">
@@ -638,7 +638,7 @@
      <x>930</x>
      <y>20</y>
      <width>161</width>
-     <height>121</height>
+     <height>91</height>
     </rect>
    </property>
   </widget>

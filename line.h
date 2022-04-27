@@ -62,6 +62,7 @@ class Line : public QWidget
         bool Idft();
         bool Align();
         bool Differential();
+        bool isEnabled();
         inline bool isActive()
         {
             return running;
@@ -94,7 +95,7 @@ class Line : public QWidget
             return mode;
         }
         Scale getYScale();
-        void stackCorrelations();
+        void stackCorrelations(ahp_xc_sample *spectrum = nullptr, int npackets = 0);
         inline bool applyMedian()
         {
             return applymedian;
@@ -119,13 +120,25 @@ class Line : public QWidget
         {
             percent = &localpercent;
         }
+        inline int getStop()
+        {
+            return *stop;
+        }
+        inline void setStopPtr(int *ptr)
+        {
+            stop = ptr;
+        }
+        inline void resetStopPtr()
+        {
+            stop = &localstop;
+        }
         inline double isScanning()
         {
             return !stop;
         }
         inline void Stop()
         {
-            stop = 1;
+            *stop = 1;
         }
         inline void addBaseline(Baseline* b)
         {
@@ -343,7 +356,8 @@ class Line : public QWidget
         dsp_stream_p stream { nullptr };
         dsp_location location { 0 };
         QString name;
-        int stop { 1 };
+        int *stop;
+        int localstop { 1 };
         int RailMotorIndex {1};
         int MountMotorIndex {1};
         Mode mode { Counter };

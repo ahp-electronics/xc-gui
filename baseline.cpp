@@ -392,7 +392,6 @@ void Baseline::plot(bool success, double o, double s)
     elemental->getStream()->len ++;
     elemental->getStream()->len ++;
     stretch(getMagnitude());
-    stretch(getPhase());
 }
 
 Baseline::~Baseline()

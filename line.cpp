@@ -54,6 +54,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     elemental = new Elemental(this);
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Line::plot);
     resetPercentPtr();
+    resetStopPtr();
     getMagnitude()->setName(name + " magnitude");
     getPhase()->setName(name + " phase");
     getCounts()->setName(name + " (counts)");
@@ -100,7 +101,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), ui->flag4->isChecked());
     });
-    connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::runClicked);
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         emit savePlot();
@@ -255,9 +255,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         getLocation()->xyz.z = (double)value / 1000.0;
         saveSetting("location_z", location.xyz.z);
     });
+    connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
+        saveSetting("scan", ui->Active->isChecked());
+    });
     ui->MountMotorIndex->setValue(readInt("MountMotorIndex", getLineIndex() * 2 + 1));
     ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
 
+    ui->Active->setChecked(readBool("scan", false));
     ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
     ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
     ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
@@ -298,17 +302,6 @@ void Line::UpdateBufferSizes()
 
 void Line::runClicked(bool checked)
 {
-
-    if(ui->Run->text() == "Run")
-    {
-        setActive(true);
-        ui->Run->setText("Stop");
-    }
-    else
-    {
-        setActive(false);
-        ui->Run->setText("Run");
-    }
     ui->Counter->setEnabled(mode == Counter);
     ui->Correlator->setEnabled(false);
     if(mode != Counter)
@@ -607,12 +600,13 @@ void Line::setMode(Mode m)
     ui->Leds->setEnabled(ahp_xc_has_leds());
     ui->Counter->setEnabled(m == Counter);
     resetPercentPtr();
+    resetStopPtr();
     mode = m;
 }
 
 void Line::paint()
 {
-    stop = !isActive();
+    *stop = !isActive();
     if(ui->Progress != nullptr)
     {
         if(mode == Autocorrelator || mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
@@ -698,6 +692,10 @@ void Line::SavePlot()
     data.close();
 }
 
+bool Line::isEnabled() {
+    return ui->Active->isChecked();
+}
+
 bool Line::Differential()
 {
     return getFlag(4);
@@ -740,7 +738,7 @@ void Line::setActive(bool a)
         removeFromVLBIContext();
     }
     running = a;
-    activeStateChanged(this);
+    emit activeStateChanged(this);
 }
 
 bool Line::DarkTaken()
@@ -802,12 +800,10 @@ void Line::TakeDark(Line *sender)
     }
 }
 
-void Line::stackCorrelations()
+void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
 {
     scanning = true;
-    ahp_xc_sample *spectrum = nullptr;
-    stop = 0;
-    int npackets = ahp_xc_scan_autocorrelations(line, &spectrum, start, len, &stop, &localpercent);
+    *stop = 0;
     *percent = 0;
     if(spectrum != nullptr && npackets == len)
     {
@@ -820,8 +816,8 @@ void Line::stackCorrelations()
             {
                 if(mode == Autocorrelator)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude /sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary); //real;
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase; //imaginary
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude /sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 }
                 for(int y = lag; y < len; y++)
                 {
@@ -846,7 +842,6 @@ void Line::stackCorrelations()
             elemental->run();
         else
             elemental->finish();
-        free(spectrum);
     }
     scanning = false;
 }

@@ -106,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->XCPort->setCurrentIndex(0);
     ui->MotorPort->setCurrentIndex(0);
     ui->ControlPort->setCurrentIndex(0);
+    connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &MainWindow::runClicked);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
     {
@@ -151,7 +152,7 @@ MainWindow::MainWindow(QWidget *parent)
         Baselines.clear();
         ui->Lines->clear();
         Lines.clear();
-        if(motorFD >= 0)
+        if(ahp_gt_is_connected())
         {
             if(ahp_gt_is_connected())
                 ahp_gt_disconnect();
@@ -160,10 +161,10 @@ MainWindow::MainWindow(QWidget *parent)
         {
             motor_socket.disconnectFromHost();
         }
-        if(controlFD >= 0)
+        if(ahp_hub_is_connected())
         {
-            ui->Voltage->setValue(0);
-            fdclose(controlFD, "rw");
+            if(ahp_hub_is_connected())
+                ahp_hub_disconnect();
         }
         if(control_socket.isOpen())
         {
@@ -273,7 +274,7 @@ try_high_rate:
                         {
                             if(!ahp_gt_connect(motorport.toUtf8()))
                                 settings->setValue("motor_connection", motorport);
-                            xcFD = ahp_xc_get_fd();
+                            motorFD = ahp_gt_get_fd();
                         }
                     }
                     controlFD = -1;
@@ -295,16 +296,11 @@ try_high_rate:
                             {
                                 control_socket.setReadBufferSize(4096);
                                 controlFD = control_socket.socketDescriptor();
-                                if(controlFD != -1)
+                                if(ahp_hub_is_connected())
                                 {
-                                    getGraph()->setControlFD(controlFD);
-                                    if(!ahp_gt_connect_fd(getGraph()->getControlFD()))
-                                    {
-                                        if(controlFD != -1)
-                                        {
-                                            settings->setValue("control_connection", controlport);
-                                        }
-                                    }
+                                    getGraph()->setMotorFD(controlFD);
+                                    if(!ahp_hub_connect_fd(getGraph()->getMotorFD()))
+                                        settings->setValue("control_connection", controlport);
                                 }
                             }
                             else
@@ -315,11 +311,9 @@ try_high_rate:
                         }
                         else
                         {
-                            controlFD = open(controlport.toUtf8(), O_RDWR);
-                            if(controlFD != -1)
-                            {
+                            if(!ahp_hub_connect(controlport.toUtf8()))
                                 settings->setValue("control_connection", controlport);
-                            }
+                            controlFD = ahp_hub_get_fd();
                         }
                     }
                     connected = true;
@@ -366,6 +360,7 @@ try_high_rate:
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), Lines[l], &Line::startTracking);
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
+                        connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), Lines[l], &Line::runClicked);
                         ui->Lines->addTab(Lines[l], name);
                     }
                     int idx = 0;
@@ -404,7 +399,7 @@ try_high_rate:
                     ui->Scale->setEnabled(true);
                     ui->Range->setEnabled(true);
                     ui->Mode->setEnabled(true);
-                    if(controlFD >= 0)
+                    if(ahp_hub_is_connected())
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
@@ -456,6 +451,11 @@ try_high_rate:
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
         ahp_xc_packet* sepacket = getPacket();
+        QList<unsigned int> indexes;
+        QList<off_t> starts;
+        QList<unsigned int> sizes;
+        ahp_xc_sample *spectrum = nullptr;
+        int npackets;
         switch (getMode())
         {
             case HolographIQ:
@@ -651,9 +651,29 @@ try_high_rate:
                     Line * line = Lines[x];
                     if(line->isActive())
                     {
-                        line->stackCorrelations();
+                        indexes.append(line->getLineIndex());
+                        starts.append(line->getStartLine());
+                        sizes.append(line->getEndLine());
+                        line->setPercentPtr(&percent);
+                        line->setStopPtr(&finished);
                     }
                 }
+                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), &finished, &percent);
+                for(int x = 0; x < indexes.count(); x++)
+                {
+                    Line * line = Lines[indexes[x]];
+                    if(line->isActive())
+                    {
+                        int off = 0;
+                        if(x > 0)
+                            off = sizes[x-1];
+                        line->stackCorrelations(&spectrum[off], sizes[x]);
+                    }
+                    line->resetStopPtr();
+                }
+                if(indexes.count() > 0)
+                    emit scanFinished(true);
+                free(spectrum);
                 break;
             default:
                 break;
@@ -761,6 +781,37 @@ void MainWindow::stopThreads()
     motorThread->wait();
 }
 
+void MainWindow::runClicked(bool checked)
+{
+
+    int nlines = 0;
+    if(ui->Run->text() == "Run")
+    {
+        ui->Run->setText("Stop");
+        finished = false;
+        for(int x = 0; x < Lines.count(); x++) {
+            if(getMode() == Counter)
+                Lines[x]->setActive(true);
+            else {
+                nlines++;
+                Lines[x]->setActive(Lines[x]->isEnabled());
+            }
+        }
+        if(nlines > 0)
+            emit scanStarted();
+    }
+    else
+    {
+        ui->Run->setText("Run");
+        finished = true;
+        for(int x = 0; x < Lines.count(); x++) {
+                Lines[x]->setActive(false);
+        }
+        if(nlines > 0)
+            emit scanFinished(false);
+    }
+}
+
 void MainWindow::resetTimestamp()
 {
     starttime = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(
@@ -773,8 +824,8 @@ void MainWindow::setVoltage(int level)
 {
     level = Min(255, Max(0, level));
     unsigned char v = 0xff - (level & 0x7f);
-    if(controlFD >= 0) {
-        write(controlFD, &v, 1);
+    if(ahp_hub_is_connected()) {
+        ahp_hub_send_command(&v, 1);
     }
 }
 

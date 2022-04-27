@@ -74,7 +74,8 @@ class MainWindow : public QMainWindow
     public:
         MainWindow(QWidget *parent = nullptr);
         ~MainWindow();
-        int percent, finished;
+        double percent;
+        int finished;
         void resizeEvent(QResizeEvent* event);
         QList<Line*> Lines;
         QList<Baseline*> Baselines;
@@ -181,6 +182,7 @@ class MainWindow : public QMainWindow
                 startThreads();
             }
         }
+        void runClicked(bool checked);
         void setVoltage(int level);
         void resetTimestamp();
         QDateTime start;
@@ -237,6 +239,11 @@ class MainWindow : public QMainWindow
         {
             mutex.unlock();
         }
+
+signals:
+        void scanStarted();
+        void scanFinished(bool complete);
+
     private:
         int currentVoltage {0};
         FILE *f_stdout;
