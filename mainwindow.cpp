@@ -310,7 +310,6 @@ try_high_rate:
                         }
                     }
                     connected = true;
-                    createPacket();
                     settings->setValue("xc_connection", xcport);
                     QString header = ahp_xc_get_header();
                     QString devices = settings->value("devices", "").toString();
@@ -441,7 +440,7 @@ try_high_rate:
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
-        ahp_xc_packet* sepacket = getPacket();
+        ahp_xc_packet* packet = getPacket();
         QList<unsigned int> indexes;
         QList<off_t> starts;
         QList<unsigned int> sizes;
