@@ -123,12 +123,6 @@ MainWindow::MainWindow(QWidget *parent)
     {
         settings->setValue("Voltage", value);
     });
-    connect(ui->Scale, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-            [ = ](int value)
-    {
-        settings->setValue("Timescale", value);
-        ahp_xc_set_frequency_divider((char)value);
-    });
     connect(ui->Disconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [ = ](bool checked)
     {
@@ -176,7 +170,6 @@ MainWindow::MainWindow(QWidget *parent)
             vlbi_exit(getVLBIContext(i));
         settings->endGroup();
         ui->Connect->setEnabled(true);
-        ui->Scale->setEnabled(false);
         ui->Disconnect->setEnabled(false);
         ui->Range->setEnabled(false);
         ui->Mode->setEnabled(false);
@@ -394,8 +387,6 @@ try_high_rate:
                     ui->Connect->setEnabled(false);
                     ui->Disconnect->setEnabled(true);
                     ui->Range->setValue(settings->value("Timerange", 0).toInt());
-                    ui->Scale->setValue(settings->value("Timescale", 0).toInt());
-                    ui->Scale->setEnabled(true);
                     ui->Range->setEnabled(true);
                     ui->Mode->setEnabled(true);
                     if(ahp_hub_is_connected())
