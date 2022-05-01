@@ -429,8 +429,8 @@ void Graph::paint()
         }
         if((DBL_MIN == mx && DBL_MAX == mn) || mx == mn)
         {
-            mx = 1;
-            mn = 0;
+            mx = M_PI;
+            mn = -M_PI;
         }
         if(chart->axes().count() < 2)
             return;
@@ -453,8 +453,8 @@ void Graph::paint()
         }
         if((DBL_MIN == mx && DBL_MAX == mn) || mx == mn)
         {
-            mx = 1;
-            mn = 0;
+            mx = M_PI;
+            mn = -M_PI;
         }
         double diff = mx - mn;
         axis = static_cast<QValueAxis*>(chart->axes()[1]);

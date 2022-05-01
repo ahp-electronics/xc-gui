@@ -304,6 +304,8 @@ void Baseline::stackCorrelations()
     ahp_xc_sample *spectrum = nullptr;
     getLine1()->setPercentPtr(&percent);
     getLine2()->setPercentPtr(&percent);
+    getLine1()->resetStopPtr();
+    getLine2()->resetStopPtr();
     updateBufferSizes();
 
     stop = 0;
@@ -322,9 +324,9 @@ void Baseline::stackCorrelations()
             if (tail)
                 lag --;
             lag += head_size;
-            if(lag < len && lag >= 0)
+            if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2.0 / (spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary);
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {
@@ -334,14 +336,12 @@ void Baseline::stackCorrelations()
                 _lag = lag;
             }
         }
-        if(getLine1()->Idft() && getLine2()->Idft())
+        elemental->setMagnitude(magnitude_buf, npackets);
+        elemental->setPhase(phase_buf, npackets);
+        if(getLine1()->dft() && getLine2()->dft())
         {
-            elemental->setMagnitude(magnitude_buf, len);
-            elemental->setPhase(phase_buf, len);
-            elemental->idft();
+            elemental->dft();
         }
-        else
-            elemental->setBuffer(magnitude_buf, len);
         if(getLine1()->Align() && getLine2()->Align())
             elemental->run();
         else
@@ -368,7 +368,7 @@ void Baseline::plot(bool success, double o, double s)
     elemental->getStream()->len --;
     if(getLine1()->Histogram() && getLine2()->Histogram())
     {
-        int size = fmin(len, 256);
+        int size = fmin(elemental->getStreamSize(), 256);
         double *histo = dsp_stats_histogram(elemental->getStream(), size);
         for (int x = 1; x < size; x++)
         {
@@ -379,19 +379,18 @@ void Baseline::plot(bool success, double o, double s)
     }
     else
     {
-        for (int x = 0; x < elemental->getStream()->len; x++)
+        for (int x = 0; x < elemental->getStreamSize(); x++)
         {
-            if(getLine1()->Idft() && getLine2()->Idft()) {
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)elemental->getStream()->buf[x]);
+            if(getLine1()->dft() && getLine2()->dft()) {
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
             } else {
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)magnitude_buf[x]);
-                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
+                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, elemental->getPhase()[x]);
             }
         }
     }
     elemental->getStream()->len ++;
     elemental->getStream()->len ++;
-    stretch(getMagnitude());
 }
 
 Baseline::~Baseline()

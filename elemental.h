@@ -69,7 +69,7 @@ class Elemental : public QObject
         void setReal(double * buf, int len);
         void setImaginary(double * buf, int len);
         void idft();
-        void dft(int depth);
+        void dft(int depth = 1);
         inline void setSampleSize(int value)
         {
             sample = value;
@@ -78,9 +78,25 @@ class Elemental : public QObject
         {
             return sample;
         }
+        inline int getStreamSize()
+        {
+            return stream->len;
+        }
         inline dsp_stream_p getStream()
         {
             return stream;
+        }
+        inline dsp_t* getBuffer()
+        {
+            return stream->buf;
+        }
+        inline dsp_t* getMagnitude()
+        {
+            return stream->magnitude->buf;
+        }
+        inline dsp_t* getPhase()
+        {
+            return stream->phase->buf;
         }
         void scan();
         QStringList getElementNames();

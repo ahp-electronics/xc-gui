@@ -184,7 +184,7 @@
      <number>1</number>
     </property>
    </widget>
-   <widget class="QCheckBox" name="IDFT">
+   <widget class="QCheckBox" name="DFT">
     <property name="geometry">
      <rect>
       <x>10</x>

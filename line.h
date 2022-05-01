@@ -59,7 +59,7 @@ class Line : public QWidget
 
         void paint();
         bool Histogram();
-        bool Idft();
+        bool dft();
         bool Align();
         bool Differential();
         bool isEnabled();
@@ -185,13 +185,6 @@ class Line : public QWidget
                 phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size + 1));
             else
                 phase_buf = (double*)malloc(sizeof(double) * (size + 1));
-        }
-        inline void setDftSize(size_t size)
-        {
-            if(dft != nullptr)
-                dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (size + 1));
-            else
-                dft = (fftw_complex*)malloc(sizeof(fftw_complex) * (size + 1));
         }
         inline QLineSeries* getMagnitude()
         {
@@ -347,7 +340,6 @@ class Line : public QWidget
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
         fftw_plan plan { 0 };
-        fftw_complex *dft { nullptr };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
         Elemental *elemental { nullptr };

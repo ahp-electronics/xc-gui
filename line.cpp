@@ -109,9 +109,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         emit takeDark(this);
     });
-    connect(ui->IDFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->DFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
-        saveSetting("DFT", ui->IDFT->isChecked());
+        saveSetting("DFT", ui->DFT->isChecked());
     });
     connect(ui->Histogram, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
@@ -273,7 +273,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
     ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
     ui->LineDelay->setValue(readInt("LineDelay", ui->LineDelay->minimum()));
-    ui->IDFT->setChecked(readBool("IDFT", false));
+    ui->DFT->setChecked(readBool("DFT", false));
     ui->Histogram->setChecked(readBool("Histogram", false));
     ui->flag4->setEnabled(!ahp_xc_has_differential_only());
     ui->Crosscorrelations->setEnabled(ahp_xc_has_crosscorrelator());
@@ -297,7 +297,6 @@ void Line::UpdateBufferSizes()
     len = ui->EndLine->value();
     setMagnitudeSize(len);
     setPhaseSize(len);
-    setDftSize(len);
 }
 
 void Line::runClicked(bool checked)
@@ -706,9 +705,9 @@ bool Line::Histogram()
     return ui->Histogram->isChecked();
 }
 
-bool Line::Idft()
+bool Line::dft()
 {
-    return ui->IDFT->isChecked();
+    return ui->DFT->isChecked();
 }
 
 bool Line::Align()
@@ -807,19 +806,17 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
     *percent = 0;
     if(spectrum != nullptr && npackets == len)
     {
+        npackets--;
         int lag = 1;
         int _lag = lag;
-        for (int x = 0, z = 0; x < len; x++, z++)
+        for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
-            if(lag < len && lag >= 0)
+            if(lag < npackets && lag >= 0)
             {
-                if(mode == Autocorrelator)
-                {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude /sqrt(spectrum[z].correlations[0].real * spectrum[z].correlations[0].imaginary);
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
-                }
-                for(int y = lag; y < len; y++)
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2.0 / (spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary);
+                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                for(int y = lag; y < npackets; y++)
                 {
                     magnitude_buf[y] = magnitude_buf[lag];
                     phase_buf[y] = phase_buf[lag];
@@ -827,22 +824,17 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
                 _lag = lag;
             }
         }
-        if(Idft())
-        {
-            if(mode == Autocorrelator)
-            {
-                elemental->setReal(magnitude_buf, len);
-                elemental->setImaginary(phase_buf, len);
-                elemental->dft(1);
-            }
-        }
-        else
-            elemental->setBuffer(magnitude_buf, len);
+        elemental->setMagnitude(magnitude_buf, npackets);
+        elemental->setPhase(phase_buf, npackets);
+        if(dft())
+            elemental->idft();
         if(Align())
             elemental->run();
         else
             elemental->finish();
     }
+    resetPercentPtr();
+    resetStopPtr();
     scanning = false;
 }
 
@@ -861,7 +853,7 @@ void Line::plot(bool success, double o, double s)
     elemental->getStream()->len --;
     if(Histogram())
     {
-        int size = fmin(len, 256);
+        int size = fmin(elemental->getStreamSize(), 256);
         double *histo = dsp_stats_histogram(elemental->getStream(), size);
         for (int x = 1; x < size; x++)
         {
@@ -872,15 +864,17 @@ void Line::plot(bool success, double o, double s)
     }
     else
     {
-        for (int x = 1; x < elemental->getStream()->len - 1; x++)
+        for (int x = 1; x < elemental->getStreamSize() - 1; x++)
         {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, (double)magnitude_buf[x]);
-            if(!Idft())
-                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, (double)phase_buf[x]);
+            if(dft()) {
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
+            } else {
+                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
+                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, elemental->getPhase()[x]);
+            }
         }
     }
     elemental->getStream()->len ++;
-    stretch(getMagnitude());
 }
 
 Line::~Line()
