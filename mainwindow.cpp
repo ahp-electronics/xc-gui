@@ -65,7 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
     motorThread = new Thread(this, 500, 500);
     Elemental::loadCatalog();
     graph = new Graph(settings, this);
-    int starty = 90;
+    int starty = 80;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
     getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
@@ -189,7 +189,7 @@ MainWindow::MainWindow(QWidget *parent)
         settings->beginGroup("Connection");
         xcFD = -1;
         bool local = false;
-        bool try_high = false;
+        bool try_high = true;
         if(xcport == "no connection")
         {
             settings->setValue("xc_connection", xcport);
@@ -221,9 +221,9 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 local = true;
+                try_high = false;
 try_high_rate:
                 ahp_xc_connect(xcport.toUtf8(), try_high);
-                try_high = true;
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
@@ -394,13 +394,15 @@ try_high_rate:
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
                 } else {
+                    if(local && !try_high) {
+                        try_high = true;
+                        goto try_high_rate;
+                    }
                     ahp_xc_disconnect();
                     return;
                 }
             }
             else {
-                if(local & try_high)
-                    goto try_high_rate;
                 ahp_xc_disconnect();
                 return;
             }
@@ -743,7 +745,7 @@ try_high_rate:
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
-    int starty = 90;
+    int starty = 80;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
     statusBar()->setGeometry(0, this->height() - statusBar()->height(), width(), 20);

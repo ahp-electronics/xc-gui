@@ -191,7 +191,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_channel_auto(line, 0, value);
+        ahp_xc_set_channel_auto(line, value, 1);
         saveSetting("SpectralLine", value);
     });
     connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -814,7 +814,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2.0 / (spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary);
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2 / pow(spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary, 2);
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y < npackets; y++)
                 {
@@ -864,17 +864,17 @@ void Line::plot(bool success, double o, double s)
     }
     else
     {
-        for (int x = 1; x < elemental->getStreamSize() - 1; x++)
+        for (int x = 0; x < elemental->getStreamSize(); x++)
         {
             if(dft()) {
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
             } else {
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
-                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, elemental->getPhase()[x]);
             }
         }
     }
     elemental->getStream()->len ++;
+    stretch(getMagnitude());
 }
 
 Line::~Line()

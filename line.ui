@@ -61,7 +61,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Falling edge</string>
+     <string>Invert polarity</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="flag3">
@@ -74,7 +74,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Edge count</string>
+     <string>On-change</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="flag4">

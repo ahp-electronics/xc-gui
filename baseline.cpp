@@ -326,7 +326,7 @@ void Baseline::stackCorrelations()
             lag += head_size;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2.0 / (spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary);
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2 / pow(spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary, 2);
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {
@@ -385,12 +385,12 @@ void Baseline::plot(bool success, double o, double s)
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
             } else {
                 stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
-                stackValue(getPhase(), getPhaseStack(), x, x * timespan + offset, elemental->getPhase()[x]);
             }
         }
     }
     elemental->getStream()->len ++;
     elemental->getStream()->len ++;
+    stretch(getMagnitude());
 }
 
 Baseline::~Baseline()
