@@ -445,7 +445,8 @@ try_high_rate:
         ahp_xc_packet* packet = getPacket();
         QList<unsigned int> indexes;
         QList<off_t> starts;
-        QList<unsigned int> sizes;
+        QList<size_t> sizes;
+        QList<size_t> steps;
         ahp_xc_sample *spectrum = nullptr;
         int npackets;
         switch (getMode())
@@ -495,13 +496,11 @@ try_high_rate:
                                 offset2 ++;
                                 if(ahp_xc_has_crosscorrelator())
                                 {
-                                    ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 1);
-                                    ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 1);
+                                    ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 1, 0);
+                                    ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 1, 0);
                                 }
-                                stream->dft.fftw[stream->len - 1][0] = (double)
-                                                                       packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                                stream->dft.fftw[stream->len - 1][1] = (double)
-                                                                       packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                                stream->dft.fftw[stream->len - 1][0] = packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                                stream->dft.fftw[stream->len - 1][1] = packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
                                 line->unlock();
                             }
                             idx++;
@@ -551,8 +550,7 @@ try_high_rate:
                                         break;
                                     case 1:
                                         if(line->showAutocorrelations())
-                                            Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude * M_PI * 2 / pow(
-                                                               packet->autocorrelations[x].correlations[0].real + packet->autocorrelations[x].correlations[0].imaginary, 2));
+                                            Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude);
                                         break;
                                     case 2:
                                         if(line->showAutocorrelations())
@@ -593,7 +591,7 @@ try_high_rate:
                                         }
                                     }
                                     if(ahp_xc_has_crosscorrelator()) {
-                                        mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude / (pow(packet->crosscorrelations[idx].correlations[0].real+packet->crosscorrelations[idx].correlations[0].imaginary, 2));
+                                        mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude;
                                         double rad = (double)packet->crosscorrelations[idx].correlations[0].phase;
                                         counts[0]->append(packettime, mag);
                                         counts[1]->append(packettime, rad);
@@ -646,13 +644,14 @@ try_high_rate:
                         indexes.append(line->getLineIndex());
                         starts.append(line->getStartLine());
                         sizes.append(line->getEndLine());
+                        steps.append(line->getScanStep());
                         line->setPercentPtr(&percent);
                         line->setStopPtr(&finished);
                     } else {
                         line->resetStopPtr();
                     }
                 }
-                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), &finished, &percent);
+                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &finished, &percent);
                 for(int x = 0; x < indexes.count(); x++)
                 {
                     Line * line = Lines[indexes[x]];
@@ -660,8 +659,8 @@ try_high_rate:
                     {
                         int off = 0;
                         if(x > 0)
-                            off = sizes[x-1];
-                        line->stackCorrelations(&spectrum[off], sizes[x]);
+                            off = sizes[x-1]/steps[x];
+                        line->stackCorrelations(&spectrum[off], sizes[x]/steps[x]);
                     }
                 }
                 if(indexes.count() > 0)

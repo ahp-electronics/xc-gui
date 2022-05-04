@@ -277,6 +277,10 @@ class Line : public QWidget
         {
             return len;
         }
+        inline int getScanStep()
+        {
+            return fmax(1, round((double)len / 100.0));
+        }
         inline double getLatitude()
         {
             return Latitude;
@@ -366,9 +370,10 @@ class Line : public QWidget
         QLineSeries* counts { nullptr };
         unsigned int line { 0 };
         int flags { 0x8 };
-        int start { 0 };
-        int end { 1 };
-        int len { 1 };
+        off_t start { 0 };
+        off_t end { 1 };
+        size_t len { 1 };
+        size_t step {1};
         double mx { 0.0 };
         double averageBottom { 0 };
         double averageTop { 1.0 };

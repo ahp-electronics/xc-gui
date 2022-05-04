@@ -191,13 +191,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_channel_auto(line, value, 1);
+        ahp_xc_set_channel_auto(line, value, 1, 0);
         saveSetting("SpectralLine", value);
     });
     connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         if(ahp_xc_has_crosscorrelator())
-            ahp_xc_set_channel_cross(line, 0, value);
+            ahp_xc_set_channel_cross(line, value, 1, 0);
         saveSetting("LineDelay", value);
     });
     connect(ui->MountMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -804,9 +804,8 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
     scanning = true;
     *stop = 0;
     *percent = 0;
-    if(spectrum != nullptr && npackets == len)
+    if(spectrum != nullptr && npackets > 0)
     {
-        npackets--;
         int lag = 1;
         int _lag = lag;
         for (int x = 0, z = 0; x < npackets; x++, z++)
@@ -814,7 +813,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2 / pow(spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary, 2);
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y < npackets; y++)
                 {
@@ -831,7 +830,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
         if(Align())
             elemental->run();
         else
-            elemental->finish();
+            elemental->finish(false, start, 1.0/getScanStep());
     }
     resetPercentPtr();
     resetStopPtr();
@@ -840,17 +839,11 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
 
 void Line::plot(bool success, double o, double s)
 {
-    double timespan = ahp_xc_get_sampletime();
-    offset = start * timespan;
-    if(success)
-    {
-        timespan = ahp_xc_get_sampletime() / s;
-        offset = o * timespan;
-    }
+    double timespan = ahp_xc_get_sampletime() / s;
+    double offset = o * timespan;
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    elemental->getStream()->len --;
     if(Histogram())
     {
         int size = fmin(elemental->getStreamSize(), 256);
@@ -873,8 +866,6 @@ void Line::plot(bool success, double o, double s)
             }
         }
     }
-    elemental->getStream()->len ++;
-    stretch(getMagnitude());
 }
 
 Line::~Line()

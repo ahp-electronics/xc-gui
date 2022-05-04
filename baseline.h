@@ -211,6 +211,7 @@ class Baseline : public QWidget
         int start1 {0};
         int start2 {0};
         int len {1};
+        int step {1};
         int tail_size {1};
         int head_size {1};
         QSettings *settings;

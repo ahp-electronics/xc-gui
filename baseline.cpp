@@ -159,8 +159,10 @@ QVariant Baseline::readSetting(QString setting, QVariant defaultValue)
 
 void Baseline::setDelay(double s)
 {
-    if(ahp_xc_has_crosscorrelator())
-        ahp_xc_set_channel_cross((uint32_t)Index, (off_t)s * (ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider()), 0);
+    if(ahp_xc_has_crosscorrelator()) {
+        ahp_xc_set_channel_cross((uint32_t)getLine1()->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0);
+        ahp_xc_set_channel_cross((uint32_t)getLine2()->getLineIndex(), (off_t)fmax(0, -s * ahp_xc_get_frequency()), 1, 0);
+    }
 }
 
 void Baseline::setMode(Mode m)
@@ -310,11 +312,13 @@ void Baseline::stackCorrelations()
 
     stop = 0;
     int npackets = 0;
+    step = fmax(getLine1()->getScanStep(), getLine2()->getScanStep());
     npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
-               head_size, start2, tail_size, &stop, &percent);
+               head_size, start2, tail_size, step, &stop, &percent);
     if(spectrum != nullptr && npackets > 0)
     {
-        int lag = head_size-1;
+        int ofs = head_size/step;
+        int lag = ofs-1;
         int _lag = lag;
         bool tail = false;
         for (int x = 0, z = 0; x < npackets; x++, z++)
@@ -323,10 +327,10 @@ void Baseline::stackCorrelations()
             tail = (lag >= 0);
             if (tail)
                 lag --;
-            lag += head_size;
+            lag += ofs;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude * M_PI * 2 / pow(spectrum[z].correlations[0].real*spectrum[z].correlations[0].imaginary, 2);
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {
@@ -345,7 +349,7 @@ void Baseline::stackCorrelations()
         if(getLine1()->Align() && getLine2()->Align())
             elemental->run();
         else
-            elemental->finish(true, -head_size);
+            elemental->finish(false, -head_size/step, 1.0/step);
         free(spectrum);
     }
     getLine1()->resetPercentPtr();
@@ -355,17 +359,11 @@ void Baseline::stackCorrelations()
 
 void Baseline::plot(bool success, double o, double s)
 {
-    double timespan = ahp_xc_get_sampletime();
-    if(success)
-    {
-        timespan = ahp_xc_get_sampletime() / s;
-        offset = o * timespan;
-    }
+    double timespan = ahp_xc_get_sampletime() / s;
+    double offset = o * timespan;
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    elemental->getStream()->len --;
-    elemental->getStream()->len --;
     if(getLine1()->Histogram() && getLine2()->Histogram())
     {
         int size = fmin(elemental->getStreamSize(), 256);
@@ -388,9 +386,6 @@ void Baseline::plot(bool success, double o, double s)
             }
         }
     }
-    elemental->getStream()->len ++;
-    elemental->getStream()->len ++;
-    stretch(getMagnitude());
 }
 
 Baseline::~Baseline()
