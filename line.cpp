@@ -45,6 +45,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     name = ln;
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
+    countStack = new QMap<double, double>();
     phaseStack = new QMap<double, double>();
     magnitude = new QLineSeries();
     phase = new QLineSeries();
@@ -52,6 +53,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     phases = new QLineSeries();
     counts = new QLineSeries();
     elemental = new Elemental(this);
+    elementalCounts = new Elemental(this);
+    elementalPhase = new Elemental(this);
+    elementalMagnitude = new Elemental(this);
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Line::plot);
     resetPercentPtr();
     resetStopPtr();
@@ -62,10 +66,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getMagnitudes()->setName(name + " (phases)");
     line = n;
     flags = 0;
-    ui->SpectralLine->setRange(0, ahp_xc_get_delaysize() - 1);
-    ui->LineDelay->setRange(0, ahp_xc_get_delaysize() - 1);
-    ui->EndLine->setRange(5, ahp_xc_get_delaysize() - 1);
-    ui->StartLine->setRange(0, ahp_xc_get_delaysize() - 6);
+    ui->FreqMin->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency());
+    ui->FreqMax->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency());
+    ui->EndChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() - 1);
+    ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() - 3);
+    ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency());
+    ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency());
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
         flags &= ~(1 << 0);
@@ -113,13 +119,26 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         saveSetting("DFT", ui->DFT->isChecked());
     });
-    connect(ui->Histogram, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
-    {
-        saveSetting("Histogram", ui->Histogram->isChecked());
-    });
     connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         saveSetting("ElementalAlign", ui->ElementalAlign->isChecked());
+    });
+    connect(ui->Resolution, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Resolution = value;
+        saveSetting("Resolution", Resolution);
+    });
+    connect(ui->AutoChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        AutoChannel = value;
+        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(AutoChannel, 1)), 1, 0);
+        saveSetting("AutoChannel", AutoChannel);
+    });
+    connect(ui->CrossChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        CrossChannel = value;
+        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(CrossChannel, 1)), 1, 0);
+        saveSetting("CrossChannel", CrossChannel);
     });
     connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -141,25 +160,25 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         elemental->setSampleSize(value);
         saveSetting("SampleSize", ui->SampleSize->value());
     });
-    connect(ui->StartLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->StartChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(ui->StartLine->value() + ui->EndLine->value() > ahp_xc_get_delaysize() - 2)
+        if(ui->StartChannel->value() > ui->EndChannel->value() - 2)
         {
-            ui->EndLine->setValue(ahp_xc_get_delaysize() - ui->StartLine->value());
+            ui->EndChannel->setValue(ui->StartChannel->value() + 2);
         }
         UpdateBufferSizes();
         emit updateBufferSizes();
-        saveSetting("StartLine", ui->StartLine->value());
+        saveSetting("StartChannel", ui->StartChannel->value());
     });
-    connect(ui->EndLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->EndChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(ui->StartLine->value() + ui->EndLine->value() > ahp_xc_get_delaysize() - 2)
+        if(ui->StartChannel->value() > ui->EndChannel->value() - 2)
         {
-            ui->EndLine->setValue(ahp_xc_get_delaysize() - ui->StartLine->value());
+            ui->StartChannel->setValue(ui->EndChannel->value() - 2);
         }
         UpdateBufferSizes();
         emit updateBufferSizes();
-        saveSetting("EndLine", ui->EndLine->value());
+        saveSetting("EndChannel", ui->EndChannel->value());
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
@@ -189,16 +208,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         saveSetting(ui->Crosscorrelations->text(), ui->Crosscorrelations->isChecked());
     });
-    connect(ui->SpectralLine, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->FreqMin, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        ahp_xc_set_channel_auto(line, value, 1, 0);
-        saveSetting("SpectralLine", value);
+        minfreq = value;
+        saveSetting("FreqMin", value);
     });
-    connect(ui->LineDelay, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->FreqMax, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        if(ahp_xc_has_crosscorrelator())
-            ahp_xc_set_channel_cross(line, value, 1, 0);
-        saveSetting("LineDelay", value);
+        maxfreq = value;
+        saveSetting("FreqMax", value);
     });
     connect(ui->MountMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -269,12 +287,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
-    ui->EndLine->setValue(readInt("EndLine", ui->EndLine->maximum()));
-    ui->StartLine->setValue(readInt("StartLine", ui->StartLine->minimum()));
-    ui->SpectralLine->setValue(readInt("SpectralLine", ui->SpectralLine->minimum()));
-    ui->LineDelay->setValue(readInt("LineDelay", ui->LineDelay->minimum()));
+    ui->Resolution->setValue(readInt("Resolution", 1024));
+    ui->AutoChannel->setValue(readInt("AutoChannel", ui->AutoChannel->maximum()));
+    ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
+    ui->EndChannel->setValue(readInt("EndChannel", ui->EndChannel->maximum()));
+    ui->StartChannel->setValue(readInt("StartChannel", ui->StartChannel->minimum()));
+    ui->FreqMin->setValue(readInt("FreqMin", 0));
+    ui->FreqMax->setValue(readInt("FreqMax", ahp_xc_get_frequency()));
     ui->DFT->setChecked(readBool("DFT", false));
-    ui->Histogram->setChecked(readBool("Histogram", false));
     ui->flag4->setEnabled(!ahp_xc_has_differential_only());
     ui->Crosscorrelations->setEnabled(ahp_xc_has_crosscorrelator());
     ahp_xc_set_leds(line, flags);
@@ -293,17 +313,19 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
 
 void Line::UpdateBufferSizes()
 {
-    start = ui->StartLine->value();
-    len = ui->EndLine->value();
+    start = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->EndChannel->value(), 1));
+    end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
+    len = end-start;
+    step = fmax(1, round((double)len / Resolution));
     setMagnitudeSize(len);
     setPhaseSize(len);
 }
 
 void Line::runClicked(bool checked)
 {
-    ui->Counter->setEnabled(mode == Counter);
+    ui->Counter->setEnabled(mode == Counter || mode == Spectrograph);
     ui->Correlator->setEnabled(false);
-    if(mode != Counter)
+    if(mode != Counter && mode != Spectrograph)
     {
         ui->Correlator->setEnabled(!isActive());
     }
@@ -575,13 +597,14 @@ void Line::setMode(Mode m)
     getCounts()->clear();
     getMagnitudes()->clear();
     getPhases()->clear();
+    getCountStack()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
-    if(!isActive())
-        ui->Correlator->setEnabled(m != Counter);
-    else
-        runClicked();
-    if(m != Counter)
+    getCountElemental()->setStreamSize(1);
+    getMagnitudeElemental()->setStreamSize(1);
+    getPhaseElemental()->setStreamSize(1);
+    getElemental()->setStreamSize(1);
+    if(m != Counter && mode != Spectrograph)
     {
         stack = 0.0;
         mx = 0.0;
@@ -597,10 +620,14 @@ void Line::setMode(Mode m)
         disconnect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
     }
     ui->Leds->setEnabled(ahp_xc_has_leds());
-    ui->Counter->setEnabled(m == Counter);
     resetPercentPtr();
     resetStopPtr();
     mode = m;
+    ui->Counter->setEnabled(m == Counter || mode == Spectrograph);
+    ui->Correlator->setEnabled(m != Counter && mode != Spectrograph);
+    ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
+    if(isActive())
+        runClicked();
 }
 
 void Line::paint()
@@ -698,11 +725,6 @@ bool Line::isEnabled() {
 bool Line::Differential()
 {
     return getFlag(4);
-}
-
-bool Line::Histogram()
-{
-    return ui->Histogram->isChecked();
 }
 
 bool Line::dft()
@@ -830,7 +852,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
         if(Align())
             elemental->run();
         else
-            elemental->finish(false, start, 1.0/getScanStep());
+            elemental->finish(false, start/step, 1.0/step);
     }
     resetPercentPtr();
     resetStopPtr();
@@ -840,30 +862,16 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
 void Line::plot(bool success, double o, double s)
 {
     double timespan = ahp_xc_get_sampletime() / s;
-    double offset = o * timespan;
+    double offset = o;
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    if(Histogram())
+    for (int x = 0; x < elemental->getStreamSize(); x++)
     {
-        int size = fmin(elemental->getStreamSize(), 256);
-        double *histo = dsp_stats_histogram(elemental->getStream(), size);
-        for (int x = 1; x < size; x++)
-        {
-            if(histo[x] != 0)
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * M_PI * 2 / size, histo[x]);
-        }
-        free(histo);
-    }
-    else
-    {
-        for (int x = 0; x < elemental->getStreamSize(); x++)
-        {
-            if(dft()) {
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
-            } else {
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
-            }
+        if(dft()) {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getBuffer()[x]);
+        } else {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getMagnitude()[x]);
         }
     }
 }

@@ -32,15 +32,19 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     settings = s;
     name = n;
     Index = index;
-    magnitudeStack = new QMap<double, double>();
-    phaseStack = new QMap<double, double>();
     dark = new QMap<double, double>();
+    magnitudeStack = new QMap<double, double>();
+    countStack = new QMap<double, double>();
+    phaseStack = new QMap<double, double>();
     magnitude = new QLineSeries();
     phase = new QLineSeries();
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
-    complex = new QList<double>();
+    counts = new QLineSeries();
     elemental = new Elemental(this);
+    elementalCounts = new Elemental(this);
+    elementalPhase = new Elemental(this);
+    elementalMagnitude = new Elemental(this);
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
     line1 = n1;
     line2 = n2;
@@ -127,10 +131,10 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
 
 void Baseline::updateBufferSizes()
 {
-    start1 = getLine1()->getStartLine();
-    start2 = getLine2()->getStartLine();
-    head_size = getLine1()->getEndLine();
-    tail_size = getLine2()->getEndLine();
+    start1 = getLine1()->getStartChannel();
+    start2 = getLine2()->getStartChannel();
+    head_size = getLine1()->getEndChannel();
+    tail_size = getLine2()->getEndChannel();
     len = head_size + tail_size;
     setMagnitudeSize(len);
     setPhaseSize(len);
@@ -168,6 +172,19 @@ void Baseline::setDelay(double s)
 void Baseline::setMode(Mode m)
 {
     mode = m;
+    getDark()->clear();
+    getMagnitude()->clear();
+    getPhase()->clear();
+    getCounts()->clear();
+    getMagnitudes()->clear();
+    getPhases()->clear();
+    getCountStack()->clear();
+    getMagnitudeStack()->clear();
+    getPhaseStack()->clear();
+    getCountElemental()->setStreamSize(1);
+    getMagnitudeElemental()->setStreamSize(1);
+    getPhaseElemental()->setStreamSize(1);
+    getElemental()->setStreamSize(1);
     if(mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
     {
         connect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
@@ -252,7 +269,7 @@ bool Baseline::isActive(bool atleast1)
 {
     if(atleast1)
         return getLine1()->isActive() || getLine2()->isActive();
-    return running;
+    return getLine1()->isActive() && getLine2()->isActive();
 }
 
 void Baseline::TakeDark(Line* sender)
@@ -364,26 +381,12 @@ void Baseline::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
-    if(getLine1()->Histogram() && getLine2()->Histogram())
+    for (int x = 0; x < elemental->getStreamSize(); x++)
     {
-        int size = fmin(elemental->getStreamSize(), 256);
-        double *histo = dsp_stats_histogram(elemental->getStream(), size);
-        for (int x = 1; x < size; x++)
-        {
-            if(histo[x] != 0)
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * M_PI * 2 / size, histo[x]);
-        }
-        free(histo);
-    }
-    else
-    {
-        for (int x = 0; x < elemental->getStreamSize(); x++)
-        {
-            if(getLine1()->dft() && getLine2()->dft()) {
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
-            } else {
-                stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
-            }
+        if(getLine1()->dft() && getLine2()->dft()) {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
+        } else {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
         }
     }
 }

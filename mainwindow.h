@@ -145,33 +145,22 @@ class MainWindow : public QMainWindow
             {
                 stopThreads();
                 mode = m;
-                xc_capture_flags cur = ahp_xc_get_capture_flags();
-                if(mode == CrosscorrelatorIQ)
-                    ahp_xc_enable_intensity_crosscorrelator(false);
-                else if(mode == CrosscorrelatorII || mode == HolographII)
+                if(mode == CrosscorrelatorII || mode == HolographII)
                     ahp_xc_enable_intensity_crosscorrelator(true);
+                else
+                    ahp_xc_enable_intensity_crosscorrelator(false);
+                xc_capture_flags cur = ahp_xc_get_capture_flags();
                 ahp_xc_set_capture_flags((xc_capture_flags)((cur & ~CAP_ENABLE) | CAP_RESET_TIMESTAMP));
-                for(int i = 0; i < Baselines.count(); i++)
-                {
-                    Baselines[i]->getMagnitude()->clear();
-                    Baselines[i]->getPhase()->clear();
-                    Baselines[i]->getMagnitudes()->clear();
-                    Baselines[i]->getPhases()->clear();
-                    Baselines[i]->getCounts()->clear();
-                }
                 for(int i = 0; i < Lines.count(); i++)
                 {
                     Lines[i]->setMode(mode);
-                    Lines[i]->getMagnitude()->clear();
-                    Lines[i]->getPhase()->clear();
-                    Lines[i]->getMagnitudes()->clear();
-                    Lines[i]->getPhases()->clear();
-                    Lines[i]->getCounts()->clear();
                 }
                 for(int i = 0; i < Baselines.count(); i++)
+                {
                     Baselines[i]->setMode(mode);
+                }
                 getGraph()->setMode(m);
-                if(mode == Counter || mode == HolographIQ || mode == HolographII)
+                if(mode == Counter || mode == Spectrograph || mode == HolographIQ || mode == HolographII)
                 {
                     ahp_xc_set_capture_flags((xc_capture_flags)(cur | CAP_ENABLE));
                     resetTimestamp();
@@ -275,6 +264,7 @@ signals:
         Ui::MainWindow *ui;
         double J2000_starttime;
         timespec starttime;
+        int spectrum_resolution { 512 };
 
         int gt_address;
         QList<double> position_multipliers;

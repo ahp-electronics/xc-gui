@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1102</width>
+    <width>1243</width>
     <height>150</height>
    </rect>
   </property>
@@ -97,9 +97,9 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>330</x>
+     <x>460</x>
      <y>0</y>
-     <width>591</width>
+     <width>421</width>
      <height>141</height>
     </rect>
    </property>
@@ -145,7 +145,7 @@
      <string>Range:</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="StartLine">
+   <widget class="QSpinBox" name="StartChannel">
     <property name="geometry">
      <rect>
       <x>80</x>
@@ -171,7 +171,7 @@
      <string/>
     </property>
    </widget>
-   <widget class="QSpinBox" name="EndLine">
+   <widget class="QSpinBox" name="EndChannel">
     <property name="geometry">
      <rect>
       <x>150</x>
@@ -210,108 +210,10 @@
      <enum>Qt::Vertical</enum>
     </property>
    </widget>
-   <widget class="QSpinBox" name="MaxDots">
-    <property name="geometry">
-     <rect>
-      <x>300</x>
-      <y>50</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="maximum">
-     <number>50</number>
-    </property>
-   </widget>
-   <widget class="QSpinBox" name="Decimals">
-    <property name="geometry">
-     <rect>
-      <x>300</x>
-      <y>70</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="maximum">
-     <number>5</number>
-    </property>
-   </widget>
-   <widget class="QSpinBox" name="MinScore">
-    <property name="geometry">
-     <rect>
-      <x>300</x>
-      <y>90</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QLabel" name="maxdots">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>50</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Max dots</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="decimals">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>70</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Decimals</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="minscore">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>90</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Min score</string>
-    </property>
-   </widget>
-   <widget class="QSpinBox" name="SampleSize">
-    <property name="geometry">
-     <rect>
-      <x>300</x>
-      <y>110</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QLabel" name="samplesize">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>110</y>
-      <width>71</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Sampling</string>
-    </property>
-   </widget>
    <widget class="QSpinBox" name="z_location">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>330</x>
       <y>110</y>
       <width>81</width>
       <height>21</height>
@@ -327,7 +229,7 @@
    <widget class="QLabel" name="label_11">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>230</x>
       <y>110</y>
       <width>101</width>
       <height>21</height>
@@ -340,7 +242,7 @@
    <widget class="QLabel" name="label_10">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>230</x>
       <y>90</y>
       <width>101</width>
       <height>21</height>
@@ -353,7 +255,7 @@
    <widget class="QSpinBox" name="x_location">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>330</x>
       <y>70</y>
       <width>81</width>
       <height>21</height>
@@ -369,7 +271,7 @@
    <widget class="QSpinBox" name="y_location">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>330</x>
       <y>90</y>
       <width>81</width>
       <height>21</height>
@@ -385,7 +287,7 @@
    <widget class="QLabel" name="label_9">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>230</x>
       <y>70</y>
       <width>101</width>
       <height>21</height>
@@ -395,36 +297,10 @@
      <string>X offset (mm):</string>
     </property>
    </widget>
-   <widget class="Line" name="line_2">
-    <property name="geometry">
-     <rect>
-      <x>370</x>
-      <y>30</y>
-      <width>21</width>
-      <height>101</height>
-     </rect>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="ElementalAlign">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>30</y>
-      <width>141</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Elemental align</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_13">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>230</x>
       <y>50</y>
       <width>101</width>
       <height>21</height>
@@ -437,7 +313,7 @@
    <widget class="QSpinBox" name="RailMotorIndex">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>330</x>
       <y>50</y>
       <width>81</width>
       <height>21</height>
@@ -450,23 +326,10 @@
      <number>256</number>
     </property>
    </widget>
-   <widget class="QCheckBox" name="Histogram">
-    <property name="geometry">
-     <rect>
-      <x>60</x>
-      <y>90</y>
-      <width>91</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Histogram</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_14">
     <property name="geometry">
      <rect>
-      <x>390</x>
+      <x>230</x>
       <y>30</y>
       <width>101</width>
       <height>21</height>
@@ -479,7 +342,7 @@
    <widget class="QSpinBox" name="MountMotorIndex">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>330</x>
       <y>30</y>
       <width>81</width>
       <height>21</height>
@@ -514,7 +377,7 @@
     <rect>
      <x>160</x>
      <y>0</y>
-     <width>161</width>
+     <width>291</width>
      <height>141</height>
     </rect>
    </property>
@@ -524,10 +387,10 @@
    <widget class="QCheckBox" name="Counts">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>23</y>
-      <width>92</width>
-      <height>20</height>
+      <x>210</x>
+      <y>30</y>
+      <width>71</width>
+      <height>16</height>
      </rect>
     </property>
     <property name="text">
@@ -540,22 +403,22 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>43</y>
-      <width>151</width>
-      <height>20</height>
+      <x>210</x>
+      <y>50</y>
+      <width>71</width>
+      <height>16</height>
      </rect>
     </property>
     <property name="text">
-     <string>Autocorrelations</string>
+     <string>Auto</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="SpectralLine">
+   <widget class="QSpinBox" name="FreqMin">
     <property name="geometry">
      <rect>
-      <x>100</x>
-      <y>90</y>
-      <width>51</width>
+      <x>110</x>
+      <y>30</y>
+      <width>81</width>
       <height>21</height>
      </rect>
     </property>
@@ -567,34 +430,34 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>90</y>
-      <width>71</width>
+      <y>30</y>
+      <width>91</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>A/C Delay:</string>
+     <string>Min Freq:</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_8">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>110</y>
-      <width>71</width>
+      <y>50</y>
+      <width>91</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>X/C Delay:</string>
+     <string>Max Freq:</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="LineDelay">
+   <widget class="QSpinBox" name="FreqMax">
     <property name="geometry">
      <rect>
-      <x>100</x>
-      <y>110</y>
-      <width>51</width>
+      <x>110</x>
+      <y>50</y>
+      <width>81</width>
       <height>21</height>
      </rect>
     </property>
@@ -603,26 +466,120 @@
     </property>
    </widget>
    <widget class="QCheckBox" name="Crosscorrelations">
-    <property name="enabled">
-     <bool>false</bool>
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>70</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
     </property>
+    <property name="text">
+     <string>Crosss</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="Resolution">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>70</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>4096</number>
+    </property>
+    <property name="singleStep">
+     <number>1</number>
+    </property>
+    <property name="value">
+     <number>1024</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_15">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>63</y>
-      <width>151</width>
+      <y>70</y>
+      <width>91</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>Crosscorrelations</string>
+     <string>Resolution:</string>
+    </property>
+   </widget>
+   <widget class="Line" name="line_2">
+    <property name="geometry">
+     <rect>
+      <x>190</x>
+      <y>30</y>
+      <width>21</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Vertical</enum>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="AutoChannel">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>90</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="value">
+     <number>1</number>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="CrossChannel">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>110</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="value">
+     <number>0</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_16">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>90</y>
+      <width>91</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Auto ch:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_17">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>110</y>
+      <width>91</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Cross ch:</string>
     </property>
    </widget>
   </widget>
   <widget class="QPushButton" name="Save">
    <property name="geometry">
     <rect>
-     <x>930</x>
+     <x>1070</x>
      <y>120</y>
      <width>81</width>
      <height>21</height>
@@ -635,7 +592,7 @@
   <widget class="QPlainTextEdit" name="Notes">
    <property name="geometry">
     <rect>
-     <x>930</x>
+     <x>1070</x>
      <y>20</y>
      <width>161</width>
      <height>91</height>
@@ -645,7 +602,7 @@
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>930</x>
+     <x>1070</x>
      <y>0</y>
      <width>67</width>
      <height>17</height>
@@ -654,6 +611,157 @@
    <property name="text">
     <string>Notes</string>
    </property>
+  </widget>
+  <widget class="QGroupBox" name="Elemental">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>890</x>
+     <y>0</y>
+     <width>161</width>
+     <height>141</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Elemental</string>
+   </property>
+   <widget class="QSpinBox" name="SampleSize">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>80</x>
+      <y>110</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="MaxDots">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>80</x>
+      <y>50</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>50</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="maxdots">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>50</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Max dots</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="minscore">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>90</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Min score</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="Decimals">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>80</x>
+      <y>70</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>5</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="decimals">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>70</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Decimals</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="MinScore">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>80</x>
+      <y>90</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="ElementalAlign">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>141</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Elemental align</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="samplesize">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>110</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Sampling</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>

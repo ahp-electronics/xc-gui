@@ -194,30 +194,9 @@ class Line : public QWidget
         {
             return phase;
         }
-
-        inline QLineSeries* getMagnitudes()
-        {
-            return magnitudes;
-        }
-        inline QLineSeries* getPhases()
-        {
-            return phases;
-        }
-        inline QMap<double, double>* getMagnitudeStack()
-        {
-            return magnitudeStack;
-        }
-        inline QMap<double, double>* getPhaseStack()
-        {
-            return phaseStack;
-        }
         inline QMap<double, double>* getDark()
         {
             return dark;
-        }
-        inline QLineSeries* getCounts()
-        {
-            return counts;
         }
         inline dsp_stream_p getStream()
         {
@@ -269,17 +248,21 @@ class Line : public QWidget
             return RailMotorIndex;
         }
 
-        inline int getStartLine()
+        inline int getStartChannel()
         {
             return start;
         }
-        inline int getEndLine()
+        inline int getEndChannel()
+        {
+            return end;
+        }
+        inline int getNumChannels()
         {
             return len;
         }
         inline int getScanStep()
         {
-            return fmax(1, round((double)len / 100.0));
+            return step;
         }
         inline double getLatitude()
         {
@@ -296,6 +279,14 @@ class Line : public QWidget
         inline void setLongitude(double longitude)
         {
             Longitude = longitude;
+        }
+        inline double getMinFrequency()
+        {
+            return minfreq;
+        }
+        inline double getMaxFrequency()
+        {
+            return maxfreq;
         }
         void TakeDark(Line* sender);
         bool DarkTaken();
@@ -335,18 +326,62 @@ class Line : public QWidget
         void setRa(double ra) { Ra = ra; }
         void setDec(double dec) { Dec = dec; }
 
+        inline Elemental *getElemental() {
+            return elemental;
+        }
+        inline QLineSeries* getCounts()
+        {
+            return counts;
+        }
+        inline QMap<double, double>* getCountStack()
+        {
+            return countStack;
+        }
+        inline Elemental *getCountElemental() {
+            return elementalCounts;
+        }
+        inline QLineSeries* getPhases()
+        {
+            return phases;
+        }
+        inline QMap<double, double>* getPhaseStack()
+        {
+            return phaseStack;
+        }
+        inline Elemental *getPhaseElemental() {
+            return elementalPhase;
+        }
+        inline QLineSeries* getMagnitudes()
+        {
+            return magnitudes;
+        }
+        inline QMap<double, double>* getMagnitudeStack()
+        {
+            return magnitudeStack;
+        }
+        inline Elemental *getMagnitudeElemental() {
+            return elementalMagnitude;
+        }
+        inline int getResolution()
+        {
+            return Resolution;
+        }
+        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
+        double stack { 0.0 };
     private:
         double Ra, Dec;
         static QMutex motor_mutex;
         QMutex mutex;
         double Frequency { LIGHTSPEED };
         void stretch(QLineSeries* series);
-        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
         fftw_plan plan { 0 };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
         Elemental *elemental { nullptr };
+        Elemental *elementalCounts { nullptr };
+        Elemental *elementalPhase { nullptr };
+        Elemental *elementalMagnitude { nullptr };
         QList<int> Motors;
         Ui::Line *ui { nullptr };
         dsp_stream_p stream { nullptr };
@@ -361,6 +396,7 @@ class Line : public QWidget
         QList<Line*> *parents { nullptr };
         QList<Baseline*> nodes { nullptr };
         QMap<double, double>* dark { nullptr };
+        QMap<double, double>* countStack { nullptr };
         QMap<double, double>* magnitudeStack { nullptr };
         QMap<double, double>* phaseStack { nullptr };
         QLineSeries* magnitude { nullptr };
@@ -374,12 +410,16 @@ class Line : public QWidget
         off_t end { 1 };
         size_t len { 1 };
         size_t step {1};
+        int Resolution { 1024 };
+        int AutoChannel { 1 };
+        int CrossChannel { 0 };
+        double maxfreq { 100000000 };
+        double minfreq { 0 };
         double mx { 0.0 };
         double averageBottom { 0 };
         double averageTop { 1.0 };
         double offset { 0.0 };
         double timespan { 1.0 };
-        double stack { 0.0 };
         double Latitude { 0.0 };
         double Longitude { 0.0 };
         timespec starttime { 0 };

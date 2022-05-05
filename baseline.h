@@ -59,13 +59,13 @@ class Baseline : public QWidget
         {
             return name;
         }
-        inline QLineSeries* getMagnitudes()
+        inline QLineSeries* getMagnitude()
         {
-            return magnitudes;
+            return magnitude;
         }
-        inline QLineSeries* getPhases()
+        inline QLineSeries* getPhase()
         {
-            return phases;
+            return phase;
         }
         inline void setMagnitudeSize(size_t size)
         {
@@ -81,32 +81,41 @@ class Baseline : public QWidget
             else
                 phase_buf = (double*)malloc(sizeof(double) * (size + 1));
         }
-        inline void setDftSize(size_t size)
-        {
-            if(dft != nullptr)
-                dft = (fftw_complex*)realloc(dft, sizeof(fftw_complex) * (size + 1));
-            else
-                dft = (fftw_complex*)malloc(sizeof(fftw_complex) * (size + 1));
+        inline Elemental *getElemental() {
+            return elemental;
         }
-        inline QLineSeries* getMagnitude()
+        inline QLineSeries* getCounts()
         {
-            return magnitude;
+            return counts;
         }
-        inline QLineSeries* getPhase()
+        inline QMap<double, double>* getCountStack()
         {
-            return phase;
+            return countStack;
         }
-        inline QList<double>* getCounts()
+        inline Elemental *getCountElemental() {
+            return elementalCounts;
+        }
+        inline QLineSeries* getPhases()
         {
-            return complex;
+            return phases;
+        }
+        inline QMap<double, double>* getPhaseStack()
+        {
+            return phaseStack;
+        }
+        inline Elemental *getPhaseElemental() {
+            return elementalPhase;
+        }
+        inline QLineSeries* getMagnitudes()
+        {
+            return magnitudes;
         }
         inline QMap<double, double>* getMagnitudeStack()
         {
             return magnitudeStack;
         }
-        inline QMap<double, double>* getPhaseStack()
-        {
-            return phaseStack;
+        inline Elemental *getMagnitudeElemental() {
+            return elementalMagnitude;
         }
         inline QMap<double, double>* getDark()
         {
@@ -183,6 +192,8 @@ class Baseline : public QWidget
             }
             return context[index];
         }
+        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
+        double stack {0.0};
 
         void lock()
         {
@@ -197,12 +208,9 @@ class Baseline : public QWidget
         bool running { false };
         void updateBufferSizes();
         void stretch(QLineSeries* series);
-        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
 
         dsp_stream_p stream { nullptr };
-        double stack {0.0};
         fftw_plan plan;
-        fftw_complex *dft { nullptr };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
         double offset { 0.0 };
@@ -223,14 +231,18 @@ class Baseline : public QWidget
         double percent;
         Mode mode;
         Elemental *elemental;
-        QMap<double, double>* dark;
-        QMap<double, double>* magnitudeStack;
+        Elemental* elementalCounts { nullptr };
+        Elemental* elementalPhase { nullptr };
+        Elemental* elementalMagnitude { nullptr };
+        QMap<double, double>* countStack;
         QMap<double, double>* phaseStack;
+        QMap<double, double>* magnitudeStack;
+        QMap<double, double>* dark;
+        QLineSeries* counts;
+        QLineSeries* phases;
+        QLineSeries* magnitudes;
         QLineSeries* magnitude;
         QLineSeries* phase;
-        QLineSeries* magnitudes;
-        QLineSeries* phases;
-        QList<double>* complex;
         Line* line1;
         Line* line2;
 signals:
