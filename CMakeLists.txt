@@ -95,7 +95,7 @@ else(ANDROID)
 endif(ANDROID)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
 target_link_libraries(xc-gui PRIVATE ${M_LIB} ${CMAKE_THREAD_LIBS_INIT} ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHPHUB_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION bin)
