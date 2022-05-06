@@ -317,6 +317,10 @@ void Baseline::SavePlot()
     data.close();
 }
 
+bool Baseline::dft() {
+    return getLine1()->dft() && getLine2()->dft();
+}
+
 void Baseline::stackCorrelations()
 {
     scanning = true;
@@ -377,16 +381,16 @@ void Baseline::stackCorrelations()
 void Baseline::plot(bool success, double o, double s)
 {
     double timespan = ahp_xc_get_sampletime() / s;
-    double offset = o * timespan;
+    double offset = o;
     getMagnitude()->clear();
     getPhase()->clear();
     stack += 1.0;
     for (int x = 0; x < elemental->getStreamSize(); x++)
     {
-        if(getLine1()->dft() && getLine2()->dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getBuffer()[x]);
+        if(dft()) {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getBuffer()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, x * timespan + offset, elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
         }
     }
 }

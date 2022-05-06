@@ -828,9 +828,10 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
     *percent = 0;
     if(spectrum != nullptr && npackets > 0)
     {
+        npackets--;
         int lag = 1;
         int _lag = lag;
-        for (int x = 0, z = 0; x < npackets; x++, z++)
+        for (int x = 0, z = 1; x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
@@ -869,7 +870,7 @@ void Line::plot(bool success, double o, double s)
     for (int x = 0; x < elemental->getStreamSize(); x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getBuffer()[x]);
         } else {
             stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getMagnitude()[x]);
         }

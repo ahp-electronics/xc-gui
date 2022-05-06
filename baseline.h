@@ -26,7 +26,6 @@
 #ifndef BASELINE_H
 #define BASELINE_H
 
-#include <thread>
 #include <QThread>
 #include <QList>
 #include <QWidget>
@@ -192,6 +191,7 @@ class Baseline : public QWidget
             }
             return context[index];
         }
+        bool dft();
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
         double stack {0.0};
 

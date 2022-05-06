@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstdio>
-#include <cstdlib>
 #include <fcntl.h>
 #include <QThread>
 #include <QStatusBar>

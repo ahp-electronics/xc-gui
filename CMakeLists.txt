@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(XC_GUI_VERSION_MAJOR 0)
 set(XC_GUI_VERSION_MINOR 9)
-set(XC_GUI_VERSION_RELEASE 2)
+set(XC_GUI_VERSION_RELEASE 3)
 set(XC_GUI_VERSION "${XC_GUI_VERSION_MAJOR}.${XC_GUI_VERSION_MINOR}.${XC_GUI_VERSION_RELEASE}")
 
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.
@@ -41,6 +41,7 @@ find_package(DSP REQUIRED)
 find_package(FFTW3 REQUIRED)
 find_package(M REQUIRED)
 
+include_directories(${CMAKE_INCLUDE_PATH})
 include_directories(${DSP_INCLUDE_DIR})
 include_directories(${VLBI_INCLUDE_DIR})
 include_directories(${AHPGT_INCLUDE_DIR})
