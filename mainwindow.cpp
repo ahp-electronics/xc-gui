@@ -531,6 +531,7 @@ try_high_rate:
                     for (int z = 0; z < 2; z++)
                     {
                         QLineSeries *Counts = counts[z];
+                        bool active = false;
                         if(line->isActive())
                         {
                             if(Counts->count() > 0)
@@ -544,20 +545,24 @@ try_high_rate:
                             switch (z)
                             {
                                 case 0:
-                                    if(line->showCounts())
+                                    if(line->showCounts()) {
                                         Counts->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
-                                    else
-                                        Counts->clear();
+                                        active = true;
+                                    }
                                     break;
                                 case 1:
-                                    if(line->showAutocorrelations())
-                                        Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude);
-                                    else
-                                        Counts->clear();
+                                    if(line->showAutocorrelations()) {
+                                        Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude / ahp_xc_get_packettime());
+                                        active = true;
+                                    }
                                     break;
                                 default:
                                     break;
                             }
+                        }
+                        if(!active)
+                        {
+                            Counts->clear();
                         }
                     }
                     for(int y = x + 1; y < Lines.count(); y++)
@@ -565,6 +570,7 @@ try_high_rate:
                         Baseline * line = Baselines[idx];
                         double mag = 0.0;
                         QLineSeries *Counts = line->getMagnitudes();
+                        bool active = false;
                         if(line->isActive())
                         {
                             if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
@@ -578,15 +584,16 @@ try_high_rate:
                                     }
                                 }
                                 if(ahp_xc_has_crosscorrelator())
-                                    mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude;
+                                    mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude / ahp_xc_get_packettime();
                                 else
-                                    mag = (double)sqrt(pow(packet->counts[x], 2) + pow(packet->counts[y], 2));
+                                    mag = (double)sqrt(pow(packet->counts[x], 2) + pow(packet->counts[y], 2)) / ahp_xc_get_packettime();
                                 Counts->append(packettime, mag);
+                                active = true;
                             }
-                            else
-                            {
-                                Counts->clear();
-                            }
+                        }
+                        if(!active)
+                        {
+                            Counts->clear();
                         }
                         idx++;
                     }
@@ -639,13 +646,13 @@ try_high_rate:
                                 {
                                     case 0:
                                         if(line->showCounts()) {
-                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->counts[x];
+                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->counts[x] / ahp_xc_get_packettime();
                                             active = true;
                                         }
                                         break;
                                     case 1:
                                         if(line->showAutocorrelations()) {
-                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->autocorrelations[x].correlations[0].magnitude;
+                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->autocorrelations[x].correlations[0].magnitude / ahp_xc_get_packettime();
                                             active = true;
                                         }
                                         break;
@@ -705,7 +712,7 @@ try_high_rate:
                             double mag = 0.0;
                             double rad = 0.0;
                             if(ahp_xc_has_crosscorrelator()) {
-                                mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude;
+                                mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude / ahp_xc_get_packettime();
                                 rad = (double)packet->crosscorrelations[idx].correlations[0].phase;
                             }
                             else
