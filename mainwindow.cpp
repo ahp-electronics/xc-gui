@@ -331,6 +331,7 @@ try_high_rate:
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanging),
                                 [ = ](Line* sender) {
+                            (void)sender;
                             lock_vlbi();
                         });
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
@@ -419,6 +420,7 @@ try_high_rate:
     connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::coordinatesUpdated),
             [ = ](double ra, double dec, double radius)
     {
+        (void)radius;
         Ra = ra;
         Dec = dec;
     });
@@ -439,6 +441,7 @@ try_high_rate:
     connect(getGraph(), static_cast<void (Graph::*)(double)>(&Graph::frequencyUpdated),
             [ = ](double freq)
     {
+        (void)freq;
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
@@ -855,10 +858,10 @@ try_high_rate:
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate, &threadsStopped);
             vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
 
-            getGraph()->plotModel(getGraph()->getCoverage(), "coverage");
-            getGraph()->plotModel(getGraph()->getMagnitude(), "magnitude");
-            getGraph()->plotModel(getGraph()->getPhase(), "phase");
-            getGraph()->plotModel(getGraph()->getIdft(), "idft");
+            getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
+            getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
+            getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
+            getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             unlock_vlbi();
         }
         thread->unlock();
@@ -923,7 +926,7 @@ void MainWindow::stopThreads()
 
 void MainWindow::runClicked(bool checked)
 {
-
+    (void)checked;
     int nlines = 0;
     if(ui->Run->text() == "Run")
     {

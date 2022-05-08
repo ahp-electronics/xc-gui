@@ -37,7 +37,7 @@
 #include <QStatusBar>
 #include <QCoreApplication>
 #include <QMainWindow>
-#include <QTcpSocket>
+#include <QUdpSocket>
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QSettings>
@@ -45,7 +45,7 @@
 #include <QIODevice>
 #include <QStandardPaths>
 #include <QDateTime>
-#include <QTcpSocket>
+#include <QUdpSocket>
 #include <QThreadPool>
 #include <QDir>
 #include "graph.h"
@@ -251,9 +251,9 @@ signals:
         int current_context { 0 };
         ahp_xc_packet *packet;
         QSettings *settings;
-        QTcpSocket xc_socket;
-        QTcpSocket motor_socket;
-        QTcpSocket control_socket;
+        QUdpSocket xc_socket;
+        QUdpSocket motor_socket;
+        QUdpSocket control_socket;
         QSerialPort serial;
         QFile file;
         Mode mode;
