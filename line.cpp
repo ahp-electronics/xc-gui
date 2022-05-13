@@ -666,6 +666,7 @@ void Line::removeFromVLBIContext()
 
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
+    if(y == 0.0) return;
     y /= stack;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
