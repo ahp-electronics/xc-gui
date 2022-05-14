@@ -368,14 +368,11 @@ try_high_rate:
                                     [ = ](Baseline* sender) {
                                 if(sender->isActive()) {
                                     getGraph()->addSeries(sender->getMagnitudes());
-                                    getGraph()->addSeries(sender->getPhases());
                                 } else {
                                     getGraph()->removeSeries(sender->getMagnitudes());
-                                    getGraph()->removeSeries(sender->getPhases());
                                 }
                             });
                             getGraph()->addSeries(Baselines[idx]->getMagnitude());
-                            getGraph()->addSeries(Baselines[idx]->getPhase());
                             idx++;
                         }
                     }
