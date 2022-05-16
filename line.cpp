@@ -323,11 +323,13 @@ void Line::UpdateBufferSizes()
 
 void Line::runClicked(bool checked)
 {
-    ui->Counter->setEnabled(mode == Counter || mode == Spectrograph);
-    ui->Correlator->setEnabled(false);
     if(mode != Counter && mode != Spectrograph)
     {
+        ui->Counter->setEnabled(false);
         ui->Correlator->setEnabled(!isActive());
+    } else {
+        ui->Counter->setEnabled(true);
+        ui->Correlator->setEnabled(false);
     }
 }
 
@@ -626,8 +628,6 @@ void Line::setMode(Mode m)
     ui->Counter->setEnabled(m == Counter || mode == Spectrograph);
     ui->Correlator->setEnabled(m != Counter && mode != Spectrograph);
     ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
-    if(isActive())
-        runClicked();
 }
 
 void Line::paint()
@@ -760,9 +760,18 @@ void Line::setActive(bool a)
         removeFromVLBIContext();
     }
     if(a) {
-        if(getMode() == Counter) {
+        if(getMode() == Counter || getMode() == Spectrograph) {
             running = (showCounts() || showAutocorrelations());
         }
+    }
+    if(getMode() == Autocorrelator || getMode() == CrosscorrelatorII || getMode() == CrosscorrelatorIQ)
+    {
+        running = a;
+        ui->Counter->setEnabled(false);
+        ui->Correlator->setEnabled(!isActive());
+    } else {
+        ui->Counter->setEnabled(true);
+        ui->Correlator->setEnabled(false);
     }
     emit activeStateChanged(this);
 }

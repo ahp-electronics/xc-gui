@@ -189,7 +189,6 @@ MainWindow::MainWindow(QWidget *parent)
         settings->beginGroup("Connection");
         xcFD = -1;
         bool local = false;
-        bool try_high = true;
         if(xcport == "no connection")
         {
             settings->setValue("xc_connection", xcport);
@@ -220,18 +219,16 @@ MainWindow::MainWindow(QWidget *parent)
             }
             else
             {
-                local = false;
-                try_high = false;
-try_high_rate:
-                ahp_xc_connect(xcport.toUtf8(), try_high);
+                local = true;
+                ahp_xc_connect(xcport.toUtf8(), false);
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
             {
                 if(!ahp_xc_get_properties())
                 {
-                    if(ahp_xc_get_packettime() > 0.1)
-                        ahp_xc_set_baudrate((baud_rate)log2(ahp_xc_get_packettime() / 0.1));
+                    if(ahp_xc_get_packettime() > 0.1 && local)
+                        ahp_xc_set_baudrate((baud_rate)round(log2(ahp_xc_get_packettime() / 0.1)));
                     motorFD = -1;
                     if(motorport == "no connection")
                     {
@@ -392,10 +389,6 @@ try_high_rate:
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
                 } else {
-                    if(local && !try_high) {
-                        try_high = true;
-                        goto try_high_rate;
-                    }
                     ahp_xc_disconnect();
                     return;
                 }
@@ -936,11 +929,9 @@ void MainWindow::runClicked(bool checked)
             vlbiThread->start();
         for(int x = 0; x < Lines.count(); x++) {
             if(getMode() == Autocorrelator) {
-                Lines[x]->setActive(Lines[x]->isEnabled());
                 nlines++;
-            } else {
-                Lines[x]->setActive(true);
             }
+            Lines[x]->setActive(true);
         }
         if(nlines > 0 && getMode() == Autocorrelator)
             emit scanStarted();

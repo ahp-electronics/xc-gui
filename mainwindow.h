@@ -157,6 +157,9 @@ class MainWindow : public QMainWindow
                 {
                     Baselines[i]->setMode(mode);
                 }
+                for(int x = 0; x < Lines.count(); x++) {
+                    Lines[x]->setActive(false);
+                }
                 getGraph()->setMode(m);
                 startThreads();
             }
