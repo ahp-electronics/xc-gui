@@ -759,7 +759,11 @@ void Line::setActive(bool a)
     {
         removeFromVLBIContext();
     }
-    running = a;
+    if(a) {
+        if(getMode() == Counter) {
+            running = (showCounts() || showAutocorrelations());
+        }
+    }
     emit activeStateChanged(this);
 }
 

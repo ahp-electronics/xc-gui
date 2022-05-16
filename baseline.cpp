@@ -74,7 +74,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
             [ = ](Line * sender)
     {
         getCounts()->clear();
-        bool newstate = getLine1()->isActive() && getLine2()->isActive();
+        bool newstate = getLine1()->isActive() && getLine2()->isActive() && getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
         stop = !newstate;
         if(oldstate != newstate)
         {

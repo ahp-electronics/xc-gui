@@ -74,7 +74,6 @@ class MainWindow : public QMainWindow
         MainWindow(QWidget *parent = nullptr);
         ~MainWindow();
         double percent;
-        int finished;
         void resizeEvent(QResizeEvent* event);
         QList<Line*> Lines;
         QList<Baseline*> Baselines;
@@ -159,14 +158,6 @@ class MainWindow : public QMainWindow
                     Baselines[i]->setMode(mode);
                 }
                 getGraph()->setMode(m);
-                if(mode == Counter || mode == Spectrograph || mode == HolographIQ || mode == HolographII)
-                {
-                    ahp_xc_set_capture_flags((xc_capture_flags)(cur | CAP_ENABLE));
-                    resetTimestamp();
-                    threadsStopped = false;
-                    if(mode == HolographIQ || mode == HolographII)
-                        vlbiThread->start();
-                }
                 startThreads();
             }
         }

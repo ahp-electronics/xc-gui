@@ -220,7 +220,7 @@ MainWindow::MainWindow(QWidget *parent)
             }
             else
             {
-                local = true;
+                local = false;
                 try_high = false;
 try_high_rate:
                 ahp_xc_connect(xcport.toUtf8(), try_high);
@@ -230,6 +230,8 @@ try_high_rate:
             {
                 if(!ahp_xc_get_properties())
                 {
+                    if(ahp_xc_get_packettime() > 0.1)
+                        ahp_xc_set_baudrate((baud_rate)log2(ahp_xc_get_packettime() / 0.1));
                     motorFD = -1;
                     if(motorport == "no connection")
                     {
@@ -338,11 +340,9 @@ try_high_rate:
                                 [ = ](Line* sender) {
                             if(sender->isActive()) {
                                 getGraph()->addSeries(sender->getMagnitudes());
-                                getGraph()->addSeries(sender->getPhases());
                                 getGraph()->addSeries(sender->getCounts());
                             } else {
                                 getGraph()->removeSeries(sender->getMagnitudes());
-                                getGraph()->removeSeries(sender->getPhases());
                                 getGraph()->removeSeries(sender->getCounts());
                             }
                             unlock_vlbi();
@@ -449,6 +449,8 @@ try_high_rate:
         QList<size_t> steps;
         ahp_xc_sample *spectrum = nullptr;
         int npackets;
+        if(threadsStopped)
+            goto end_unlock;
         switch (getMode())
         {
             case HolographIQ:
@@ -791,13 +793,13 @@ try_high_rate:
                         sizes.append(line->getNumChannels());
                         steps.append(line->getScanStep());
                         line->setPercentPtr(&percent);
-                        line->setStopPtr(&finished);
+                        line->setStopPtr(&threadsStopped);
                         line->UpdateBufferSizes();
                     } else {
                         line->resetStopPtr();
                     }
                 }
-                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &finished, &percent);
+                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < indexes.count(); x++)
@@ -818,6 +820,7 @@ try_high_rate:
             default:
                 break;
         }
+end_unlock:
         thread->unlock();
     });
     connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread * thread)
@@ -907,7 +910,6 @@ void MainWindow::startThreads()
 
 void MainWindow::stopThreads()
 {
-    threadsStopped = true;
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
     vlbiThread->unlock();
@@ -928,26 +930,35 @@ void MainWindow::runClicked(bool checked)
     if(ui->Run->text() == "Run")
     {
         ui->Run->setText("Stop");
-        finished = false;
+        if(getMode() == Counter || getMode() == Spectrograph || getMode() == HolographIQ || getMode() == HolographII)
+            ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
+        if(getMode() == HolographIQ || getMode() == HolographII)
+            vlbiThread->start();
         for(int x = 0; x < Lines.count(); x++) {
-            if(getMode() == Counter || mode == Spectrograph)
-                Lines[x]->setActive(true);
-            else {
-                nlines++;
+            if(getMode() == Autocorrelator) {
                 Lines[x]->setActive(Lines[x]->isEnabled());
+                nlines++;
+            } else {
+                Lines[x]->setActive(true);
             }
         }
-        if(nlines > 0)
+        if(nlines > 0 && getMode() == Autocorrelator)
             emit scanStarted();
+        threadsStopped = false;
     }
     else
     {
         ui->Run->setText("Run");
-        finished = true;
+        threadsStopped = true;
+        if(getMode() == Counter || getMode() == Spectrograph || getMode() == HolographIQ || getMode() == HolographII)
+            ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~CAP_ENABLE));
+        if(getMode() == HolographIQ || getMode() == HolographII)
+            vlbiThread->requestInterruption();
         for(int x = 0; x < Lines.count(); x++) {
             Lines[x]->setActive(false);
         }
-        if(nlines > 0)
+        nlines = 0;
+        if(getMode() == Autocorrelator)
             emit scanFinished(false);
     }
 }
