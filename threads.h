@@ -39,13 +39,13 @@ class Thread : public QThread
         QString Name;
         QObject* parent;
         QMutex mutex;
-        int timer_ms;
-        int loop_ms;
+        double timer_ms;
+        double loop_ms;
     public:
         ~Thread() {
             stop();
         }
-        Thread(QObject* p, int timer = 20, int loop = 2, QString name = "") : QThread()
+        Thread(QObject* p, double timer = 20, double loop = 2, QString name = "") : QThread()
         {
             parent = p;
             timer_ms = timer;
@@ -63,7 +63,7 @@ class Thread : public QThread
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
-                QThread::msleep(timer_ms);
+                usleep(timer_ms*1000);
                 lock();
                 lastPollTime = QDateTime::currentDateTimeUtc();
                 emit threadLoop(this);

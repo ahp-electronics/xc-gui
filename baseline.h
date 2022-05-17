@@ -208,11 +208,13 @@ class Baseline : public QWidget
             mutex.unlock();
         }
         inline double getPacketTime() { return packetTime; }
-        inline void addCount(double time) {
-            if(getMode() == Counter || getMode() == Spectrograph) {
-                packetTime = time;
+        void addCount();
+        inline void addCount(double time, bool threaded = true) {
+            packetTime = time;
+            if(threaded)
                 readThread->start();
-            }
+            else
+                addCount();
         }
         inline double getTimeRange() { return timeRange; }
         inline void setTimeRange(double range) { timeRange = range; }

@@ -45,116 +45,11 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     elementalCounts = new Elemental(this);
     elementalPhase = new Elemental(this);
     elementalMagnitude = new Elemental(this);
-    readThread = new Thread(this, 0, 0, "baseline " +name+" read thread");
+    readThread = new Thread(this, 0.1, 0.1, "baseline " +name+" read thread");
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
     {
         Baseline * line = (Baseline *)thread->getParent();
-        double packettime = line->getPacketTime();
-        double timerange = line->getTimeRange();
-        double mag = 0.0;
-        QLineSeries *Counts = line->getMagnitudes();
-        bool active = false;
-        switch(getMode()) {
-        default: break;
-        case Counter:
-            if(line->isActive())
-            {
-                if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
-                {
-                    if(Counts->count() > 0)
-                    {
-                        for(int d = Counts->count() - 1; d >= 0; d--)
-                        {
-                            if(Counts->at(d).x() < packettime - (double)timerange)
-                                Counts->remove(d);
-                        }
-                    }
-                    if(ahp_xc_has_crosscorrelator())
-                        mag = (double)packet->crosscorrelations[line->getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-                    else
-                        mag = (double)sqrt(pow(getPacket()->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
-                    Counts->append(packettime, mag);
-                    active = true;
-                }
-            }
-            if(!active)
-            {
-                Counts->clear();
-            }
-            break;
-            case Spectrograph:
-            QLineSeries *counts[2] =
-            {
-                line->getMagnitudes(),
-                line->getPhases(),
-            };
-            QMap<double, double>*stacks[2] =
-            {
-                line->getMagnitudeStack(),
-                line->getPhaseStack(),
-            };
-            Elemental *elementals[2] =
-            {
-                line->getMagnitudeElemental(),
-                line->getPhaseElemental(),
-            };
-            double mag = 0.0;
-            double rad = 0.0;
-            if(ahp_xc_has_crosscorrelator()) {
-                mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-                rad = (double)packet->crosscorrelations[getLineIndex()].correlations[0].phase;
-            }
-            else
-            {
-                mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()],
-                                   2)) * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2);
-                if(mag > 0.0)
-                {
-                    double r = packet->counts[getLine1()->getLineIndex()] * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2) / mag;
-                    double i = packet->counts[getLine2()->getLineIndex()] * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2) / mag;
-                    rad = acos(i);
-                    if(r < 0.0)
-                        rad = M_PI * 2 - rad;
-                }
-            }
-            for (int z = 0; z < 2; z++)
-            {
-                QLineSeries *Counts = counts[z];
-                QMap<double, double> *Stack = stacks[z];
-                Elemental *Elements = elementals[z];
-                if(line->isActive())
-                {
-                    if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
-                    {
-                        Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
-                        Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
-                        Elements->getStream()->buf[0] = fmin(line->getLine1()->getMinFrequency(), line->getLine1()->getMinFrequency());
-                        Elements->getStream()->buf[1] = fmax(line->getLine2()->getMaxFrequency(), line->getLine2()->getMaxFrequency());
-                        dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                        line->stack ++;
-                        int size = fmin(Elements->getStreamSize(), fmax(line->getLine1()->getResolution(), line->getLine2()->getResolution()));
-                        dsp_t *buf = Elements->getStream()->buf;
-                        dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
-                        double *histo = dsp_stats_histogram(Elements->getStream(), size);
-                        dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
-                        Counts->clear();
-                        for (int x = 1; x < size; x++)
-                        {
-                            if(histo[x] != 0)
-                                line->stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
-                        }
-                        free(histo);
-                    }
-                }
-                else
-                {
-                    Counts->clear();
-                    Stack->clear();
-                    Elements->setStreamSize(2);
-                }
-            }
-            break;
-        }
+        line->addCount();
         thread->requestInterruption();
         thread->unlock();
     });
@@ -311,6 +206,116 @@ void Baseline::setMode(Mode m)
         disconnect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         disconnect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
         disconnect(getLine2(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+    }
+}
+
+void Baseline::addCount()
+{
+    double packettime = getPacketTime();
+    double timerange = getTimeRange();
+    double mag = 0.0;
+    QLineSeries *Counts = getMagnitudes();
+    bool active = false;
+    switch(getMode()) {
+    default: break;
+    case Counter:
+        if(isActive())
+        {
+            if(getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations())
+            {
+                if(Counts->count() > 0)
+                {
+                    for(int d = Counts->count() - 1; d >= 0; d--)
+                    {
+                        if(Counts->at(d).x() < packettime - (double)timerange)
+                            Counts->remove(d);
+                    }
+                }
+                if(ahp_xc_has_crosscorrelator())
+                    mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+                else
+                    mag = (double)sqrt(pow(getPacket()->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
+                Counts->append(packettime, mag);
+                active = true;
+            }
+        }
+        if(!active)
+        {
+            Counts->clear();
+        }
+        break;
+        case Spectrograph:
+        QLineSeries *counts[2] =
+        {
+            getMagnitudes(),
+            getPhases(),
+        };
+        QMap<double, double>*stacks[2] =
+        {
+            getMagnitudeStack(),
+            getPhaseStack(),
+        };
+        Elemental *elementals[2] =
+        {
+            getMagnitudeElemental(),
+            getPhaseElemental(),
+        };
+        double mag = 0.0;
+        double rad = 0.0;
+        if(ahp_xc_has_crosscorrelator()) {
+            mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+            rad = (double)packet->crosscorrelations[getLineIndex()].correlations[0].phase;
+        }
+        else
+        {
+            mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()],
+                               2)) * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2);
+            if(mag > 0.0)
+            {
+                double r = packet->counts[getLine1()->getLineIndex()] * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2) / mag;
+                double i = packet->counts[getLine2()->getLineIndex()] * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2) / mag;
+                rad = acos(i);
+                if(r < 0.0)
+                    rad = M_PI * 2 - rad;
+            }
+        }
+        for (int z = 0; z < 2; z++)
+        {
+            QLineSeries *Counts = counts[z];
+            QMap<double, double> *Stack = stacks[z];
+            Elemental *Elements = elementals[z];
+            if(isActive())
+            {
+                if(getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations())
+                {
+                    Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
+                    Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
+                    Elements->getStream()->buf[0] = fmin(getLine1()->getMinFrequency(), getLine1()->getMinFrequency());
+                    Elements->getStream()->buf[1] = fmax(getLine2()->getMaxFrequency(), getLine2()->getMaxFrequency());
+                    dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
+                    stack ++;
+                    int size = fmin(Elements->getStreamSize(), fmax(getLine1()->getResolution(), getLine2()->getResolution()));
+                    dsp_t *buf = Elements->getStream()->buf;
+                    dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
+                    double *histo = dsp_stats_histogram(Elements->getStream(), size);
+                    dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
+                    Counts->clear();
+                    for (int x = 1; x < size; x++)
+                    {
+                        if(histo[x] != 0)
+                            stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                    }
+                    free(histo);
+                }
+            }
+            else
+            {
+                Counts->clear();
+                Stack->clear();
+                Elements->setStreamSize(2);
+            }
+        }
+        break;
     }
 }
 

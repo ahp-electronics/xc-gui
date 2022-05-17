@@ -379,7 +379,7 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
 
-                    ahp_xc_max_threads(ahp_xc_get_nlines());
+                    ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(QThread::idealThreadCount());
 
                     getGraph()->loadSettings();
@@ -514,13 +514,7 @@ MainWindow::MainWindow(QWidget *parent)
             if(!ahp_xc_get_packet(packet))
             {
                 double packettime = packet->timestamp + J2000_starttime;
-                double diff = packettime - lastpackettime;
                 lastpackettime = packettime;
-                if(diff < 0 || diff > getTimeRange())
-                {
-                    resetTimestamp();
-                    break;
-                }
                 for(Line * line : Lines)
                 {
                     line->addCount(packettime);
@@ -697,6 +691,7 @@ void MainWindow::runClicked(bool checked)
         if(nlines > 0 && getMode() == Autocorrelator)
             emit scanStarted();
         threadsStopped = false;
+        resetTimestamp();
     }
     else
     {

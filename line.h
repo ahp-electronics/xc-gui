@@ -369,11 +369,13 @@ class Line : public QWidget
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
         double stack { 0.0 };
         inline double getPacketTime() { return packetTime; }
-        inline void addCount(double time) {
-            if(getMode() == Counter) {
-                packetTime = time;
+        void addCount();
+        inline void addCount(double time, bool threaded = true) {
+            packetTime = time;
+            if(threaded)
                 readThread->start();
-            }
+            else
+                addCount();
         }
         inline double getTimeRange() { return timeRange; }
         inline void setTimeRange(double range) { timeRange = range; }

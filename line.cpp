@@ -72,131 +72,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
-    readThread = new Thread(this, 0, 0, name+" read thread");
+    readThread = new Thread(this, 5, 5, name+" read thread");
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
     {
         Line * line = (Line *)thread->getParent();
-        double packettime = line->getPacketTime();
-        double timerange = line->getTimeRange();
-        QLineSeries *counts[3] =
-        {
-            line->getCounts(),
-            line->getMagnitudes(),
-            line->getPhases(),
-        };
-        QMap<double, double>*stacks[3] =
-        {
-            line->getCountStack(),
-            line->getMagnitudeStack(),
-            line->getPhaseStack(),
-        };
-        Elemental *elementals[3] =
-        {
-            line->getCountElemental(),
-            line->getMagnitudeElemental(),
-            line->getPhaseElemental(),
-        };
-        switch(line->getMode()) {
-        default: break;
-        case Counter:
-        for (int z = 0; z < 2; z++)
-        {
-            QLineSeries *Counts = counts[z];
-            bool active = false;
-            if(line->isActive())
-            {
-                if(Counts->count() > 0)
-                {
-                    for(int d = Counts->count() - 1; d >= 0; d--)
-                    {
-                        if(Counts->at(d).x() < packettime - (double)timerange)
-                            Counts->remove(d);
-                    }
-                }
-                switch (z)
-                {
-                    case 0:
-                        if(line->showCounts()) {
-                            Counts->append(packettime, (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime());
-                            active = true;
-                        }
-                        break;
-                    case 1:
-                        if(line->showAutocorrelations()) {
-                            Counts->append(packettime, (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
-                            active = true;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            }
-            if(!active)
-            {
-                Counts->clear();
-            }
-        }
-        break;
-        case Spectrograph:
-            for (int z = 0; z < 3; z++)
-            {
-                QLineSeries *Counts = counts[z];
-                QMap<double, double> *Stack = stacks[z];
-                Elemental *Elements = elementals[z];
-                bool active = false;
-                if(line->isActive())
-                {
-                    Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
-                    switch (z)
-                    {
-                        case 0:
-                            if(line->showCounts()) {
-                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime();
-                                active = true;
-                            }
-                            break;
-                        case 1:
-                            if(line->showAutocorrelations()) {
-                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-                                active = true;
-                            }
-                            break;
-                        case 2:
-                            if(line->showAutocorrelations()) {
-                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].phase;
-                                active = true;
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                if(active) {
-                    Elements->getStream()->buf[0] = line->getMinFrequency();
-                    Elements->getStream()->buf[1] = line->getMaxFrequency();
-                    dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                    line->stack ++;
-                    int size = fmin(Elements->getStreamSize(), line->getResolution());
-                    dsp_t *buf = Elements->getStream()->buf;
-                    dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
-                    double *histo = dsp_stats_histogram(Elements->getStream(), size);
-                    dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
-                    Counts->clear();
-                    for (int x = 1; x < size; x++)
-                    {
-                        if(histo[getLineIndex()] != 0)
-                            line->stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
-                    }
-                    free(histo);
-                }
-                else
-                {
-                    Counts->clear();
-                    Stack->clear();
-                    Elements->setStreamSize(2);
-                }
-            }
-        }
+        line->addCount();
         thread->requestInterruption();
         thread->unlock();
     });
@@ -516,6 +396,131 @@ void Line::updateDec()
                 v *= 180.0;
                 v /= M_PI;
                 setDec(v);
+            }
+        }
+    }
+}
+
+void Line::addCount()
+{
+    double packettime = getPacketTime();
+    double timerange = getTimeRange();
+    QLineSeries *counts[3] =
+    {
+        getCounts(),
+        getMagnitudes(),
+        getPhases(),
+    };
+    QMap<double, double>*stacks[3] =
+    {
+        getCountStack(),
+        getMagnitudeStack(),
+        getPhaseStack(),
+    };
+    Elemental *elementals[3] =
+    {
+        getCountElemental(),
+        getMagnitudeElemental(),
+        getPhaseElemental(),
+    };
+    switch(getMode()) {
+    default: break;
+    case Counter:
+    for (int z = 0; z < 2; z++)
+    {
+        QLineSeries *Counts = counts[z];
+        bool active = false;
+        if(isActive())
+        {
+            if(Counts->count() > 0)
+            {
+                for(int d = Counts->count() - 1; d >= 0; d--)
+                {
+                    if(Counts->at(d).x() < packettime - (double)timerange)
+                        Counts->remove(d);
+                }
+            }
+            switch (z)
+            {
+                case 0:
+                    if(showCounts()) {
+                        Counts->append(packettime, (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime());
+                        active = true;
+                    }
+                    break;
+                case 1:
+                    if(showAutocorrelations()) {
+                        Counts->append(packettime, (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
+                        active = true;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        if(!active)
+        {
+            Counts->clear();
+        }
+    }
+    break;
+    case Spectrograph:
+        for (int z = 0; z < 3; z++)
+        {
+            QLineSeries *Counts = counts[z];
+            QMap<double, double> *Stack = stacks[z];
+            Elemental *Elements = elementals[z];
+            bool active = false;
+            if(isActive())
+            {
+                Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
+                switch (z)
+                {
+                    case 0:
+                        if(showCounts()) {
+                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime();
+                            active = true;
+                        }
+                        break;
+                    case 1:
+                        if(showAutocorrelations()) {
+                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+                            active = true;
+                        }
+                        break;
+                    case 2:
+                        if(showAutocorrelations()) {
+                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].phase;
+                            active = true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if(active) {
+                Elements->getStream()->buf[0] = getMinFrequency();
+                Elements->getStream()->buf[1] = getMaxFrequency();
+                dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
+                stack ++;
+                int size = fmin(Elements->getStreamSize(), getResolution());
+                dsp_t *buf = Elements->getStream()->buf;
+                dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
+                double *histo = dsp_stats_histogram(Elements->getStream(), size);
+                dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
+                Counts->clear();
+                for (int x = 1; x < size; x++)
+                {
+                    if(histo[getLineIndex()] != 0)
+                        stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                }
+                free(histo);
+            }
+            else
+            {
+                Counts->clear();
+                Stack->clear();
+                Elements->setStreamSize(2);
             }
         }
     }
