@@ -373,7 +373,6 @@ class Line : public QWidget
             if(getMode() == Counter) {
                 packetTime = time;
                 readThread->start();
-                readThread->wait();
             }
         }
         inline double getTimeRange() { return timeRange; }

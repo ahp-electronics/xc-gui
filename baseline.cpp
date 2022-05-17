@@ -49,6 +49,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
     {
         Baseline * line = (Baseline *)thread->getParent();
+        double packettime = line->getPacketTime();
+        double timerange = line->getTimeRange();
         double mag = 0.0;
         QLineSeries *Counts = line->getMagnitudes();
         bool active = false;
@@ -63,7 +65,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                     {
                         for(int d = Counts->count() - 1; d >= 0; d--)
                         {
-                            if(Counts->at(d).x() < getPacketTime() - (double)getTimeRange())
+                            if(Counts->at(d).x() < packettime - (double)timerange)
                                 Counts->remove(d);
                         }
                     }
@@ -71,7 +73,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                         mag = (double)packet->crosscorrelations[line->getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
                     else
                         mag = (double)sqrt(pow(getPacket()->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
-                    Counts->append(getPacketTime(), mag);
+                    Counts->append(packettime, mag);
                     active = true;
                 }
             }
@@ -153,6 +155,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
             }
             break;
         }
+        thread->requestInterruption();
         thread->unlock();
     });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);

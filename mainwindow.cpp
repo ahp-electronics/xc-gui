@@ -332,6 +332,7 @@ MainWindow::MainWindow(QWidget *parent)
                         QString name = "Line " + QString::number(l + 1);
                         fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
+                        Lines[l]->setTimeRange(TimeRange);
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanging),
                                 [ = ](Line* sender) {
                             (void)sender;
@@ -378,7 +379,7 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
 
-                    ahp_xc_max_threads(QThread::idealThreadCount());
+                    ahp_xc_max_threads(ahp_xc_get_nlines());
                     vlbi_max_threads(QThread::idealThreadCount());
 
                     getGraph()->loadSettings();
@@ -520,14 +521,12 @@ MainWindow::MainWindow(QWidget *parent)
                     resetTimestamp();
                     break;
                 }
-                for(int x = 0; x < Lines.count(); x++)
+                for(Line * line : Lines)
                 {
-                    Line * line = Lines[x];
                     line->addCount(packettime);
                 }
-                for(int x = 0; x < Baselines.count(); x++)
+                for(Baseline * line : Baselines)
                 {
-                    Baseline * line = Baselines[x];
                     line->addCount(packettime);
                 }
             }
