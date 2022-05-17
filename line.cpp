@@ -73,14 +73,30 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     readThread = new Thread(this, 0, 0, name+" read thread");
-    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
+    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
     {
         Line * line = (Line *)thread->getParent();
         QLineSeries *counts[3] =
         {
             line->getCounts(),
             line->getMagnitudes(),
+            line->getPhases(),
         };
+        QMap<double, double>*stacks[3] =
+        {
+            line->getCountStack(),
+            line->getMagnitudeStack(),
+            line->getPhaseStack(),
+        };
+        Elemental *elementals[3] =
+        {
+            line->getCountElemental(),
+            line->getMagnitudeElemental(),
+            line->getPhaseElemental(),
+        };
+        switch(line->getMode()) {
+        default: break;
+        case Counter:
         for (int z = 0; z < 2; z++)
         {
             QLineSeries *Counts = counts[z];
@@ -116,6 +132,67 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
             if(!active)
             {
                 Counts->clear();
+            }
+        }
+        break;
+        case Spectrograph:
+            for (int z = 0; z < 3; z++)
+            {
+                QLineSeries *Counts = counts[z];
+                QMap<double, double> *Stack = stacks[z];
+                Elemental *Elements = elementals[z];
+                bool active = false;
+                if(line->isActive())
+                {
+                    Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
+                    switch (z)
+                    {
+                        case 0:
+                            if(line->showCounts()) {
+                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime();
+                                active = true;
+                            }
+                            break;
+                        case 1:
+                            if(line->showAutocorrelations()) {
+                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+                                active = true;
+                            }
+                            break;
+                        case 2:
+                            if(line->showAutocorrelations()) {
+                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].phase;
+                                active = true;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                if(active) {
+                    Elements->getStream()->buf[0] = line->getMinFrequency();
+                    Elements->getStream()->buf[1] = line->getMaxFrequency();
+                    dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
+                    line->stack ++;
+                    int size = fmin(Elements->getStreamSize(), line->getResolution());
+                    dsp_t *buf = Elements->getStream()->buf;
+                    dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
+                    double *histo = dsp_stats_histogram(Elements->getStream(), size);
+                    dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
+                    Counts->clear();
+                    for (int x = 1; x < size; x++)
+                    {
+                        if(histo[getLineIndex()] != 0)
+                            line->stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                    }
+                    free(histo);
+                }
+                else
+                {
+                    Counts->clear();
+                    Stack->clear();
+                    Elements->setStreamSize(2);
+                }
             }
         }
         thread->unlock();
@@ -941,6 +1018,7 @@ void Line::plot(bool success, double o, double s)
 
 Line::~Line()
 {
+    readThread->~Thread();
     elemental->~Elemental();
     delete ui;
 }

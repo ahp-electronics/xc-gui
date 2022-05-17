@@ -212,6 +212,7 @@ class Baseline : public QWidget
             if(getMode() == Counter || getMode() == Spectrograph) {
                 packetTime = time;
                 readThread->start();
+                readThread->wait();
             }
         }
         inline double getTimeRange() { return timeRange; }

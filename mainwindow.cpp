@@ -509,6 +509,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 break;
         case Counter:
+        case Spectrograph:
             if(!ahp_xc_get_packet(packet))
             {
                 double packettime = packet->timestamp + J2000_starttime;
@@ -519,187 +520,17 @@ MainWindow::MainWindow(QWidget *parent)
                     resetTimestamp();
                     break;
                 }
-                int idx = 0;
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line * line = Lines[x];
                     line->addCount(packettime);
-                    for(int y = x + 1; y < Lines.count(); y++)
-                    {
-                        Baseline * line = Baselines[idx];
-                        line->addCount(packettime);
-                    }
+                }
+                for(int x = 0; x < Baselines.count(); x++)
+                {
+                    Baseline * line = Baselines[x];
+                    line->addCount(packettime);
                 }
             }
-            break;
-            case Spectrograph:
-                if(!ahp_xc_get_packet(packet))
-                {
-                    double packettime = packet->timestamp + J2000_starttime;
-                    double diff = packettime - lastpackettime;
-                    lastpackettime = packettime;
-                    if(diff < 0 || diff > getTimeRange())
-                    {
-                        resetTimestamp();
-                        break;
-                    }
-                    int idx = 0;
-                    for(int x = 0; x < Lines.count(); x++)
-                    {
-                        Line * line = Lines[x];
-                        QLineSeries *counts[3] =
-                        {
-                            line->getCounts(),
-                            line->getMagnitudes(),
-                            line->getPhases(),
-                        };
-                        QMap<double, double>*stacks[3] =
-                        {
-                            line->getCountStack(),
-                            line->getMagnitudeStack(),
-                            line->getPhaseStack(),
-                        };
-                        Elemental *elementals[3] =
-                        {
-                            line->getCountElemental(),
-                            line->getMagnitudeElemental(),
-                            line->getPhaseElemental(),
-                        };
-                        for (int z = 0; z < 3; z++)
-                        {
-                            QLineSeries *Counts = counts[z];
-                            QMap<double, double> *Stack = stacks[z];
-                            Elemental *Elements = elementals[z];
-                            bool active = false;
-                            if(line->isActive())
-                            {
-                                Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
-                                switch (z)
-                                {
-                                    case 0:
-                                        if(line->showCounts()) {
-                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->counts[x] / ahp_xc_get_packettime();
-                                            active = true;
-                                        }
-                                        break;
-                                    case 1:
-                                        if(line->showAutocorrelations()) {
-                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->autocorrelations[x].correlations[0].magnitude / ahp_xc_get_packettime();
-                                            active = true;
-                                        }
-                                        break;
-                                    case 2:
-                                        if(line->showAutocorrelations()) {
-                                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->autocorrelations[x].correlations[0].phase;
-                                            active = true;
-                                        }
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            }
-                            if(active) {
-                                Elements->getStream()->buf[0] = line->getMinFrequency();
-                                Elements->getStream()->buf[1] = line->getMaxFrequency();
-                                dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                                line->stack ++;
-                                int size = fmin(Elements->getStreamSize(), line->getResolution());
-                                dsp_t *buf = Elements->getStream()->buf;
-                                dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
-                                double *histo = dsp_stats_histogram(Elements->getStream(), size);
-                                dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
-                                Counts->clear();
-                                for (int x = 1; x < size; x++)
-                                {
-                                    if(histo[x] != 0)
-                                        line->stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
-                                }
-                                free(histo);
-                            }
-                            else
-                            {
-                                Counts->clear();
-                                Stack->clear();
-                                Elements->setStreamSize(2);
-                            }
-                        }
-                        for(int y = x + 1; y < Lines.count(); y++)
-                        {
-                            Baseline * line = Baselines[idx];
-                            QLineSeries *counts[2] =
-                            {
-                                line->getMagnitudes(),
-                                line->getPhases(),
-                            };
-                            QMap<double, double>*stacks[2] =
-                            {
-                                line->getMagnitudeStack(),
-                                line->getPhaseStack(),
-                            };
-                            Elemental *elementals[2] =
-                            {
-                                line->getMagnitudeElemental(),
-                                line->getPhaseElemental(),
-                            };
-                            double mag = 0.0;
-                            double rad = 0.0;
-                            if(ahp_xc_has_crosscorrelator()) {
-                                mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude / ahp_xc_get_packettime();
-                                rad = (double)packet->crosscorrelations[idx].correlations[0].phase;
-                            }
-                            else
-                            {
-                                mag = (double)sqrt(pow(packet->counts[x], 2) + pow(packet->counts[y],
-                                                   2)) * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2);
-                                if(mag > 0.0)
-                                {
-                                    double r = packet->counts[x] * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2) / mag;
-                                    double i = packet->counts[y] * M_PI * 2 / pow(packet->counts[x] + packet->counts[y], 2) / mag;
-                                    rad = acos(i);
-                                    if(r < 0.0)
-                                        rad = M_PI * 2 - rad;
-                                }
-                            }
-                            for (int z = 0; z < 2; z++)
-                            {
-                                QLineSeries *Counts = counts[z];
-                                QMap<double, double> *Stack = stacks[z];
-                                Elemental *Elements = elementals[z];
-                                if(line->isActive())
-                                {
-                                    if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
-                                    {
-                                        Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
-                                        Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
-                                        Elements->getStream()->buf[0] = fmin(line->getLine1()->getMinFrequency(), line->getLine1()->getMinFrequency());
-                                        Elements->getStream()->buf[1] = fmax(line->getLine2()->getMaxFrequency(), line->getLine2()->getMaxFrequency());
-                                        dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                                        line->stack ++;
-                                        int size = fmin(Elements->getStreamSize(), fmax(line->getLine1()->getResolution(), line->getLine2()->getResolution()));
-                                        dsp_t *buf = Elements->getStream()->buf;
-                                        dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
-                                        double *histo = dsp_stats_histogram(Elements->getStream(), size);
-                                        dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
-                                        Counts->clear();
-                                        for (int x = 1; x < size; x++)
-                                        {
-                                            if(histo[x] != 0)
-                                                line->stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
-                                        }
-                                        free(histo);
-                                    }
-                                }
-                                else
-                                {
-                                    Counts->clear();
-                                    Stack->clear();
-                                    Elements->setStreamSize(2);
-                                }
-                            }
-                            idx++;
-                        }
-                    }
-                }
                 break;
             case CrosscorrelatorII:
             case CrosscorrelatorIQ:

@@ -370,9 +370,10 @@ class Line : public QWidget
         double stack { 0.0 };
         inline double getPacketTime() { return packetTime; }
         inline void addCount(double time) {
-            if(getMode() == Counter || getMode() == Spectrograph) {
+            if(getMode() == Counter) {
                 packetTime = time;
                 readThread->start();
+                readThread->wait();
             }
         }
         inline double getTimeRange() { return timeRange; }
