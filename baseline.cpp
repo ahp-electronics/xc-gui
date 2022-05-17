@@ -45,6 +45,39 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     elementalCounts = new Elemental(this);
     elementalPhase = new Elemental(this);
     elementalMagnitude = new Elemental(this);
+    readThread = new Thread(this, 0, 0, "baseline " +name+" read thread");
+    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
+    {
+        Baseline * line = (Baseline *)thread->getParent();
+        double mag = 0.0;
+        QLineSeries *Counts = line->getMagnitudes();
+        bool active = false;
+        if(line->isActive())
+        {
+            if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
+            {
+                if(Counts->count() > 0)
+                {
+                    for(int d = Counts->count() - 1; d >= 0; d--)
+                    {
+                        if(Counts->at(d).x() < getPacketTime() - (double)getTimeRange())
+                            Counts->remove(d);
+                    }
+                }
+                if(ahp_xc_has_crosscorrelator())
+                    mag = (double)packet->crosscorrelations[line->getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+                else
+                    mag = (double)sqrt(pow(getPacket()->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
+                Counts->append(getPacketTime(), mag);
+                active = true;
+            }
+        }
+        if(!active)
+        {
+            Counts->clear();
+        }
+        thread->unlock();
+    });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
     line1 = n1;
     line2 = n2;

@@ -104,6 +104,8 @@ class MainWindow : public QMainWindow
         inline ahp_xc_packet * createPacket()
         {
             packet = ahp_xc_alloc_packet();
+            for(Line* line : Lines)
+                line->setPacket (packet);
             return packet;
         }
         inline ahp_xc_packet * getPacket()
@@ -237,6 +239,7 @@ signals:
         int motorFD;
         int controlFD;
         int xcFD;
+        bool xc_local_port { false };
         double lastpackettime;
         QMutex vlbi_mutex;
         double Ra, Dec;

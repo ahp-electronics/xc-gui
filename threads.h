@@ -36,16 +36,27 @@ class Thread : public QThread
 {
         Q_OBJECT
     private:
+        QString Name;
         QObject* parent;
         QMutex mutex;
         int timer_ms;
         int loop_ms;
     public:
-        Thread(QObject* p, int timer = 20, int loop = 20) : QThread()
+        ~Thread() {
+            stop();
+        }
+        Thread(QObject* p, int timer = 20, int loop = 2, QString name = "") : QThread()
         {
             parent = p;
             timer_ms = timer;
             loop_ms = loop;
+            Name = name;
+        }
+        void stop()
+        {
+            unlock();
+            requestInterruption();
+            wait();
         }
         void run()
         {

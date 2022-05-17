@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(XC_GUI_VERSION_MAJOR 0)
 set(XC_GUI_VERSION_MINOR 9)
-set(XC_GUI_VERSION_RELEASE 3)
+set(XC_GUI_VERSION_RELEASE 4)
 set(XC_GUI_VERSION "${XC_GUI_VERSION_MAJOR}.${XC_GUI_VERSION_MINOR}.${XC_GUI_VERSION_RELEASE}")
 
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.
@@ -50,49 +50,49 @@ include_directories(${AHPHUB_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 
 if(ANDROID)
-  add_library(xc-gui SHARED
-    main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
-    baseline.cpp
-    baseline.h
-    line.cpp
-    line.h
-    line.ui
-    graph.cpp
-    graph.h
-    inputs.ui
-    elemental.cpp
-    elemental.h
-    types.h
-    threads.h
-  )
+    add_library(xc-gui SHARED
+        main.cpp
+        mainwindow.cpp
+        mainwindow.h
+        mainwindow.ui
+        baseline.cpp
+        baseline.h
+        line.cpp
+        line.h
+        line.ui
+        graph.cpp
+        graph.h
+        inputs.ui
+        elemental.cpp
+        elemental.h
+        types.h
+        threads.h
+    )
 else(ANDROID)
-  add_executable(xc-gui
-    main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
-    baseline.cpp
-    baseline.h
-    line.cpp
-    line.h
-    line.ui
-    graph.cpp
-    graph.h
-    inputs.ui
-    elemental.cpp
-    elemental.h
-    types.h
-    threads.h
-    resource.qrc
-    app.rc
-  )
-  if(WIN32)
-      add_definitions(-D _win32_IE=0x0500 -D WINVER=0x0500)
-      set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
-  endif(WIN32)
+    add_executable(xc-gui
+        main.cpp
+        mainwindow.cpp
+        mainwindow.h
+        mainwindow.ui
+        baseline.cpp
+        baseline.h
+        line.cpp
+        line.h
+        line.ui
+        graph.cpp
+        graph.h
+        inputs.ui
+        elemental.cpp
+        elemental.h
+        types.h
+        threads.h
+        resource.qrc
+        app.rc
+    )
+    if(MINGW)
+      add_definitions(-mwindows -D _win32_IE=0x0500 -D WINVER=0x0500)
+      set_target_properties(gt-configurator PROPERTIES WIN32_EXECUTABLE TRUE)
+    endif(MINGW)
 endif(ANDROID)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/icon.ico COPYONLY )

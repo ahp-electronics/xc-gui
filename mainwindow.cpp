@@ -59,10 +59,10 @@ MainWindow::MainWindow(QWidget *parent)
     dsp_set_stdout(f_stdout);
     dsp_set_stderr(f_stdout);
     ui->setupUi(this);
-    uiThread = new Thread(this, 200, 100);
-    readThread = new Thread(this, 100, 100);
-    vlbiThread = new Thread(this, 4000, 1000);
-    motorThread = new Thread(this, 500, 500);
+    uiThread = new Thread(this, 200, 100, "uiThread");
+    readThread = new Thread(this, 100, 100, "readThread");
+    vlbiThread = new Thread(this, 4000, 1000, "vlbiThread");
+    motorThread = new Thread(this, 500, 500, "motorThread");
     Elemental::loadCatalog();
     graph = new Graph(settings, this);
     int starty = 80;
@@ -117,6 +117,8 @@ MainWindow::MainWindow(QWidget *parent)
     {
         settings->setValue("Timerange", value);
         TimeRange = ui->Range->value();
+        for(Line* line : Lines)
+            line->setTimeRange(TimeRange);
     });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
@@ -137,6 +139,8 @@ MainWindow::MainWindow(QWidget *parent)
             ahp_xc_set_leds(l, 0);
         }
         freePacket();
+        if(xc_local_port)
+            ahp_xc_set_baudrate(R_BASE);
         ahp_xc_set_capture_flags(CAP_NONE);
         ahp_xc_disconnect();
         if(xc_socket.isOpen())
@@ -188,7 +192,7 @@ MainWindow::MainWindow(QWidget *parent)
         controlport = ui->ControlPort->currentText();
         settings->beginGroup("Connection");
         xcFD = -1;
-        bool local = false;
+        xc_local_port = false;
         if(xcport == "no connection")
         {
             settings->setValue("xc_connection", xcport);
@@ -219,7 +223,7 @@ MainWindow::MainWindow(QWidget *parent)
             }
             else
             {
-                local = true;
+                xc_local_port = true;
                 ahp_xc_connect(xcport.toUtf8(), false);
                 xcFD = ahp_xc_get_fd();
             }
@@ -227,7 +231,7 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 if(!ahp_xc_get_properties())
                 {
-                    if(ahp_xc_get_packettime() > 0.1 && local)
+                    if(ahp_xc_get_packettime() > 0.1 && xc_local_port)
                         ahp_xc_set_baudrate((baud_rate)round(log2(ahp_xc_get_packettime() / 0.1)));
                     motorFD = -1;
                     if(motorport == "no connection")
@@ -374,6 +378,7 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
 
+                    ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(QThread::idealThreadCount());
 
                     getGraph()->loadSettings();
@@ -518,79 +523,11 @@ MainWindow::MainWindow(QWidget *parent)
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line * line = Lines[x];
-                    QLineSeries *counts[3] =
-                    {
-                        line->getCounts(),
-                        line->getMagnitudes(),
-                    };
-                    for (int z = 0; z < 2; z++)
-                    {
-                        QLineSeries *Counts = counts[z];
-                        bool active = false;
-                        if(line->isActive())
-                        {
-                            if(Counts->count() > 0)
-                            {
-                                for(int d = Counts->count() - 1; d >= 0; d--)
-                                {
-                                    if(Counts->at(d).x() < packettime - (double)getTimeRange())
-                                        Counts->remove(d);
-                                }
-                            }
-                            switch (z)
-                            {
-                                case 0:
-                                    if(line->showCounts()) {
-                                        Counts->append(packettime, (double)packet->counts[x] / ahp_xc_get_packettime());
-                                        active = true;
-                                    }
-                                    break;
-                                case 1:
-                                    if(line->showAutocorrelations()) {
-                                        Counts->append(packettime, (double)packet->autocorrelations[x].correlations[0].magnitude / ahp_xc_get_packettime());
-                                        active = true;
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        if(!active)
-                        {
-                            Counts->clear();
-                        }
-                    }
+                    line->addCount(packettime);
                     for(int y = x + 1; y < Lines.count(); y++)
                     {
                         Baseline * line = Baselines[idx];
-                        double mag = 0.0;
-                        QLineSeries *Counts = line->getMagnitudes();
-                        bool active = false;
-                        if(line->isActive())
-                        {
-                            if(line->getLine1()->showCrosscorrelations() && line->getLine2()->showCrosscorrelations())
-                            {
-                                if(Counts->count() > 0)
-                                {
-                                    for(int d = Counts->count() - 1; d >= 0; d--)
-                                    {
-                                        if(Counts->at(d).x() < packettime - (double)getTimeRange())
-                                            Counts->remove(d);
-                                    }
-                                }
-                                if(ahp_xc_has_crosscorrelator())
-                                    mag = (double)packet->crosscorrelations[idx].correlations[0].magnitude / ahp_xc_get_packettime();
-                                else
-                                    mag = (double)sqrt(pow(packet->counts[x], 2) + pow(packet->counts[y], 2)) / ahp_xc_get_packettime();
-                                Counts->append(packettime, mag);
-                                active = true;
-                            }
-                        }
-                        if(!active)
-                        {
-                            Counts->clear();
-                        }
-                        idx++;
+                        line->addCount(packettime);
                     }
                 }
             }
@@ -905,15 +842,9 @@ void MainWindow::stopThreads()
 {
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
-    vlbiThread->unlock();
-    vlbiThread->requestInterruption();
-    vlbiThread->wait();
-    readThread->unlock();
-    readThread->requestInterruption();
-    readThread->wait();
-    motorThread->unlock();
-    motorThread->requestInterruption();
-    motorThread->wait();
+    vlbiThread->stop();
+    readThread->stop();
+    motorThread->stop();
 }
 
 void MainWindow::runClicked(bool checked)
@@ -944,7 +875,7 @@ void MainWindow::runClicked(bool checked)
         if(getMode() == Counter || getMode() == Spectrograph || getMode() == HolographIQ || getMode() == HolographII)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII)
-            vlbiThread->requestInterruption();
+            vlbiThread->stop();
         for(int x = 0; x < Lines.count(); x++) {
             Lines[x]->setActive(false);
         }
@@ -973,17 +904,14 @@ void MainWindow::setVoltage(int level)
 
 MainWindow::~MainWindow()
 {
-    uiThread->unlock();
-    uiThread->requestInterruption();
-    uiThread->wait();
-    if(connected)
-    {
-        ui->Disconnect->clicked(false);
-    }
     uiThread->~Thread();
     vlbiThread->~Thread();
     readThread->~Thread();
     motorThread->~Thread();
+    if(connected)
+    {
+        ui->Disconnect->clicked(false);
+    }
     getGraph()->~Graph();
     settings->~QSettings();
     fclose(f_stdout);

@@ -125,6 +125,10 @@ class Baseline : public QWidget
         {
             return mode;
         }
+        inline unsigned int getLineIndex()
+        {
+            return Index;
+        }
         inline void setDelay(double s);
         inline double getPercent()
         {
@@ -203,7 +207,22 @@ class Baseline : public QWidget
         {
             mutex.unlock();
         }
+        inline double getPacketTime() { return packetTime; }
+        inline void addCount(double time) {
+            if(getMode() == Counter || getMode() == Spectrograph) {
+                packetTime = time;
+                readThread->start();
+            }
+        }
+        inline double getTimeRange() { return timeRange; }
+        inline void setTimeRange(double range) { timeRange = range; }
+        inline ahp_xc_packet* getPacket() { return packet; }
+        inline void setPacket(ahp_xc_packet* p) { packet = p; }
     private:
+        ahp_xc_packet* packet;
+        double timeRange { 10.0 };
+        double packetTime { 0.0 };
+        Thread *readThread { nullptr };
         QMutex mutex;
         bool running { false };
         void updateBufferSizes();

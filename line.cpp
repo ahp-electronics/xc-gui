@@ -72,6 +72,54 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
+    readThread = new Thread(this, 0, 0, name+" read thread");
+    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
+    {
+        Line * line = (Line *)thread->getParent();
+        QLineSeries *counts[3] =
+        {
+            line->getCounts(),
+            line->getMagnitudes(),
+        };
+        for (int z = 0; z < 2; z++)
+        {
+            QLineSeries *Counts = counts[z];
+            bool active = false;
+            if(line->isActive())
+            {
+                if(Counts->count() > 0)
+                {
+                    for(int d = Counts->count() - 1; d >= 0; d--)
+                    {
+                        if(Counts->at(d).x() < line->getPacketTime() - (double)line->getTimeRange())
+                            Counts->remove(d);
+                    }
+                }
+                switch (z)
+                {
+                    case 0:
+                        if(line->showCounts()) {
+                            Counts->append(line->getPacketTime(), (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime());
+                            active = true;
+                        }
+                        break;
+                    case 1:
+                        if(line->showAutocorrelations()) {
+                            Counts->append(line->getPacketTime(), (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
+                            active = true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if(!active)
+            {
+                Counts->clear();
+            }
+        }
+        thread->unlock();
+    });
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
         flags &= ~(1 << 0);

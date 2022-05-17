@@ -368,7 +368,22 @@ class Line : public QWidget
         }
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
         double stack { 0.0 };
+        inline double getPacketTime() { return packetTime; }
+        inline void addCount(double time) {
+            if(getMode() == Counter || getMode() == Spectrograph) {
+                packetTime = time;
+                readThread->start();
+            }
+        }
+        inline double getTimeRange() { return timeRange; }
+        inline void setTimeRange(double range) { timeRange = range; }
+        inline ahp_xc_packet* getPacket() { return packet; }
+        inline void setPacket(ahp_xc_packet* p) { packet = p; }
     private:
+        ahp_xc_packet* packet;
+        double timeRange { 10.0 };
+        double packetTime { 0.0 };
+        Thread *readThread { nullptr };
         double Ra, Dec;
         static QMutex motor_mutex;
         QMutex mutex;

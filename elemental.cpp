@@ -59,15 +59,12 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
             }
         }
         finish(success, offset, scale);
-        thread->requestInterruption();
-        thread->unlock();
+        thread->stop();
     });
 }
 
 Elemental::~Elemental()
 {
-    scanThread->requestInterruption();
-    scanThread->wait();
     scanThread->~Thread();
     dsp_stream_free_buffer(stream);
     dsp_stream_free(stream);
