@@ -379,7 +379,7 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
 
-                    ahp_xc_max_threads(ahp_xc_get_nbaselines());
+                    ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(QThread::idealThreadCount());
 
                     getGraph()->loadSettings();
