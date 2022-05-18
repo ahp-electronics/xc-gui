@@ -72,7 +72,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
-    readThread = new Thread(this, 5, 5, name+" read thread");
+    readThread = new Thread(this, 0.01, 0.01, name+" read thread");
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
     {
         Line * line = (Line *)thread->getParent();
@@ -405,6 +405,7 @@ void Line::addCount()
 {
     double packettime = getPacketTime();
     double timerange = getTimeRange();
+    ahp_xc_packet *packet = getPacket();
     QLineSeries *counts[3] =
     {
         getCounts(),
@@ -444,13 +445,13 @@ void Line::addCount()
             {
                 case 0:
                     if(showCounts()) {
-                        Counts->append(packettime, (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime());
+                        Counts->append(packettime, (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
                         active = true;
                     }
                     break;
                 case 1:
                     if(showAutocorrelations()) {
-                        Counts->append(packettime, (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
+                        Counts->append(packettime, (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
                         active = true;
                     }
                     break;
@@ -478,19 +479,19 @@ void Line::addCount()
                 {
                     case 0:
                         if(showCounts()) {
-                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->counts[getLineIndex()] / ahp_xc_get_packettime();
+                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime();
                             active = true;
                         }
                         break;
                     case 1:
                         if(showAutocorrelations()) {
-                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
                             active = true;
                         }
                         break;
                     case 2:
                         if(showAutocorrelations()) {
-                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)getPacket()->autocorrelations[getLineIndex()].correlations[0].phase;
+                            Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->autocorrelations[getLineIndex()].correlations[0].phase;
                             active = true;
                         }
                         break;

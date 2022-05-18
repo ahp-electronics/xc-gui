@@ -45,7 +45,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     elementalCounts = new Elemental(this);
     elementalPhase = new Elemental(this);
     elementalMagnitude = new Elemental(this);
-    readThread = new Thread(this, 0.1, 0.1, "baseline " +name+" read thread");
+    readThread = new Thread(this, 0.01, 0.01, "baseline " +name+" read thread");
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
     {
         Baseline * line = (Baseline *)thread->getParent();
@@ -213,6 +213,7 @@ void Baseline::addCount()
 {
     double packettime = getPacketTime();
     double timerange = getTimeRange();
+    ahp_xc_packet *packet = getPacket();
     double mag = 0.0;
     QLineSeries *Counts = getMagnitudes();
     bool active = false;
@@ -234,7 +235,7 @@ void Baseline::addCount()
                 if(ahp_xc_has_crosscorrelator())
                     mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
                 else
-                    mag = (double)sqrt(pow(getPacket()->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
+                    mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
                 Counts->append(packettime, mag);
                 active = true;
             }

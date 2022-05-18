@@ -106,6 +106,8 @@ class MainWindow : public QMainWindow
             packet = ahp_xc_alloc_packet();
             for(Line* line : Lines)
                 line->setPacket (packet);
+            for(Baseline* line : Baselines)
+                line->setPacket (packet);
             return packet;
         }
         inline ahp_xc_packet * getPacket()
