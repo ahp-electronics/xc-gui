@@ -350,8 +350,6 @@ MainWindow::MainWindow(QWidget *parent)
                             }
                             unlock_vlbi();
                         });
-                        getGraph()->addSeries(Lines[l]->getMagnitude());
-                        getGraph()->addSeries(Lines[l]->getPhase());
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), Lines[l], &Line::gotoRaDec);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), Lines[l], &Line::startTracking);
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
@@ -375,7 +373,6 @@ MainWindow::MainWindow(QWidget *parent)
                                     getGraph()->removeSeries(sender->getMagnitudes());
                                 }
                             });
-                            getGraph()->addSeries(Baselines[idx]->getMagnitude());
                             idx++;
                         }
                     }
@@ -685,6 +682,7 @@ void MainWindow::runClicked(bool checked)
     if(ui->Run->text() == "Run")
     {
         ui->Run->setText("Stop");
+        threadsStopped = false;
         if(getMode() == Counter || getMode() == Spectrograph || getMode() == HolographIQ || getMode() == HolographII)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII)
@@ -697,7 +695,6 @@ void MainWindow::runClicked(bool checked)
         }
         if(nlines > 0 && getMode() == Autocorrelator)
             emit scanStarted();
-        threadsStopped = false;
         resetTimestamp();
     }
     else

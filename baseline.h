@@ -58,14 +58,6 @@ class Baseline : public QWidget
         {
             return name;
         }
-        inline QLineSeries* getMagnitude()
-        {
-            return magnitude;
-        }
-        inline QLineSeries* getPhase()
-        {
-            return phase;
-        }
         inline void setMagnitudeSize(size_t size)
         {
             if(magnitude_buf != nullptr)
@@ -148,6 +140,7 @@ class Baseline : public QWidget
         }
 
         bool isActive(bool atleast1 = false);
+        bool isEnabled(bool atleast1 = false);
 
         void stackCorrelations();
         void plot(bool success, double o, double s);
@@ -262,8 +255,6 @@ class Baseline : public QWidget
         QLineSeries* counts;
         QLineSeries* phases;
         QLineSeries* magnitudes;
-        QLineSeries* magnitude;
-        QLineSeries* phase;
         Line* line1;
         Line* line2;
 signals:

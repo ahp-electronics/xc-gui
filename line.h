@@ -186,14 +186,6 @@ class Line : public QWidget
             else
                 phase_buf = (double*)malloc(sizeof(double) * (size + 1));
         }
-        inline QLineSeries* getMagnitude()
-        {
-            return magnitude;
-        }
-        inline QLineSeries* getPhase()
-        {
-            return phase;
-        }
         inline QMap<double, double>* getDark()
         {
             return dark;
@@ -416,8 +408,6 @@ class Line : public QWidget
         QMap<double, double>* countStack { nullptr };
         QMap<double, double>* magnitudeStack { nullptr };
         QMap<double, double>* phaseStack { nullptr };
-        QLineSeries* magnitude { nullptr };
-        QLineSeries* phase { nullptr };
         QLineSeries* magnitudes { nullptr };
         QLineSeries* phases { nullptr };
         QLineSeries* counts { nullptr };
