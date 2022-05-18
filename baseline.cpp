@@ -36,6 +36,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     magnitudeStack = new QMap<double, double>();
     countStack = new QMap<double, double>();
     phaseStack = new QMap<double, double>();
+    magnitude = new QLineSeries();
+    phase = new QLineSeries();
     magnitudes = new QLineSeries();
     phases = new QLineSeries();
     counts = new QLineSeries();
@@ -59,6 +61,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     connect(line1, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
     {
+        getMagnitude()->clear();
+        getPhase()->clear();
         getMagnitudes()->clear();
         getPhases()->clear();
         getCounts()->clear();
@@ -67,6 +71,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
     {
+        getMagnitude()->clear();
+        getPhase()->clear();
         getMagnitudes()->clear();
         getPhases()->clear();
         getCounts()->clear();
@@ -175,6 +181,8 @@ void Baseline::setMode(Mode m)
 {
     mode = m;
     getDark()->clear();
+    getMagnitude()->clear();
+    getPhase()->clear();
     getCounts()->clear();
     getMagnitudes()->clear();
     getPhases()->clear();
@@ -396,23 +404,23 @@ void Baseline::TakeDark(Line* sender)
     if(sender->DarkTaken())
     {
         getDark()->clear();
-        for(int x = 0; x < getMagnitudes()->count(); x++)
+        for(int x = 0; x < getMagnitude()->count(); x++)
         {
-            getDark()->insert(getMagnitudes()->at(x).x(), getMagnitudes()->at(x).y());
+            getDark()->insert(getMagnitude()->at(x).x(), getMagnitude()->at(x).y());
             QString darkstring = readString("Dark", "");
             if(!darkstring.isEmpty())
                 saveSetting("Dark", darkstring + ";");
             darkstring = readString("Dark", "");
-            saveSetting("Dark", darkstring + QString::number(getMagnitudes()->at(x).x()) + "," + QString::number(getMagnitudes()->at(
+            saveSetting("Dark", darkstring + QString::number(getMagnitude()->at(x).x()) + "," + QString::number(getMagnitude()->at(
                             x).y()));
         }
-        getMagnitudes()->setName(name + " magnitude (residuals)");
+        getMagnitude()->setName(name + " magnitude (residuals)");
     }
     else
     {
         removeSetting("Dark");
         getDark()->clear();
-        getMagnitudes()->setName(name + " magnitude");
+        getMagnitude()->setName(name + " magnitude");
     }
 }
 
@@ -427,10 +435,10 @@ void Baseline::SavePlot()
     {
         QTextStream output(&data);
         output << "'lag (ns)';'magnitude';'phase'\n";
-        for(int x = 0, y = 0; x < getMagnitudes()->count(); y++, x++)
+        for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
         {
-            output << "'" + QString::number(getMagnitudes()->at(y).x()) + "';'" + QString::number(getMagnitudes()->at(y).y()) + "';'"
-                   + QString::number(getPhases()->at(y).x()) + "';'" + QString::number(getPhases()->at(y).y()) + "'\n";
+            output << "'" + QString::number(getMagnitude()->at(y).x()) + "';'" + QString::number(getMagnitude()->at(y).y()) + "';'"
+                   + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
         }
     }
     data.close();
@@ -501,15 +509,15 @@ void Baseline::plot(bool success, double o, double s)
 {
     double timespan = ahp_xc_get_sampletime() / s;
     double offset = o;
-    getMagnitudes()->clear();
-    getPhases()->clear();
+    getMagnitude()->clear();
+    getPhase()->clear();
     stack += 1.0;
     for (int x = 0; x < elemental->getStreamSize(); x++)
     {
         if(dft()) {
-            stackValue(getMagnitudes(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getBuffer()[x]);
         } else {
-            stackValue(getMagnitudes(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
         }
     }
 }
