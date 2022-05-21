@@ -755,7 +755,8 @@ void Line::setMode(Mode m)
         disconnect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
         disconnect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
     }
-    ui->Leds->setEnabled(ahp_xc_has_leds());
+    ui->flag0->setEnabled(ahp_xc_has_leds());
+    ui->flag1->setEnabled(ahp_xc_has_leds());
     resetPercentPtr();
     resetStopPtr();
     mode = m;

@@ -175,6 +175,7 @@ MainWindow::MainWindow(QWidget *parent)
         settings->endGroup();
         ui->Connect->setEnabled(true);
         ui->Run->setEnabled(false);
+        ui->Voltage->setEnabled(false);
         ui->Disconnect->setEnabled(false);
         ui->Range->setEnabled(false);
         ui->Mode->setEnabled(false);
@@ -387,6 +388,7 @@ MainWindow::MainWindow(QWidget *parent)
                     createPacket();
                     setMode(Counter);
                     ui->Connect->setEnabled(false);
+                    ui->Voltage->setEnabled(ahp_xc_has_leds());
                     ui->Run->setEnabled(true);
                     ui->Disconnect->setEnabled(true);
                     ui->Range->setValue(settings->value("Timerange", 0).toInt());
