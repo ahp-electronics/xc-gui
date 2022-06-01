@@ -899,14 +899,14 @@ void Line::setActive(bool a)
             running = (showCounts() || showAutocorrelations());
         }
     }
-    if(getMode() == Autocorrelator || getMode() == CrosscorrelatorII || getMode() == CrosscorrelatorIQ)
+    if(getMode() == Counter || getMode() == Spectrograph)
     {
+        ui->Counter->setEnabled(true);
+        ui->Correlator->setEnabled(false);
+    } else {
         running = a;
         ui->Counter->setEnabled(false);
         ui->Correlator->setEnabled(!isActive());
-    } else {
-        ui->Counter->setEnabled(true);
-        ui->Correlator->setEnabled(false);
     }
     emit activeStateChanged(this);
 }

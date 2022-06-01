@@ -28,8 +28,8 @@ class Elemental : public QObject
 
         void run();
         void finish(bool done = false, double ofs = 0.0, double sc = 1.0);
-        static dsp_stream_p reference;
-        static QList <dsp_stream_p> elements;
+        dsp_stream_p reference;
+        QList <dsp_stream_p> elements;
 
         inline void setMaxDots(int value)
         {
@@ -106,8 +106,8 @@ class Elemental : public QObject
         void scan();
         QStringList getElementNames();
         dsp_align_info *stats(QString name);
-        static void loadCatalog();
-        static void unloadCatalog();
+        void loadCatalog(QString catalogPath);
+        void unloadCatalog();
         inline QList <dsp_stream_p> getCatalog()
         {
             return Elemental::elements;

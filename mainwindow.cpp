@@ -63,7 +63,6 @@ MainWindow::MainWindow(QWidget *parent)
     readThread = new Thread(this, 100, 100, "readThread");
     vlbiThread = new Thread(this, 4000, 1000, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
-    Elemental::loadCatalog();
     graph = new Graph(settings, this);
     int starty = 80;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
