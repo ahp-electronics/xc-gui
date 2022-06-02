@@ -59,9 +59,9 @@ MainWindow::MainWindow(QWidget *parent)
     dsp_set_stdout(f_stdout);
     dsp_set_stderr(f_stdout);
     ui->setupUi(this);
-    uiThread = new Thread(this, 200, 100, "uiThread");
-    readThread = new Thread(this, 100, 100, "readThread");
-    vlbiThread = new Thread(this, 4000, 1000, "vlbiThread");
+    uiThread = new Thread(this, 200, 10, "uiThread");
+    readThread = new Thread(this, 100, 10, "readThread");
+    vlbiThread = new Thread(this, 100, 100, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
     int starty = 80;
@@ -471,29 +471,6 @@ MainWindow::MainWindow(QWidget *parent)
             goto end_unlock;
         switch (getMode())
         {
-        case HolographIQ:
-        case HolographII:
-        case Counter:
-        case Spectrograph:
-            if(!ahp_xc_get_packet(packet))
-            {
-                double packettime = packet->timestamp + J2000_starttime;
-                double diff = packettime - lastpackettime;
-                lastpackettime = packettime;
-                if(diff < 0 || diff > getTimeRange())
-                {
-                    break;
-                }
-                for(Line * line : Lines)
-                {
-                    line->addCount(packettime);
-                }
-                for(Baseline * line : Baselines)
-                {
-                    line->addCount(packettime);
-                }
-            }
-                break;
             case CrosscorrelatorII:
             case CrosscorrelatorIQ:
                 for(int x = 0; x < Baselines.count(); x++)
@@ -546,6 +523,24 @@ MainWindow::MainWindow(QWidget *parent)
                 free(spectrum);
                 break;
             default:
+            if(!ahp_xc_get_packet(packet))
+            {
+                double packettime = packet->timestamp + J2000_starttime;
+                double diff = packettime - lastpackettime;
+                lastpackettime = packettime;
+                if(diff < 0 || diff > getTimeRange())
+                {
+                    break;
+                }
+                for(Line * line : Lines)
+                {
+                    line->addCount(packettime);
+                }
+                for(Baseline * line : Baselines)
+                {
+                    line->addCount(packettime);
+                }
+            }
                 break;
         }
 end_unlock:
@@ -670,8 +665,9 @@ void MainWindow::runClicked(bool checked)
         ui->Run->setText("Stop");
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
-        if(getMode() == HolographIQ || getMode() == HolographII)
+        if(getMode() == HolographIQ || getMode() == HolographII) {
             vlbiThread->start();
+        }
         for(int x = 0; x < Lines.count(); x++) {
             if(getMode() == Autocorrelator) {
                 nlines++;
@@ -689,11 +685,9 @@ void MainWindow::runClicked(bool checked)
         threadsStopped = true;
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~CAP_ENABLE));
-        if(getMode() == HolographIQ || getMode() == HolographII)
+        if(getMode() == HolographIQ || getMode() == HolographII) {
             vlbiThread->stop();
-        vlbi_del_model(getVLBIContext(), "coverage");
-        vlbi_del_model(getVLBIContext(), "magnitude");
-        vlbi_del_model(getVLBIContext(), "phase");
+        }
         for(int x = 0; x < Lines.count(); x++) {
             Lines[x]->setActive(false);
         }

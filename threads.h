@@ -54,9 +54,7 @@ class Thread : public QThread
         }
         void stop()
         {
-            unlock();
             requestInterruption();
-            wait();
         }
         void run()
         {

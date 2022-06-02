@@ -219,6 +219,7 @@ class Graph : public QWidget
         double fromHMSorDMS(QString dms);
 
         void plotModel(QImage* picture, char* model);
+        void createModel(QString model);
 
         inline vlbi_context getVLBIContext(int index = -1)
         {

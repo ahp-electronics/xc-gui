@@ -401,6 +401,18 @@ void Graph::plotModel(QImage* picture, char* model)
     unlock();
 }
 
+void Graph::createModel(QString model)
+{
+    dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model.toStdString().c_str());
+    if(stream == nullptr) {
+        stream = dsp_stream_new();
+        dsp_stream_add_dim(stream, getPlotSize());
+        dsp_stream_add_dim(stream, getPlotSize());
+        vlbi_add_model(getVLBIContext(), stream, model.toStdString().c_str());
+    }
+    dsp_buffer_set(stream->buf, stream->len, 0xff);
+}
+
 void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)
