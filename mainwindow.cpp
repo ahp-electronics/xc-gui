@@ -337,21 +337,27 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanging),
                                 [ = ](Line* sender) {
                             (void)sender;
-                            lock_vlbi();
                         });
-                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
-                                [ = ](Line* sender) {
-                            if(sender->isActive()) {
-                                getGraph()->addSeries(sender->getMagnitudes());
-                                getGraph()->addSeries(sender->getCounts());
-                            } else {
-                                getGraph()->removeSeries(sender->getMagnitudes());
-                                getGraph()->removeSeries(sender->getCounts());
+                        connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), [=] (Mode m) {
+                            switch(m) {
+                            case Autocorrelator:
+                                getGraph()->addSeries(Lines[l]->getMagnitude());
+                                getGraph()->addSeries(Lines[l]->getPhase());
+                                break;
+                            case CrosscorrelatorII:
+                            case CrosscorrelatorIQ:
+                                break;
+                            case Counter:
+                            case Spectrograph:
+                                getGraph()->addSeries(Lines[l]->getMagnitudes());
+                                getGraph()->addSeries(Lines[l]->getCounts());
+                                break;
+                            case HolographII:
+                            case HolographIQ:
+                                break;
+                            default: break;
                             }
-                            unlock_vlbi();
                         });
-                        getGraph()->addSeries(Lines[l]->getMagnitude());
-                        getGraph()->addSeries(Lines[l]->getPhase());
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), Lines[l], &Line::gotoRaDec);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), Lines[l], &Line::startTracking);
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
@@ -367,15 +373,25 @@ MainWindow::MainWindow(QWidget *parent)
                             QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
                             fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
-                            connect(Baselines[idx], static_cast<void (Baseline::*)(Baseline*)>(&Baseline::activeStateChanged),
-                                    [ = ](Baseline* sender) {
-                                if(sender->isActive()) {
-                                    getGraph()->addSeries(sender->getMagnitudes());
-                                } else {
-                                    getGraph()->removeSeries(sender->getMagnitudes());
+                            Baselines[idx]->setGraph(getGraph());
+                            connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), [=] (Mode m) {
+                                switch(m) {
+                                case Autocorrelator:
+                                    break;
+                                case CrosscorrelatorII:
+                                case CrosscorrelatorIQ:
+                                    getGraph()->addSeries(Baselines[idx]->getMagnitude());
+                                    break;
+                                case Counter:
+                                case Spectrograph:
+                                    getGraph()->addSeries(Baselines[idx]->getMagnitudes());
+                                    break;
+                                case HolographII:
+                                case HolographIQ:
+                                    break;
+                                default: break;
                                 }
                             });
-                            getGraph()->addSeries(Baselines[idx]->getMagnitude());
                             idx++;
                         }
                     }
@@ -455,63 +471,8 @@ MainWindow::MainWindow(QWidget *parent)
             goto end_unlock;
         switch (getMode())
         {
-            case HolographIQ:
-            case HolographII:
-                if(!ahp_xc_get_packet(packet))
-                {
-                    double packettime = packet->timestamp + J2000_starttime;
-                    double diff = packettime - lastpackettime;
-                    lastpackettime = packettime;
-                    if(diff < 0 || diff > getTimeRange())
-                    {
-                        break;
-                    }
-                    int idx = 0;
-                    for(int x = 0; x < Lines.count(); x++)
-                    {
-                        Line * line = Lines[x];
-                        if(line->isActive())
-                        {
-                            dsp_stream_p stream = line->getStream();
-                            if(stream == nullptr) continue;
-                            line->lock();
-                            dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-                            dsp_stream_alloc_buffer(stream, stream->len);
-                            stream->buf[stream->len - 1] = (double)packet->counts[x];
-                            memcpy(&stream->location[stream->len - 1], line->getLocation(), sizeof(dsp_location));
-                            line->unlock();
-                        }
-                        for(int y = x + 1; y < Lines.count(); y++)
-                        {
-                            Baseline * line = Baselines[idx];
-                            if(line->isActive())
-                            {
-                                dsp_stream_p stream = line->getStream();
-                                if(stream == nullptr) continue;
-                                line->lock();
-                                dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-                                dsp_stream_alloc_buffer(stream, stream->len);
-                                double offset1 = 0, offset2 = 0;
-                                vlbi_get_offsets(getVLBIContext(), packettime, Lines[x]->getLastName().toStdString().c_str(),
-                                                 Lines[y]->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
-                                offset1 /= ahp_xc_get_sampletime();
-                                offset2 /= ahp_xc_get_sampletime();
-                                offset1 ++;
-                                offset2 ++;
-                                if(ahp_xc_has_crosscorrelator())
-                                {
-                                    ahp_xc_set_channel_cross(Lines[x]->getLineIndex(), offset1, 1, 0);
-                                    ahp_xc_set_channel_cross(Lines[y]->getLineIndex(), offset2, 1, 0);
-                                }
-                                stream->dft.fftw[stream->len - 1][0] = packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                                stream->dft.fftw[stream->len - 1][1] = packet->crosscorrelations[idx].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
-                                line->unlock();
-                            }
-                            idx++;
-                        }
-                    }
-                }
-                break;
+        case HolographIQ:
+        case HolographII:
         case Counter:
         case Spectrograph:
             if(!ahp_xc_get_packet(packet))
@@ -540,7 +501,12 @@ MainWindow::MainWindow(QWidget *parent)
                     Baseline * line = Baselines[x];
                     if(line->isActive())
                     {
+                        line->setPercentPtr(&percent);
+                        line->setStopPtr(&threadsStopped);
+                        line->UpdateBufferSizes();
                         line->stackCorrelations();
+                    } else {
+                        line->resetStopPtr();
                     }
                 }
                 break;
@@ -686,7 +652,7 @@ void MainWindow::runClicked(bool checked)
     if(ui->Run->text() == "Run")
     {
         ui->Run->setText("Stop");
-        if(getMode() == Counter || getMode() == Spectrograph || getMode() == HolographIQ || getMode() == HolographII)
+        if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII)
             vlbiThread->start();
@@ -705,7 +671,7 @@ void MainWindow::runClicked(bool checked)
     {
         ui->Run->setText("Run");
         threadsStopped = true;
-        if(getMode() == Counter || getMode() == Spectrograph || getMode() == HolographIQ || getMode() == HolographII)
+        if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII)
             vlbiThread->stop();

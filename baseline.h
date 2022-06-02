@@ -42,6 +42,7 @@
 
 using namespace QtCharts;
 class Line;
+class Graph;
 class Baseline : public QWidget
 {
         Q_OBJECT
@@ -130,9 +131,25 @@ class Baseline : public QWidget
             return Index;
         }
         inline void setDelay(double s);
-        inline double getPercent()
+        inline void setPercentPtr(double *ptr)
         {
-            return percent;
+            percent = ptr;
+        }
+        inline void resetPercentPtr()
+        {
+            percent = &localpercent;
+        }
+        inline int getStop()
+        {
+            return *stop;
+        }
+        inline void setStopPtr(int *ptr)
+        {
+            stop = ptr;
+        }
+        inline void resetStopPtr()
+        {
+            stop = &localstop;
         }
         inline double isScanning()
         {
@@ -221,7 +238,16 @@ class Baseline : public QWidget
         inline void setTimeRange(double range) { timeRange = range; }
         inline ahp_xc_packet* getPacket() { return packet; }
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
+        inline Graph *getGraph() { return graph; }
+        inline void setGraph(Graph * g) { graph = g; }
+        inline void UpdateBufferSizes() { updateBufferSizes(); }
+
     private:
+        int localstop { 0 };
+        int *stop { nullptr };
+        double *percent { nullptr };
+        double localpercent { 0 };
+        Graph *graph;
         ahp_xc_packet* packet;
         double timeRange { 10.0 };
         double packetTime { 0.0 };
@@ -249,8 +275,6 @@ class Baseline : public QWidget
         bool scanning;
         bool threadRunning;
         bool oldstate;
-        int stop;
-        double percent;
         Mode mode;
         Elemental *elemental;
         Elemental* elementalCounts { nullptr };

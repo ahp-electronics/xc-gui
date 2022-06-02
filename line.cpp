@@ -41,6 +41,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->setupUi(this);
     settings = s;
     localpercent = 0;
+    localstop = 1;
     parents = p;
     name = ln;
     dark = new QMap<double, double>();
@@ -426,6 +427,19 @@ void Line::addCount()
     };
     switch(getMode()) {
     default: break;
+    case HolographIQ:
+    case HolographII:
+    if(isActive())
+    {
+        dsp_stream_p stream = getStream();
+        if(stream == nullptr) break;
+        lock();
+        dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
+        dsp_stream_alloc_buffer(stream, stream->len);
+        stream->buf[stream->len - 1] = (double)packet->counts[getLineIndex()];
+        memcpy(&stream->location[stream->len - 1], getLocation(), sizeof(dsp_location));
+        unlock();
+    }
     case Counter:
     for (int z = 0; z < 2; z++)
     {

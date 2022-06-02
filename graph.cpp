@@ -345,6 +345,7 @@ void Graph::updateInfo()
 
 void Graph::setMode(Mode m)
 {
+    emit modeChanging(m);
     mode = m;
     if(mode == HolographIQ || mode == HolographII)
     {
@@ -356,13 +357,15 @@ void Graph::setMode(Mode m)
         correlator->setVisible(false);
         chart->setVisible(true);
     }
+    emit modeChanged(m);
 }
 
 void Graph::addSeries(QAbstractSeries *series)
 {
-    if(!chart->series().contains(series))
+    if(!chart->series().contains(series)) {
         chart->addSeries(series);
-    chart->createDefaultAxes();
+        chart->createDefaultAxes();
+    }
 }
 
 void Graph::removeSeries(QAbstractSeries *series)

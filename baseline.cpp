@@ -25,6 +25,7 @@
 
 #include "baseline.h"
 #include "line.h"
+#include "graph.h"
 Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidget *parent) :
     QWidget(parent)
 {
@@ -32,6 +33,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     settings = s;
     name = n;
     Index = index;
+    localpercent = 0;
+    localstop = 1;
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     countStack = new QMap<double, double>();
@@ -46,6 +49,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     elementalPhase = new Elemental(this);
     elementalMagnitude = new Elemental(this);
     readThread = new Thread(this, 0.01, 0.01, "baseline " +name+" read thread");
+    resetPercentPtr();
+    resetStopPtr();
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
     {
         Baseline * line = (Baseline *)thread->getParent();
@@ -83,7 +88,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         getCounts()->clear();
         bool newstate = getLine1()->isActive() && getLine2()->isActive() && getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
-        stop = !newstate;
+        *stop = !newstate;
         if(oldstate != newstate)
         {
             emit activeStateChanging(this);
@@ -112,7 +117,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         getCounts()->clear();
         bool newstate = getLine1()->isActive() && getLine2()->isActive();
-        stop = !newstate;
+        *stop = !newstate;
         if(oldstate != newstate)
         {
             if(newstate)
@@ -219,6 +224,32 @@ void Baseline::addCount()
     bool active = false;
     switch(getMode()) {
     default: break;
+    case HolographIQ:
+    case HolographII:
+        if(isActive())
+        {
+            dsp_stream_p stream = getStream();
+            if(stream == nullptr) break;
+            lock();
+            dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
+            dsp_stream_alloc_buffer(stream, stream->len);
+            double offset1 = 0, offset2 = 0;
+            vlbi_get_offsets(getVLBIContext(), packettime, getLine1()->getLastName().toStdString().c_str(),
+                             getLine2()->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
+            offset1 /= ahp_xc_get_sampletime();
+            offset2 /= ahp_xc_get_sampletime();
+            offset1 ++;
+            offset2 ++;
+            if(ahp_xc_has_crosscorrelator())
+            {
+                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
+                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
+            }
+            stream->dft.fftw[stream->len - 1][0] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+            stream->dft.fftw[stream->len - 1][1] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+            unlock();
+        }
+        break;
     case Counter:
         if(isActive())
         {
@@ -452,17 +483,17 @@ void Baseline::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
-    getLine1()->setPercentPtr(&percent);
-    getLine2()->setPercentPtr(&percent);
+    getLine1()->setPercentPtr(percent);
+    getLine2()->setPercentPtr(percent);
     getLine1()->resetStopPtr();
     getLine2()->resetStopPtr();
     updateBufferSizes();
 
-    stop = 0;
+    *stop = 0;
     int npackets = 0;
     step = fmax(getLine1()->getScanStep(), getLine2()->getScanStep());
     npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
-               head_size, start2, tail_size, step, &stop, &percent);
+               head_size, start2, tail_size, step, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
         int ofs = head_size/step;

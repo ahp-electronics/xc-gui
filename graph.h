@@ -296,6 +296,8 @@ class Graph : public QWidget
         QSettings *settings;
 
     signals:
+        void modeChanging(Mode m);
+        void modeChanged(Mode m);
         void frequencyUpdated(double);
         void locationUpdated(double, double, double);
         void coordinatesUpdated(double, double, double);
