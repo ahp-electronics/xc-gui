@@ -97,8 +97,6 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                 if(stream != nullptr)
                 {
                     lock();
-                    dsp_stream_set_dim(stream, 0, 0);
-                    dsp_stream_alloc_buffer(stream, stream->len + 1);
                     getLine2()->resetTimestamp();
                     if(getMode() == HolographIQ)
                         addToVLBIContext();
@@ -125,8 +123,6 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
                 if(stream != nullptr)
                 {
                     lock();
-                    dsp_stream_set_dim(stream, 0, 0);
-                    dsp_stream_alloc_buffer(stream, stream->len + 1);
                     getLine1()->resetTimestamp();
                     if(getMode() == HolographIQ)
                         addToVLBIContext();
@@ -231,8 +227,6 @@ void Baseline::addCount()
             dsp_stream_p stream = getStream();
             if(stream == nullptr) break;
             lock();
-            dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-            dsp_stream_alloc_buffer(stream, stream->len);
             double offset1 = 0, offset2 = 0;
             vlbi_get_offsets(getVLBIContext(), packettime, getLine1()->getLastName().toStdString().c_str(),
                              getLine2()->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
@@ -245,8 +239,8 @@ void Baseline::addCount()
                 ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
                 ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
             }
-            stream->dft.fftw[stream->len - 1][0] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-            stream->dft.fftw[stream->len - 1][1] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+            stream->dft.fftw[0][0] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+            stream->dft.fftw[0][1] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
             unlock();
         }
         break;
@@ -397,8 +391,9 @@ void Baseline::addToVLBIContext(int index)
     if(stream == nullptr)
     {
         stream = dsp_stream_new();
-        dsp_stream_add_dim(stream, 0);
-        dsp_stream_alloc_buffer(stream, stream->len + 1);
+        dsp_stream_add_dim(stream, 1);
+        dsp_stream_alloc_buffer(stream, stream->len);
+        stream->samplerate = 1.0/ahp_xc_get_packettime();
     }
     vlbi_set_baseline_stream(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
                              getLine2()->getLastName().toStdString().c_str(), getStream());

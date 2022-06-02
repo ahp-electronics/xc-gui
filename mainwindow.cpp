@@ -575,15 +575,31 @@ end_unlock:
         {
             double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
             lock_vlbi();
-            vlbi_get_uv_plot(getVLBIContext(), "coverage",
+            vlbi_get_uv_plot(getVLBIContext(), "coverage_new",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, coverage_delegate, &threadsStopped);
-            vlbi_get_uv_plot(getVLBIContext(), "magnitude",
+            vlbi_get_uv_plot(getVLBIContext(), "magnitude_new",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_magnitude_delegate, &threadsStopped);
-            vlbi_get_uv_plot(getVLBIContext(), "phase",
+            vlbi_get_uv_plot(getVLBIContext(), "phase_new",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate, &threadsStopped);
+
+            if(vlbi_get_model(getVLBIContext(), "coverage") != nullptr)
+                vlbi_stack_models(getVLBIContext(), "coverage", "coverage", "coverage_new");
+            else
+                vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "coverage_new")), "coverage");
+
+            if(vlbi_get_model(getVLBIContext(), "magnitude") != nullptr)
+                vlbi_stack_models(getVLBIContext(), "magnitude", "magnitude", "magnitude_new");
+            else
+                vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "magnitude_new")), "magnitude");
+
+            if(vlbi_get_model(getVLBIContext(), "phase") != nullptr)
+                vlbi_stack_models(getVLBIContext(), "phase", "phase", "phase_new");
+            else
+                vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "phase_new")), "phase");
+
             vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
 
             getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
@@ -675,6 +691,9 @@ void MainWindow::runClicked(bool checked)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII)
             vlbiThread->stop();
+        vlbi_del_model(getVLBIContext(), "coverage");
+        vlbi_del_model(getVLBIContext(), "magnitude");
+        vlbi_del_model(getVLBIContext(), "phase");
         for(int x = 0; x < Lines.count(); x++) {
             Lines[x]->setActive(false);
         }
