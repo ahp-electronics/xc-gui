@@ -475,7 +475,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Crosss</string>
+     <string>Cross</string>
     </property>
    </widget>
    <widget class="QSpinBox" name="Resolution">
