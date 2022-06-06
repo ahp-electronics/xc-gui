@@ -488,10 +488,14 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 break;
             case Autocorrelator:
+            indexes.clear();
+            starts.clear();
+            sizes.clear();
+            steps.clear();
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line * line = Lines[x];
-                    if(line->isActive())
+                    if(line->scanActive())
                     {
                         indexes.append(line->getLineIndex());
                         starts.append(line->getStartChannel());

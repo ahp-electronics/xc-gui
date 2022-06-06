@@ -62,7 +62,7 @@ class Line : public QWidget
         bool dft();
         bool Align();
         bool Differential();
-        bool isEnabled();
+        bool scanActive();
         inline bool isActive()
         {
             return running;

@@ -348,12 +348,12 @@ void Baseline::addCount()
 void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
     if(y == 0.0) return;
-    y /= stack;
+    y /= 2;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
     if(stacked->count() > idx)
     {
-        y += stacked->values().at(idx) * (stack - 1) / stack;
+        y += stacked->values().at(idx) / 2;
         stacked->keys().replace(idx, x);
         stacked->values().replace(idx, y);
     }
@@ -421,8 +421,8 @@ bool Baseline::isActive(bool atleast1)
 bool Baseline::isEnabled(bool atleast1)
 {
     if(atleast1)
-        return getLine1()->isEnabled() || getLine2()->isEnabled();
-    return getLine1()->isEnabled() && getLine2()->isEnabled();
+        return getLine1()->scanActive() || getLine2()->scanActive();
+    return getLine1()->scanActive() && getLine2()->scanActive();
 }
 
 void Baseline::TakeDark(Line* sender)

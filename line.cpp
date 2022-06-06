@@ -473,7 +473,7 @@ void Line::addCount()
                     break;
             }
         }
-        if(!active)
+        else
         {
             Counts->clear();
         }
@@ -513,11 +513,15 @@ void Line::addCount()
                         break;
                 }
             }
+            else
+            {
+                Stack->clear();
+                Elements->setStreamSize(2);
+            }
             if(active) {
                 Elements->getStream()->buf[0] = getMinFrequency();
                 Elements->getStream()->buf[1] = getMaxFrequency();
                 dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                stack ++;
                 int size = fmin(Elements->getStreamSize(), getResolution());
                 dsp_t *buf = Elements->getStream()->buf;
                 dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
@@ -526,16 +530,9 @@ void Line::addCount()
                 Counts->clear();
                 for (int x = 1; x < size; x++)
                 {
-                    if(histo[getLineIndex()] != 0)
-                        stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                    stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
                 }
                 free(histo);
-            }
-            else
-            {
-                Counts->clear();
-                Stack->clear();
-                Elements->setStreamSize(2);
             }
         }
     }
@@ -816,12 +813,12 @@ void Line::removeFromVLBIContext()
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
 {
     if(y == 0.0) return;
-    y /= stack;
+    y /= 2;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
     if(stacked->count() > idx)
     {
-        y += stacked->values().at(idx) * (stack - 1) / stack;
+        y += stacked->values().at(idx) / 2;
         stacked->keys().replace(idx, x);
         stacked->values().replace(idx, y);
     }
@@ -868,7 +865,7 @@ void Line::SavePlot()
     data.close();
 }
 
-bool Line::isEnabled() {
+bool Line::scanActive() {
     return ui->Active->isChecked();
 }
 
