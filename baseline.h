@@ -165,7 +165,7 @@ class Baseline : public QWidget
         }
 
         bool isActive(bool atleast1 = false);
-        bool isEnabled(bool atleast1 = false);
+        bool scanActive(bool atleast1 = false);
 
         void stackCorrelations();
         void plot(bool success, double o, double s);

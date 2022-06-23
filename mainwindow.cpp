@@ -363,6 +363,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
                         connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), Lines[l], &Line::runClicked);
+                        Lines[l]->setStopPtr(&threadsStopped);
                         ui->Lines->addTab(Lines[l], name);
                     }
                     int idx = 0;
@@ -374,6 +375,7 @@ MainWindow::MainWindow(QWidget *parent)
                             fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                             Baselines[idx]->setGraph(getGraph());
+                            Baselines[idx]->setStopPtr(&threadsStopped);
                             connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), [=] (Mode m) {
                                 switch(m) {
                                 case Autocorrelator:
@@ -476,22 +478,21 @@ MainWindow::MainWindow(QWidget *parent)
                 for(int x = 0; x < Baselines.count(); x++)
                 {
                     Baseline * line = Baselines[x];
-                    if(line->isActive())
+                    if(line->scanActive())
                     {
                         line->setPercentPtr(&percent);
-                        line->setStopPtr(&threadsStopped);
                         line->UpdateBufferSizes();
                         line->stackCorrelations();
                     } else {
-                        line->resetStopPtr();
+                        line->resetPercentPtr();
                     }
                 }
                 break;
             case Autocorrelator:
-            indexes.clear();
-            starts.clear();
-            sizes.clear();
-            steps.clear();
+                indexes.clear();
+                starts.clear();
+                sizes.clear();
+                steps.clear();
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line * line = Lines[x];
@@ -502,10 +503,9 @@ MainWindow::MainWindow(QWidget *parent)
                         sizes.append(line->getNumChannels());
                         steps.append(line->getScanStep());
                         line->setPercentPtr(&percent);
-                        line->setStopPtr(&threadsStopped);
                         line->UpdateBufferSizes();
                     } else {
-                        line->resetStopPtr();
+                        line->resetPercentPtr();
                     }
                 }
                 npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &threadsStopped, &percent);

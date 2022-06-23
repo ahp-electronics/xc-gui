@@ -1,4 +1,4 @@
-/*
+﻿/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -416,7 +416,7 @@ bool Baseline::isActive(bool atleast1)
     return getLine1()->isActive() && getLine2()->isActive();
 }
 
-bool Baseline::isEnabled(bool atleast1)
+bool Baseline::scanActive(bool atleast1)
 {
     if(atleast1)
         return getLine1()->scanActive() || getLine2()->scanActive();
