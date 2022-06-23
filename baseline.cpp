@@ -212,8 +212,6 @@ void Baseline::setMode(Mode m)
 
 void Baseline::addCount()
 {
-    double packettime = getPacketTime();
-    double timerange = getTimeRange();
     ahp_xc_packet *packet = getPacket();
     double mag = 0.0;
     QLineSeries *Counts = getMagnitudes();
@@ -228,7 +226,7 @@ void Baseline::addCount()
             if(stream == nullptr) break;
             lock();
             double offset1 = 0, offset2 = 0;
-            vlbi_get_offsets(getVLBIContext(), packettime, getLine1()->getLastName().toStdString().c_str(),
+            vlbi_get_offsets(getVLBIContext(), getPacketTime(), getLine1()->getLastName().toStdString().c_str(),
                              getLine2()->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
             offset1 /= ahp_xc_get_sampletime();
             offset2 /= ahp_xc_get_sampletime();
@@ -253,15 +251,15 @@ void Baseline::addCount()
                 {
                     for(int d = Counts->count() - 1; d >= 0; d--)
                     {
-                        if(Counts->at(d).x() < packettime - (double)timerange)
+                        if(Counts->at(d).x() < getPacketTime() - getTimeRange())
                             Counts->remove(d);
                     }
                 }
-                if(ahp_xc_has_crosscorrelator())
-                    mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-                else
+                if(ahp_xc_intensity_crosscorrelator_enabled())
                     mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
-                Counts->append(packettime, mag);
+                else
+                    mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+                Counts->append(getPacketTime(), mag);
                 active = true;
             }
         }
@@ -504,7 +502,7 @@ void Baseline::stackCorrelations()
             lag += ofs;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].real;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {

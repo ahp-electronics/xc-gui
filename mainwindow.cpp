@@ -527,24 +527,24 @@ MainWindow::MainWindow(QWidget *parent)
                 free(spectrum);
                 break;
             default:
-            if(!ahp_xc_get_packet(packet))
-            {
-                double packettime = packet->timestamp + J2000_starttime;
-                double diff = packettime - lastpackettime;
-                lastpackettime = packettime;
-                if(diff < 0 || diff > getTimeRange())
+                if(!ahp_xc_get_packet(packet))
                 {
-                    break;
+                    double packettime = packet->timestamp + J2000_starttime;
+                    double diff = packettime - lastpackettime;
+                    lastpackettime = packettime;
+                    if(diff < 0 || diff > getTimeRange())
+                    {
+                        break;
+                    }
+                    for(Line * line : Lines)
+                    {
+                        line->addCount(packettime);
+                    }
+                    for(Baseline * line : Baselines)
+                    {
+                        line->addCount(packettime);
+                    }
                 }
-                for(Line * line : Lines)
-                {
-                    line->addCount(packettime);
-                }
-                for(Baseline * line : Baselines)
-                {
-                    line->addCount(packettime);
-                }
-            }
                 break;
         }
 end_unlock:

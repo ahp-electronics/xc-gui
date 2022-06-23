@@ -67,8 +67,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getMagnitudes()->setName(name + " (phases)");
     line = n;
     flags = 0;
-    ui->FreqMin->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency());
-    ui->FreqMax->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency());
     ui->EndChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 1);
     ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
@@ -217,16 +215,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     {
         saveSetting(ui->Crosscorrelations->text(), ui->Crosscorrelations->isChecked());
     });
-    connect(ui->FreqMin, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        minfreq = value;
-        saveSetting("FreqMin", value);
-    });
-    connect(ui->FreqMax, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        maxfreq = value;
-        saveSetting("FreqMax", value);
-    });
     connect(ui->MountMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         MountMotorIndex = value;
@@ -299,10 +287,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Resolution->setValue(readInt("Resolution", 1024));
     ui->AutoChannel->setValue(readInt("AutoChannel", ui->AutoChannel->maximum()));
     ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
-    ui->EndChannel->setValue(readInt("EndChannel", ui->EndChannel->maximum()));
+    ui->EndChannel->setValue(readInt("EndChannel", ahp_xc_get_frequency()));
     ui->StartChannel->setValue(readInt("StartChannel", ui->StartChannel->minimum()));
-    ui->FreqMin->setValue(readInt("FreqMin", 0));
-    ui->FreqMax->setValue(readInt("FreqMax", ahp_xc_get_frequency()));
     ui->DFT->setChecked(readBool("DFT", false));
     ui->flag4->setEnabled(!ahp_xc_has_differential_only());
     ui->Crosscorrelations->setEnabled(ahp_xc_has_crosscorrelator());
@@ -332,14 +318,6 @@ void Line::UpdateBufferSizes()
 
 void Line::runClicked(bool checked)
 {
-    if(mode != Counter && mode != Spectrograph)
-    {
-        ui->Counter->setEnabled(false);
-        ui->Correlator->setEnabled(!isActive());
-    } else {
-        ui->Counter->setEnabled(true);
-        ui->Correlator->setEnabled(false);
-    }
 }
 
 void Line::setLocation(dsp_location l)
@@ -404,8 +382,6 @@ void Line::updateDec()
 
 void Line::addCount()
 {
-    double packettime = getPacketTime();
-    double timerange = getTimeRange();
     ahp_xc_packet *packet = getPacket();
     QLineSeries *counts[3] =
     {
@@ -451,7 +427,7 @@ void Line::addCount()
             {
                 for(int d = Counts->count() - 1; d >= 0; d--)
                 {
-                    if(Counts->at(d).x() < packettime - (double)timerange)
+                    if(Counts->at(d).x() < getPacketTime() - getTimeRange())
                         Counts->remove(d);
                 }
             }
@@ -459,13 +435,13 @@ void Line::addCount()
             {
                 case 0:
                     if(showCounts()) {
-                        Counts->append(packettime, (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
+                        Counts->append(getPacketTime(), (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
                         active = true;
                     }
                     break;
                 case 1:
                     if(showAutocorrelations()) {
-                        Counts->append(packettime, (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
+                        Counts->append(getPacketTime(), (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
                         active = true;
                     }
                     break;
@@ -771,8 +747,37 @@ void Line::setMode(Mode m)
     resetPercentPtr();
     resetStopPtr();
     mode = m;
-    ui->Counter->setEnabled(m == Counter || mode == Spectrograph);
-    ui->Correlator->setEnabled(m != Counter && mode != Spectrograph);
+    if(mode != HolographIQ && mode != HolographII && mode != Counter && mode != Spectrograph)
+    {
+        ui->Counts->setEnabled(false);
+        ui->Autocorrelations->setEnabled(false);
+        ui->Crosscorrelations->setEnabled(false);
+        ui->Resolution->setEnabled(true);
+        ui->Active->setEnabled(true);
+        ui->DFT->setEnabled(true);
+        ui->StartChannel->setEnabled(true);
+        ui->EndChannel->setEnabled(true);
+        ui->AutoChannel->setEnabled(false);
+        ui->CrossChannel->setEnabled(false);
+    } else {
+        ui->Counts->setEnabled(true);
+        ui->Autocorrelations->setEnabled(true);
+        ui->Crosscorrelations->setEnabled(true);
+        ui->Active->setEnabled(false);
+        ui->AutoChannel->setEnabled(true);
+        ui->CrossChannel->setEnabled(true);
+        if(mode == Spectrograph) {
+            ui->Resolution->setEnabled(true);
+            ui->DFT->setEnabled(true);
+            ui->StartChannel->setEnabled(true);
+            ui->EndChannel->setEnabled(true);
+        } else {
+            ui->Resolution->setEnabled(false);
+            ui->DFT->setEnabled(false);
+            ui->StartChannel->setEnabled(false);
+            ui->EndChannel->setEnabled(false);
+        }
+    }
     ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
 
@@ -909,15 +914,6 @@ void Line::setActive(bool a)
         if(getMode() == Counter || getMode() == Spectrograph) {
             running = (showCounts() || showAutocorrelations());
         }
-    }
-    if(getMode() == Counter || getMode() == Spectrograph)
-    {
-        ui->Counter->setEnabled(true);
-        ui->Correlator->setEnabled(false);
-    } else {
-        running = a;
-        ui->Counter->setEnabled(false);
-        ui->Correlator->setEnabled(!isActive());
     }
     emit activeStateChanged(this);
 }
