@@ -286,12 +286,7 @@ void Baseline::addCount()
         };
         double mag = 0.0;
         double rad = 0.0;
-        if(ahp_xc_has_crosscorrelator()) {
-            mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-            rad = (double)packet->crosscorrelations[getLineIndex()].correlations[0].phase;
-        }
-        else
-        {
+        if(ahp_xc_intensity_crosscorrelator_enabled()) {
             mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()],
                                2)) * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2);
             if(mag > 0.0)
@@ -302,6 +297,11 @@ void Baseline::addCount()
                 if(r < 0.0)
                     rad = M_PI * 2 - rad;
             }
+        }
+        else
+        {
+            mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
+            rad = (double)packet->crosscorrelations[getLineIndex()].correlations[0].phase;
         }
         for (int z = 0; z < 2; z++)
         {
@@ -502,7 +502,7 @@ void Baseline::stackCorrelations()
             lag += ofs;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].real;
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {

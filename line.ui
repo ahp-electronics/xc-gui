@@ -91,33 +91,20 @@
     </property>
    </widget>
   </widget>
-  <widget class="QPushButton" name="Save">
-   <property name="geometry">
-    <rect>
-     <x>1070</x>
-     <y>120</y>
-     <width>81</width>
-     <height>21</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Save</string>
-   </property>
-  </widget>
   <widget class="QPlainTextEdit" name="Notes">
    <property name="geometry">
     <rect>
-     <x>1070</x>
+     <x>930</x>
      <y>20</y>
      <width>161</width>
-     <height>91</height>
+     <height>121</height>
     </rect>
    </property>
   </widget>
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
-     <x>1070</x>
+     <x>930</x>
      <y>0</y>
      <width>67</width>
      <height>17</height>
@@ -553,9 +540,9 @@
     <property name="geometry">
      <rect>
       <x>300</x>
-      <y>89</y>
+      <y>120</y>
       <width>81</width>
-      <height>41</height>
+      <height>10</height>
      </rect>
     </property>
     <property name="value">
@@ -708,6 +695,19 @@
     </property>
     <property name="maximum">
      <number>10000000</number>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="Save">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>90</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Save</string>
     </property>
    </widget>
   </widget>
