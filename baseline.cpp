@@ -51,6 +51,10 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     readThread = new Thread(this, 0.01, 0.01, "baseline " +name+" read thread");
     resetPercentPtr();
     resetStopPtr();
+    stream = dsp_stream_new();
+    dsp_stream_add_dim(stream, 1);
+    dsp_stream_alloc_buffer(stream, stream->len);
+    stream->samplerate = 1.0/ahp_xc_get_packettime();
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
     {
         Baseline * line = (Baseline *)thread->getParent();
@@ -220,14 +224,14 @@ void Baseline::addCount()
     default: break;
     case HolographIQ:
     case HolographII:
-        if(isActive())
+        if(scanActive())
         {
             dsp_stream_p stream = getStream();
             if(stream == nullptr) break;
             lock();
             double offset1 = 0, offset2 = 0;
-            vlbi_get_offsets(getVLBIContext(), getPacketTime(), getLine1()->getLastName().toStdString().c_str(),
-                             getLine2()->getLastName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
+            vlbi_get_offsets(getVLBIContext(), getPacketTime(), getLine1()->getName().toStdString().c_str(),
+                             getLine2()->getName().toStdString().c_str(), getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
             offset1 /= ahp_xc_get_sampletime();
             offset2 /= ahp_xc_get_sampletime();
             offset1 ++;
@@ -259,7 +263,8 @@ void Baseline::addCount()
                     mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
                 else
                     mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-                Counts->append(getPacketTime(), mag);
+                if(mag > 0)
+                    Counts->append(getPacketTime(), mag);
                 active = true;
             }
         }
@@ -386,13 +391,6 @@ void Baseline::addToVLBIContext(int index)
         if(index < 0) return;
     }
     lock();
-    if(stream == nullptr)
-    {
-        stream = dsp_stream_new();
-        dsp_stream_add_dim(stream, 1);
-        dsp_stream_alloc_buffer(stream, stream->len);
-        stream->samplerate = 1.0/ahp_xc_get_packettime();
-    }
     vlbi_set_baseline_stream(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
                              getLine2()->getLastName().toStdString().c_str(), getStream());
     unlock();

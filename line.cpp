@@ -65,6 +65,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     getCounts()->setName(name + " (counts)");
     getPhases()->setName(name + " (magnitudes)");
     getMagnitudes()->setName(name + " (phases)");
+    stream = dsp_stream_new();
+    dsp_stream_add_dim(stream, 1);
+    dsp_stream_alloc_buffer(stream, stream->len);
+    stream->samplerate = 1.0/ahp_xc_get_packettime();
     line = n;
     flags = 0;
     ui->EndChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 1);
@@ -291,7 +295,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->StartChannel->setValue(readInt("StartChannel", ui->StartChannel->minimum()));
     ui->DFT->setChecked(readBool("DFT", false));
     ui->flag4->setEnabled(!ahp_xc_has_differential_only());
-    ui->Crosscorrelations->setEnabled(ahp_xc_has_crosscorrelator());
     ahp_xc_set_leds(line, flags);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
@@ -300,6 +303,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     setFlag(4, readBool(ui->flag4->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
+    ui->Crosscorrelations->setChecked(readBool(ui->Crosscorrelations->text(), false));
     GetDark();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
@@ -420,7 +424,6 @@ void Line::addCount()
     for (int z = 0; z < 2; z++)
     {
         QLineSeries *Counts = counts[z];
-        bool active = false;
         if(isActive())
         {
             if(Counts->count() > 0)
@@ -436,13 +439,11 @@ void Line::addCount()
                 case 0:
                     if(showCounts()) {
                         Counts->append(getPacketTime(), (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
-                        active = true;
                     }
                     break;
                 case 1:
                     if(showAutocorrelations()) {
                         Counts->append(getPacketTime(), (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
-                        active = true;
                     }
                     break;
                 default:
@@ -747,36 +748,56 @@ void Line::setMode(Mode m)
     resetPercentPtr();
     resetStopPtr();
     mode = m;
-    if(mode != HolographIQ && mode != HolographII && mode != Counter && mode != Spectrograph)
-    {
+    switch(mode) {
+    case HolographII:
+    case HolographIQ:
+        ui->Counts->setEnabled(false);
+        ui->Autocorrelations->setEnabled(false);
+        ui->Crosscorrelations->setEnabled(false);
+        ui->Resolution->setEnabled(false);
+        ui->Active->setEnabled(true);
+        ui->DFT->setEnabled(false);
+        ui->AutoChannel->setEnabled(false);
+        ui->CrossChannel->setEnabled(false);
+        ui->StartChannel->setEnabled(false);
+        ui->EndChannel->setEnabled(false);
+        break;
+    case Spectrograph:
+        ui->Counts->setEnabled(true);
+        ui->Autocorrelations->setEnabled(true);
+        ui->Crosscorrelations->setEnabled(true);
+        ui->Resolution->setEnabled(true);
+        ui->Active->setEnabled(false);
+        ui->DFT->setEnabled(true);
+        ui->AutoChannel->setEnabled(true);
+        ui->CrossChannel->setEnabled(true);
+        ui->StartChannel->setEnabled(true);
+        ui->EndChannel->setEnabled(true);
+        break;
+    case Counter:
+        ui->Counts->setEnabled(true);
+        ui->Autocorrelations->setEnabled(true);
+        ui->Crosscorrelations->setEnabled(true);
+        ui->Resolution->setEnabled(false);
+        ui->Active->setEnabled(false);
+        ui->DFT->setEnabled(false);
+        ui->AutoChannel->setEnabled(true);
+        ui->CrossChannel->setEnabled(true);
+        ui->StartChannel->setEnabled(false);
+        ui->EndChannel->setEnabled(false);
+        break;
+    default:
         ui->Counts->setEnabled(false);
         ui->Autocorrelations->setEnabled(false);
         ui->Crosscorrelations->setEnabled(false);
         ui->Resolution->setEnabled(true);
         ui->Active->setEnabled(true);
         ui->DFT->setEnabled(true);
-        ui->StartChannel->setEnabled(true);
-        ui->EndChannel->setEnabled(true);
         ui->AutoChannel->setEnabled(false);
         ui->CrossChannel->setEnabled(false);
-    } else {
-        ui->Counts->setEnabled(true);
-        ui->Autocorrelations->setEnabled(true);
-        ui->Crosscorrelations->setEnabled(true);
-        ui->Active->setEnabled(false);
-        ui->AutoChannel->setEnabled(true);
-        ui->CrossChannel->setEnabled(true);
-        if(mode == Spectrograph) {
-            ui->Resolution->setEnabled(true);
-            ui->DFT->setEnabled(true);
-            ui->StartChannel->setEnabled(true);
-            ui->EndChannel->setEnabled(true);
-        } else {
-            ui->Resolution->setEnabled(false);
-            ui->DFT->setEnabled(false);
-            ui->StartChannel->setEnabled(false);
-            ui->EndChannel->setEnabled(false);
-        }
+        ui->StartChannel->setEnabled(true);
+        ui->EndChannel->setEnabled(true);
+        break;
     }
     ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
@@ -798,10 +819,8 @@ void Line::paint()
 void Line::addToVLBIContext()
 {
     lock();
-    stream = dsp_stream_new();
-    dsp_stream_add_dim(stream, 1);
     resetTimestamp();
-    vlbi_add_node(getVLBIContext(), getStream(), getLastName().toStdString().c_str(), false);
+    vlbi_add_node(getVLBIContext(), getStream(), getName().toStdString().c_str(), false);
     unlock();
 }
 
@@ -810,7 +829,7 @@ void Line::removeFromVLBIContext()
     if(stream != nullptr)
     {
         lock();
-        vlbi_del_node(getVLBIContext(), getLastName().toStdString().c_str());
+        vlbi_del_node(getVLBIContext(), getName().toStdString().c_str());
         unlock();
     }
 }

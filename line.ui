@@ -327,12 +327,12 @@
      <rect>
       <x>10</x>
       <y>30</y>
-      <width>91</width>
+      <width>101</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>Start chan.:</string>
+     <string>Start channel</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_8">
@@ -340,12 +340,12 @@
      <rect>
       <x>10</x>
       <y>50</y>
-      <width>91</width>
+      <width>101</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>End chan.:</string>
+     <string>End channel</string>
     </property>
    </widget>
    <widget class="QSpinBox" name="EndChannel">
@@ -398,12 +398,12 @@
      <rect>
       <x>10</x>
       <y>70</y>
-      <width>91</width>
+      <width>101</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>Resolution:</string>
+     <string>Resolution</string>
     </property>
    </widget>
    <widget class="Line" name="line_2">
@@ -450,12 +450,12 @@
      <rect>
       <x>10</x>
       <y>90</y>
-      <width>91</width>
+      <width>101</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>Auto ch:</string>
+     <string>Auto channel</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_17">
@@ -463,12 +463,12 @@
      <rect>
       <x>10</x>
       <y>110</y>
-      <width>91</width>
+      <width>101</width>
       <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>Cross ch:</string>
+     <string>Cross channel</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="Active">
