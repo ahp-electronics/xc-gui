@@ -41,7 +41,6 @@ class Thread : public QThread
         QMutex mutex;
         double timer_ms;
         double loop_ms;
-        bool running {true};
     public:
         ~Thread() {
             stop();
@@ -56,18 +55,12 @@ class Thread : public QThread
         void stop()
         {
             requestInterruption();
-            running = false;
             wait();
-        }
-        bool stopped()
-        {
-            return !running;
         }
         void run()
         {
             lastPollTime = QDateTime::currentDateTimeUtc();
-            running = true;
-            while(running)
+            while(!isInterruptionRequested())
             {
                 usleep(timer_ms*1000);
                 lock();
@@ -75,8 +68,6 @@ class Thread : public QThread
                 emit threadLoop(this);
                 timer_ms = loop_ms;
             }
-            running = false;
-            unlock();
         }
         void lock()
         {

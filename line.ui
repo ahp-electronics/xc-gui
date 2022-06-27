@@ -384,13 +384,13 @@
      </rect>
     </property>
     <property name="maximum">
-     <number>4096</number>
+     <number>1048576</number>
     </property>
     <property name="singleStep">
      <number>1</number>
     </property>
     <property name="value">
-     <number>1024</number>
+     <number>99</number>
     </property>
    </widget>
    <widget class="QLabel" name="label_15">

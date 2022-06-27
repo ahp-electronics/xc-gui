@@ -208,11 +208,12 @@ class MainWindow : public QMainWindow
             return xcFD;
         }
 
-        void lock_vlbi()
+        static QMutex vlbi_mutex;
+        static void lock_vlbi()
         {
             while(!vlbi_mutex.tryLock(1));
         }
-        void unlock_vlbi()
+        static void unlock_vlbi()
         {
             vlbi_mutex.unlock();
         }
@@ -243,7 +244,6 @@ signals:
         int xcFD;
         bool xc_local_port { false };
         double lastpackettime;
-        QMutex vlbi_mutex;
         double Ra, Dec;
         double Latitude, Longitude, Elevation;
         double wavelength;

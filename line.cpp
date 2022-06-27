@@ -24,6 +24,7 @@
 */
 
 #include "line.h"
+#include "mainwindow.h"
 #include "ui_line.h"
 #include <QMapNode>
 #include <QFile>
@@ -33,8 +34,8 @@
 
 QMutex Line::motor_mutex;
 
-Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
-    QWidget(parent),
+Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
+    QWidget(pw),
     ui(new Ui::Line)
 {
     setAccessibleName("Line");
@@ -44,6 +45,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     localstop = 1;
     parents = p;
     name = ln;
+    parent = pw;
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     countStack = new QMap<double, double>();
@@ -196,16 +198,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
         emit clearCrosscorrelations();
 
         clearCorrelations();
-        getMagnitude()->clear();
-        getPhase()->clear();
-        getMagnitudeStack()->clear();
-        getPhaseStack()->clear();
+        clearCounts();
         if(mode == Autocorrelator)
         {
-            stack = 0.0;
             mx = 0.0;
         }
-        emit activeStateChanged(this);
     });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -249,30 +246,30 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     });
     connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        getLocation()->xyz.x = (double)value / 1000.0;
-        saveSetting("location_x", location.xyz.x);
+        setLocation();
+        saveSetting("location_x", getLocation()->xyz.x);
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(RailMotorIndex)) {
-                ahp_gt_select_device(RailMotorIndex);
+            if(ahp_gt_is_detected(getRailIndex())) {
+                ahp_gt_select_device(getRailIndex());
                 ahp_gt_goto_absolute(0, value*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
             }
         }
     });
     connect(ui->y_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        getLocation()->xyz.y = (double)value / 1000.0;
-        saveSetting("location_y", location.xyz.y);
+        setLocation();
+        saveSetting("location_y", getLocation()->xyz.y);
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(RailMotorIndex)) {
-                ahp_gt_select_device(RailMotorIndex);
+            if(ahp_gt_is_detected(getRailIndex())) {
+                ahp_gt_select_device(getRailIndex());
                 ahp_gt_goto_absolute(1, value*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
             }
         }
     });
     connect(ui->z_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        getLocation()->xyz.z = (double)value / 1000.0;
-        saveSetting("location_z", location.xyz.z);
+        setLocation();
+        saveSetting("location_z", getLocation()->xyz.z);
     });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
@@ -288,7 +285,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *parent, QList<Line*> *p) :
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
-    ui->Resolution->setValue(readInt("Resolution", 1024));
+    if(ahp_xc_get_delaysize() <= 4)
+        ui->Resolution->setRange(1, 1048576);
+    else
+        ui->Resolution->setRange(1, ahp_xc_get_delaysize());
+    ui->Resolution->setValue(readInt("Resolution", ui->Resolution->maximum()));
     ui->AutoChannel->setValue(readInt("AutoChannel", ui->AutoChannel->maximum()));
     ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
     ui->EndChannel->setValue(readInt("EndChannel", ahp_xc_get_frequency()));
@@ -324,33 +325,37 @@ void Line::runClicked(bool checked)
 {
 }
 
-void Line::setLocation(dsp_location l)
-{
-    saveSetting("location_x", l.xyz.x);
-    saveSetting("location_y", l.xyz.y);
-    saveSetting("location_z", l.xyz.z);
-}
-
 void Line::updateLocation()
 {
+    if(ahp_gt_is_connected()) {
+        if(ahp_gt_is_detected(getRailIndex())) {
+            lock();
+            ahp_gt_select_device(getRailIndex());
+            double x = ahp_gt_get_position(0);
+            x *= ahp_gt_get_totalsteps(0);
+            x /= M_PI / 2;
+            x /= 1000.0;
+            double y = ahp_gt_get_position(1);
+            y *= ahp_gt_get_totalsteps(1);
+            y /= M_PI / 2;
+            y /= 1000.0;
+            setLocation();
+            unlock();
+        }
+    }
+}
+
+void Line::setLocation(int value)
+{
+    (void)value;
     if(stream != nullptr)
     {
-        if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getRailIndex())) {
-                lock();
-                double x = ahp_gt_get_position(0);
-                x *= ahp_gt_get_totalsteps(0);
-                x /= M_PI / 2;
-                x /= 1000.0;
-                double y = ahp_gt_get_position(1);
-                y *= ahp_gt_get_totalsteps(1);
-                y /= M_PI / 2;
-                y /= 1000.0;
-                stream->location->xyz.x = x;
-                stream->location->xyz.y = y;
-                unlock();
-            }
-        }
+        getLocation()->xyz.x = ui->x_location->value() / 1000;
+        getLocation()->xyz.y = ui->y_location->value() / 1000;
+        getLocation()->xyz.z = ui->z_location->value() / 1000;
+        saveSetting("location_x", getLocation()->xyz.x);
+        saveSetting("location_y", getLocation()->xyz.y);
+        saveSetting("location_z", getLocation()->xyz.z);
     }
 }
 
@@ -730,7 +735,6 @@ void Line::setMode(Mode m)
     getElemental()->setStreamSize(1);
     if(m != Counter && mode != Spectrograph)
     {
-        stack = 0.0;
         mx = 0.0;
     }
     if(m == Autocorrelator)
@@ -1041,7 +1045,6 @@ void Line::plot(bool success, double o, double s)
     double offset = o;
     getMagnitude()->clear();
     getPhase()->clear();
-    stack += 1.0;
     for (int x = 0; x < elemental->getStreamSize(); x++)
     {
         if(dft()) {

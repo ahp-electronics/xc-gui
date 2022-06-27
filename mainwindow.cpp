@@ -24,6 +24,7 @@
 */
 
 #include "types.h"
+#include "QMutex"
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 vlbi_context context[vlbi_total_contexts];
@@ -33,6 +34,8 @@ static double coverage_delegate(double x, double y)
     (void)y;
     return 1.0;
 }
+
+QMutex(MainWindow::vlbi_mutex);
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -576,13 +579,13 @@ end_unlock:
             lock_vlbi();
             vlbi_get_uv_plot(getVLBIContext(), "coverage_new",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, coverage_delegate, &threadsStopped);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, coverage_delegate, nullptr);
             vlbi_get_uv_plot(getVLBIContext(), "magnitude_new",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_magnitude_delegate, &threadsStopped);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_magnitude_delegate, nullptr);
             vlbi_get_uv_plot(getVLBIContext(), "phase_new",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate, &threadsStopped);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, true, vlbi_phase_delegate, nullptr);
 
             if(vlbi_get_model(getVLBIContext(), "coverage") != nullptr)
                 vlbi_stack_models(getVLBIContext(), "coverage", "coverage", "coverage_new");
@@ -667,9 +670,14 @@ void MainWindow::runClicked(bool checked)
     if(ui->Run->text() == "Run")
     {
         ui->Run->setText("Stop");
+        lock_vlbi();
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
+            for(int i = 0; i < vlbi_total_contexts; i++) {
+                vlbi_exit(context[i]);
+                context[i] = vlbi_init();
+            }
             vlbiThread->start();
         }
         for(int x = 0; x < Lines.count(); x++) {
@@ -682,6 +690,7 @@ void MainWindow::runClicked(bool checked)
             emit scanStarted();
         threadsStopped = false;
         resetTimestamp();
+        unlock_vlbi();
     }
     else
     {

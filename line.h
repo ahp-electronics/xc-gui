@@ -106,7 +106,17 @@ class Line : public QWidget
         }
         inline void clearCorrelations()
         {
-            stack = 0.0;
+            getMagnitude()->clear();
+            getPhase()->clear();
+            getMagnitudeStack()->clear();
+            getPhaseStack()->clear();
+            getCountStack()->clear();
+        }
+        inline void clearCounts()
+        {
+            getCounts()->clear();
+            getMagnitudes()->clear();
+            getPhases()->clear();
         }
         inline double getPercent()
         {
@@ -212,10 +222,10 @@ class Line : public QWidget
         }
         inline dsp_location *getLocation()
         {
-            return &location;
+            return getStream()->location;
         }
+        void setLocation(int value = 0);
 
-        void setLocation(dsp_location location);
         void updateLocation();
         void updateRa();
         void updateDec();
@@ -367,7 +377,6 @@ class Line : public QWidget
             return Resolution;
         }
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
-        double stack { 0.0 };
         inline double getPacketTime() { return packetTime; }
         void addCount();
         inline void addCount(double time, bool threaded = true) {
@@ -382,6 +391,7 @@ class Line : public QWidget
         inline ahp_xc_packet* getPacket() { return packet; }
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
     private:
+        QWidget *parent;
         ahp_xc_packet* packet;
         double timeRange { 10.0 };
         double packetTime { 0.0 };
@@ -402,7 +412,6 @@ class Line : public QWidget
         QList<int> Motors;
         Ui::Line *ui { nullptr };
         dsp_stream_p stream { nullptr };
-        dsp_location location { 0 };
         QString name;
         int *stop;
         int localstop { 1 };
