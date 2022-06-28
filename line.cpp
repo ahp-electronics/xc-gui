@@ -414,17 +414,18 @@ void Line::addCount()
     default: break;
     case HolographIQ:
     case HolographII:
-    if(isActive())
+    if(scanActive())
     {
         dsp_stream_p stream = getStream();
         if(stream == nullptr) break;
         lock();
-        dsp_stream_set_dim(stream, 0, stream->sizes[0] + 1);
-        dsp_stream_alloc_buffer(stream, stream->len);
         stream->buf[stream->len - 1] = (double)packet->counts[getLineIndex()];
-        memcpy(&stream->location[stream->len - 1], getLocation(), sizeof(dsp_location));
+        if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
+            addToVLBIContext();
         unlock();
-    }
+    } else if(vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
+            removeFromVLBIContext();
+    break;
     case Counter:
     for (int z = 0; z < 2; z++)
     {
@@ -500,7 +501,8 @@ void Line::addCount()
                 Stack->clear();
                 Elements->setStreamSize(2);
             }
-            if(active) {
+            if(active)
+            {
                 Elements->getStream()->buf[0] = getMinFrequency();
                 Elements->getStream()->buf[1] = getMaxFrequency();
                 dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
@@ -822,19 +824,15 @@ void Line::paint()
 
 void Line::addToVLBIContext()
 {
-    lock();
     resetTimestamp();
     vlbi_add_node(getVLBIContext(), getStream(), getName().toStdString().c_str(), false);
-    unlock();
 }
 
 void Line::removeFromVLBIContext()
 {
     if(stream != nullptr)
     {
-        lock();
-        vlbi_del_node(getVLBIContext(), getName().toStdString().c_str());
-        unlock();
+        vlbi_del_node(getVLBIContext(), getLastName().toStdString().c_str());
     }
 }
 
@@ -925,14 +923,6 @@ void Line::motor_unlock()
 void Line::setActive(bool a)
 {
     activeStateChanging(this);
-    if(a && ! running)
-    {
-        addToVLBIContext();
-    }
-    else if(!a && running)
-    {
-        removeFromVLBIContext();
-    }
     if(a) {
         if(getMode() == Counter || getMode() == Spectrograph) {
             running = (showCounts() || showAutocorrelations());

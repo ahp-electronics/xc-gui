@@ -254,8 +254,13 @@ class Graph : public QWidget
         {
             DecTrackRate = rate;
         }
+        inline bool isTracking()
+        {
+            return tracking;
+        }
 
     private:
+        bool tracking { false };
         Thread *motorThread;
         Ui::Inputs *inputs;
         Mode mode { Counter };
