@@ -238,7 +238,7 @@ void Baseline::addCount()
                 offset2 /= ahp_xc_get_sampletime();
                 offset1 ++;
                 offset2 ++;
-                if(ahp_xc_has_crosscorrelator())
+                if(ahp_xc_intensity_crosscorrelator_enabled())
                 {
                     ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
                     ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);

@@ -579,26 +579,26 @@ end_unlock:
             lock_vlbi();
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, nullptr);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
             vlbi_get_uv_plot(getVLBIContext(), "magnitude",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, nullptr);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, &threadsStopped);
             vlbi_get_uv_plot(getVLBIContext(), "phase",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, nullptr);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, &threadsStopped);
 
             if(getGraph()->isTracking()) {
-                if(vlbi_get_model(getVLBIContext(), "coverage_stack") != nullptr)
+                if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
                     vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
                 else
                     vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "coverage")), "coverage_stack");
 
-                if(vlbi_get_model(getVLBIContext(), "magnitude_stack") != nullptr)
+                if(vlbi_has_model(getVLBIContext(), "magnitude_stack"))
                     vlbi_stack_models(getVLBIContext(), "magnitude_stack", "magnitude_stack", "magnitude");
                 else
                     vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "magnitude")), "magnitude_stack");
 
-                if(vlbi_get_model(getVLBIContext(), "phase_stack") != nullptr)
+                if(vlbi_has_model(getVLBIContext(), "phase_stack"))
                     vlbi_stack_models(getVLBIContext(), "phase_stack", "phase_stack", "phase");
                 else
                     vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "phase")), "phase_stack");
@@ -608,12 +608,16 @@ end_unlock:
                 getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase_stack");
                 getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             } else {
-                vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
                 getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
                 getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
+                vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             }
+
+            vlbi_del_model(getVLBIContext(), "coverage");
+            vlbi_del_model(getVLBIContext(), "magnitude");
+            vlbi_del_model(getVLBIContext(), "phase");
 
             unlock_vlbi();
         }

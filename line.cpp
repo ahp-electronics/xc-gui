@@ -1,4 +1,4 @@
-﻿/*
+/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -329,7 +329,6 @@ void Line::updateLocation()
 {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getRailIndex())) {
-            lock();
             ahp_gt_select_device(getRailIndex());
             double x = ahp_gt_get_position(0);
             x *= ahp_gt_get_totalsteps(0);
@@ -339,10 +338,9 @@ void Line::updateLocation()
             y *= ahp_gt_get_totalsteps(1);
             y /= M_PI / 2;
             y /= 1000.0;
-            setLocation();
-            unlock();
         }
     }
+    setLocation();
 }
 
 void Line::setLocation(int value)
@@ -414,17 +412,18 @@ void Line::addCount()
     default: break;
     case HolographIQ:
     case HolographII:
+    lock();
     if(scanActive())
     {
         dsp_stream_p stream = getStream();
         if(stream == nullptr) break;
-        lock();
         stream->buf[stream->len - 1] = (double)packet->counts[getLineIndex()];
+        updateLocation();
         if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
             addToVLBIContext();
-        unlock();
     } else if(vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
             removeFromVLBIContext();
+    unlock();
     break;
     case Counter:
     for (int z = 0; z < 2; z++)
