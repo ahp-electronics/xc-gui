@@ -171,6 +171,7 @@ class MainWindow : public QMainWindow
         void runClicked(bool checked);
         void setVoltage(int level);
         void resetTimestamp();
+        void VlbiThread(Thread * thread);
         QDateTime start;
         Thread *readThread;
         Thread *uiThread;

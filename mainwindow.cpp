@@ -577,6 +577,7 @@ end_unlock:
         {
             double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
             lock_vlbi();
+
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
@@ -602,16 +603,17 @@ end_unlock:
                     vlbi_stack_models(getVLBIContext(), "phase_stack", "phase_stack", "phase");
                 else
                     vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "phase")), "phase_stack");
+
                 vlbi_get_ifft(getVLBIContext(), "idft", "magnitude_stack", "phase_stack");
                 getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage_stack");
                 getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude_stack");
                 getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase_stack");
                 getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             } else {
+                vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
                 getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
                 getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
-                vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             }
 
@@ -663,14 +665,12 @@ void MainWindow::startThreads()
 {
     readThread->start();
     motorThread->start();
-    vlbiThread->start();
 }
 
 void MainWindow::stopThreads()
 {
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
-    vlbiThread->stop();
     readThread->stop();
     motorThread->stop();
 }

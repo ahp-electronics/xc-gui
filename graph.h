@@ -39,6 +39,7 @@
 #include <QLineSeries>
 #include <QValueAxis>
 #include <QVBoxLayout>
+#include <QCheckBox>
 #include "types.h"
 
 using namespace QtCharts;
