@@ -64,7 +64,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     uiThread = new Thread(this, 200, 10, "uiThread");
     readThread = new Thread(this, 100, 10, "readThread");
-    vlbiThread = new Thread(this, 100, 100, "vlbiThread");
+    vlbiThread = new Thread(this, 100, 1000, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
     int starty = 80;
@@ -617,10 +617,6 @@ end_unlock:
                 getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             }
 
-            vlbi_del_model(getVLBIContext(), "coverage");
-            vlbi_del_model(getVLBIContext(), "magnitude");
-            vlbi_del_model(getVLBIContext(), "phase");
-
             unlock_vlbi();
         }
         thread->unlock();
@@ -715,7 +711,9 @@ void MainWindow::runClicked(bool checked)
         if(getMode() == HolographIQ || getMode() == HolographII) {
             for(int x = 0; x < Lines.count(); x++)
                 Lines[x]->removeFromVLBIContext();
+            lock_vlbi();
             vlbiThread->stop();
+            unlock_vlbi();
             readThread->stop();
         }
         for(int x = 0; x < Lines.count(); x++) {
