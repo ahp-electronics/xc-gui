@@ -1,4 +1,4 @@
-﻿/*
+/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators

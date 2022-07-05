@@ -227,6 +227,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     connect(inputs->Synthesize, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         tracking = checked;
+        saveSetting("Synthesize", tracking);
     });
 }
 
@@ -266,6 +267,7 @@ void Graph::loadSettings()
 
     inputs->El->setValue(getElevation());
     inputs->Frequency->setValue(getFrequency() / 1000000.0);
+    inputs->Synthesize->setChecked(readBool("Synthesize", false));
 }
 
 QString Graph::toDMS(double dms)
@@ -393,9 +395,9 @@ void Graph::setPixmap(QImage *picture, QLabel *view)
 
 void Graph::plotModel(QImage* picture, char* model)
 {
-    unsigned char* pixels = (unsigned char*)picture->bits();
     if(vlbi_has_model(getVLBIContext(), model)) {
         lock();
+        unsigned char* pixels = (unsigned char*)picture->bits();
         dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
         dsp_stream_p data = dsp_stream_copy(stream);
         dsp_buffer_stretch(data->buf, data->len, 0xff, 0.0);
