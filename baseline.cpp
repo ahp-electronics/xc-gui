@@ -59,7 +59,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         Baseline * line = (Baseline *)thread->getParent();
         line->addCount();
-        thread->requestInterruption();
+        thread->stop();
         thread->unlock();
     });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
@@ -224,6 +224,7 @@ void Baseline::addCount()
     default: break;
     case HolographIQ:
     case HolographII:
+        if(getVLBIContext() == nullptr) break;
         if(scanActive())
         {
             dsp_stream_p stream = getStream();
@@ -504,7 +505,7 @@ void Baseline::stackCorrelations()
             lag += ofs;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[0].correlations[0].magnitude / ahp_xc_get_packettime();
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {

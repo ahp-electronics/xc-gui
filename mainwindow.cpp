@@ -404,6 +404,10 @@ MainWindow::MainWindow(QWidget *parent)
                     ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(QThread::idealThreadCount());
 
+                    for(int i = 0; i < vlbi_total_contexts; i++) {
+                        context[i] = vlbi_init();
+                    }
+
                     getGraph()->loadSettings();
                     createPacket();
                     setMode(Counter);
@@ -683,10 +687,6 @@ void MainWindow::runClicked(bool checked)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
             readThread->stop();
-            for(int i = 0; i < vlbi_total_contexts; i++) {
-                vlbi_exit(context[i]);
-                context[i] = vlbi_init();
-            }
             vlbiThread->start();
             readThread->start();
         }
@@ -711,9 +711,7 @@ void MainWindow::runClicked(bool checked)
         if(getMode() == HolographIQ || getMode() == HolographII) {
             for(int x = 0; x < Lines.count(); x++)
                 Lines[x]->removeFromVLBIContext();
-            lock_vlbi();
             vlbiThread->stop();
-            unlock_vlbi();
             readThread->stop();
         }
         for(int x = 0; x < Lines.count(); x++) {

@@ -82,7 +82,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     {
         Line * line = (Line *)thread->getParent();
         line->addCount();
-        thread->requestInterruption();
+        thread->stop();
         thread->unlock();
     });
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
@@ -412,6 +412,7 @@ void Line::addCount()
     default: break;
     case HolographIQ:
     case HolographII:
+    if(getVLBIContext() == nullptr) break;
     lock();
     if(scanActive())
     {
@@ -1004,7 +1005,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / ahp_xc_get_packettime();
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[0].correlations[0].magnitude / ahp_xc_get_packettime();
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y < npackets; y++)
                 {
