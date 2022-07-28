@@ -244,8 +244,8 @@ void Baseline::addCount()
                     ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
                     ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
                 }
-                stream->dft.fftw[0][0] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                stream->dft.fftw[0][1] = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
             } else {
                 ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
                 ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
@@ -505,7 +505,7 @@ void Baseline::stackCorrelations()
             lag += ofs;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[0].correlations[0].magnitude / ahp_xc_get_packettime();
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts / ahp_xc_get_packettime();
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {

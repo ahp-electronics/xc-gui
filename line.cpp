@@ -1005,7 +1005,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[0].correlations[0].magnitude / ahp_xc_get_packettime();
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts / ahp_xc_get_packettime();
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y < npackets; y++)
                 {
