@@ -40,6 +40,7 @@
 #include <QValueAxis>
 #include <QVBoxLayout>
 #include <QCheckBox>
+#include <QLogValueAxis>
 #include "types.h"
 
 using namespace QtCharts;
@@ -49,6 +50,12 @@ namespace Ui
 class Graph;
 class Inputs;
 }
+
+typedef struct {
+    QAbstractSeries *series;
+    QLogValueAxis *x;
+    QLogValueAxis *y;
+} lineAxis;
 
 class Graph : public QWidget
 {
@@ -86,7 +93,8 @@ class Graph : public QWidget
         void clearSeries();
         void setPixmap(QImage *picture, QLabel *view);
         bool threadRunning;
-        void addSeries(QAbstractSeries* series);
+        void addSeries(QAbstractSeries* series, QString name);
+        void setupAxes(double base_x = 1.0, double base_y = 1.0, QString title_x = "", QString title_y = "", QString format_x = "%g", QString format_y = "%g", int ticks_x = 8, int ticks_y = 8);
         void removeSeries(QAbstractSeries* series);
         void setMode(Mode m);
         inline Mode getMode()
@@ -261,6 +269,11 @@ class Graph : public QWidget
         }
 
     private:
+        QMap<QString, lineAxis *> *Values;
+        QLogValueAxis *logaxis_x;
+        QLogValueAxis *logaxis_y;
+        QValueAxis *axis_x;
+        QValueAxis *axis_y;
         bool tracking { false };
         Thread *motorThread;
         Ui::Inputs *inputs;

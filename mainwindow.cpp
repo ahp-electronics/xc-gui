@@ -341,19 +341,19 @@ MainWindow::MainWindow(QWidget *parent)
                                 [ = ](Line* sender) {
                             (void)sender;
                         });
-                        connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), [=] (Mode m) {
+                        connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                             switch(m) {
                             case Autocorrelator:
-                                getGraph()->addSeries(Lines[l]->getMagnitude());
-                                getGraph()->addSeries(Lines[l]->getPhase());
+                                getGraph()->addSeries(Lines[l]->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
                                 break;
                             case CrosscorrelatorII:
                             case CrosscorrelatorIQ:
                                 break;
                             case Counter:
                             case Spectrograph:
-                                getGraph()->addSeries(Lines[l]->getMagnitudes());
-                                getGraph()->addSeries(Lines[l]->getCounts());
+                                getGraph()->addSeries(Lines[l]->getMagnitudes(), QString::number(Counter) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getCounts(), QString::number(Counter) + "1#" + QString::number(l+1));
                                 break;
                             case HolographII:
                             case HolographIQ:
@@ -366,6 +366,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
                         connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), Lines[l], &Line::runClicked);
+                        Lines[l]->setGraph(getGraph());
                         Lines[l]->setStopPtr(&threadsStopped);
                         ui->Lines->addTab(Lines[l], name);
                     }
@@ -379,17 +380,17 @@ MainWindow::MainWindow(QWidget *parent)
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                             Baselines[idx]->setGraph(getGraph());
                             Baselines[idx]->setStopPtr(&threadsStopped);
-                            connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), [=] (Mode m) {
+                            connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                                 switch(m) {
                                 case Autocorrelator:
                                     break;
                                 case CrosscorrelatorII:
                                 case CrosscorrelatorIQ:
-                                    getGraph()->addSeries(Baselines[idx]->getMagnitude());
+                                    getGraph()->addSeries(Baselines[idx]->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                     break;
                                 case Counter:
                                 case Spectrograph:
-                                    getGraph()->addSeries(Baselines[idx]->getMagnitudes());
+                                    getGraph()->addSeries(Baselines[idx]->getMagnitudes(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                     break;
                                 case HolographII:
                                 case HolographIQ:

@@ -720,7 +720,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Smooth</string>
+     <string>Filter</string>
     </property>
    </widget>
    <widget class="QSpinBox" name="Smooth">

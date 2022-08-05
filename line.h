@@ -38,6 +38,7 @@
 #include <fftw3.h>
 #include <cmath>
 #include <ctime>
+#include "graph.h"
 #include "types.h"
 #include "baseline.h"
 #include "elemental.h"
@@ -77,6 +78,8 @@ class Line : public QWidget
             return offset;
         }
         void setFlag(int flag, bool value);
+        inline Graph* getGraph() { return graph; }
+        inline void setGraph(Graph* g) { graph = g; }
         bool getFlag(int flag);
         bool showCounts();
         bool showAutocorrelations();
@@ -436,6 +439,7 @@ class Line : public QWidget
         QLineSeries* magnitudes { nullptr };
         QLineSeries* phases { nullptr };
         QLineSeries* counts { nullptr };
+        Graph* graph;
         unsigned int line { 0 };
         int flags { 0x8 };
         off_t start { 0 };
@@ -445,6 +449,8 @@ class Line : public QWidget
         int Resolution { 1024 };
         int AutoChannel { 1 };
         int CrossChannel { 0 };
+        double base_x;
+        double base_y;
         double maxfreq { 100000000 };
         double minfreq { 0 };
         double mx { 0.0 };

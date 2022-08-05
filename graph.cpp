@@ -75,7 +75,17 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     setPlotSize(256);
     setRaRate(1.0);
     setDecRate(0.0);
+    logaxis_x = new QLogValueAxis();
+    logaxis_y = new QLogValueAxis();
+    axis_x = new QValueAxis();
+    axis_y = new QValueAxis();
+    chart->addAxis(axis_x, Qt::AlignBottom);
+    chart->addAxis(axis_y, Qt::AlignLeft);
+    chart->addAxis(logaxis_x, Qt::AlignBottom);
+    chart->addAxis(logaxis_y, Qt::AlignLeft);
+    setupAxes(1.0, 1.0, "Time (s)", "Counts");
 
+    Values = new QMap<QString, lineAxis *>();
     connect(inputs->Ra_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         if(value < 0)
@@ -360,17 +370,75 @@ void Graph::setMode(Mode m)
     }
     else
     {
+        switch(mode) {
+        case Spectrograph:
+        case Autocorrelator:
+            setupAxes(8.0, 1.0, "Frequency (Hz)", "Magnitude");
+            break;
+        case CrosscorrelatorII:
+        case CrosscorrelatorIQ:
+            setupAxes(1.0, 8.0, "Lag (s)", "Magnitude");
+            break;
+        default:
+            setupAxes(1.0, 1.0, "Time (s)", "Counts");
+            break;
+        }
+
         correlator->setVisible(false);
         chart->setVisible(true);
     }
     emit modeChanged(m);
 }
 
-void Graph::addSeries(QAbstractSeries *series)
+void Graph::addSeries(QAbstractSeries *series, QString name)
 {
     if(!chart->series().contains(series)) {
+        series->setName(name);
         chart->addSeries(series);
-        chart->createDefaultAxes();
+    }
+}
+
+void Graph::setupAxes(double base_x, double base_y, QString title_x, QString title_y, QString format_x, QString format_y, int ticks_x, int ticks_y)
+{
+    if(base_x < 2) {
+        chart->removeAxis(logaxis_x);
+        if(!title_x.isEmpty())
+            axis_x->setTitleText(title_x);
+        axis_x->setLabelFormat(format_x);
+        axis_x->setMinorTickCount(ticks_x);
+        chart->addAxis(axis_x, Qt::AlignBottom);
+        for(QAbstractSeries* s : chart->series())
+            s->attachAxis(axis_x);
+    } else {
+        chart->removeAxis(axis_x);
+        if(!title_x.isEmpty())
+            logaxis_x->setTitleText(title_x);
+        logaxis_x->setLabelFormat(format_x);
+        logaxis_x->setMinorTickCount(ticks_x);
+        logaxis_x->setBase(base_x);
+        chart->addAxis(logaxis_x, Qt::AlignBottom);
+        for(QAbstractSeries* s : chart->series())
+            s->attachAxis(logaxis_x);
+    }
+    if(base_y < 2) {
+        chart->removeAxis(logaxis_y);
+        if(!title_y.isEmpty())
+            axis_y->setTitleText(title_y);
+        axis_y->setLabelFormat(format_y);
+        axis_y->setMinorTickCount(ticks_y);
+        chart->addAxis(axis_y, Qt::AlignLeft);
+        for(QAbstractSeries* s : chart->series())
+            s->attachAxis(axis_y);
+    } else {
+        chart->removeAxis(axis_y);
+        if(!title_y.isEmpty())
+            logaxis_y->setTitleText(title_y);
+        logaxis_y->setLabelFormat(format_y);
+        logaxis_y->setMinorTickCount(ticks_y);
+        logaxis_y->setBase(base_y);
+        chart->addAxis(logaxis_y, Qt::AlignLeft);
+        for(QAbstractSeries* s : chart->series())
+            s->attachAxis(logaxis_y);
     }
 }
 
@@ -434,13 +502,10 @@ void Graph::paint()
     {
         if(chart == nullptr)
             return;
-        if(chart->series().length() == 0)
-            return;
         double mn = DBL_MAX;
         double mx = DBL_MIN;
-        for(int x = 0; x < chart->series().length(); x++)
-        {
-            QLineSeries *series = (QLineSeries*)chart->series()[x];
+        for(QAbstractSeries* s : chart->series()) {
+            QLineSeries *series = (QLineSeries*)s;
             if(series->count() == 0)
                 continue;
             for(int y = 0; y < series->count(); y++)
@@ -454,17 +519,12 @@ void Graph::paint()
             mx = M_PI;
             mn = -M_PI;
         }
-        if(chart->axes().count() < 2)
-            return;
-        QValueAxis* axis = static_cast<QValueAxis*>(chart->axes()[0]);
-        if(axis == nullptr)
-            return;
-        axis->setRange(mn, mx);
+        axis_x->setRange(mn, mx);
+        logaxis_x->setRange(mn, mx);
         mn = DBL_MAX;
         mx = DBL_MIN;
-        for(int x = 0; x < chart->series().length(); x++)
-        {
-            QLineSeries *series = (QLineSeries*)chart->series()[x];
+        for(QAbstractSeries* s : chart->series()) {
+            QLineSeries *series = (QLineSeries*)s;
             if(series->count() == 0)
                 continue;
             for(int y = 0; y < series->count(); y++)
@@ -479,10 +539,8 @@ void Graph::paint()
             mn = -M_PI;
         }
         double diff = mx - mn;
-        axis = static_cast<QValueAxis*>(chart->axes()[1]);
-        if(axis == nullptr)
-            return;
-        axis->setRange(mn - diff * 0.2, mx + diff * 0.2);
+        axis_y->setRange(mn - diff * 0.2, mx + diff * 0.2);
+        logaxis_y->setRange(mn - diff * 0.2, mx + diff * 0.2);
     }
     update(rect());
 }
