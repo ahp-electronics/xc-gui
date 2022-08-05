@@ -68,7 +68,7 @@ class Thread : public QThread
             while(!isInterruptionRequested())
             {
                 QDateTime now = QDateTime::currentDateTimeUtc();
-                usleep(fmax(1, (timer_ms-lastPollTime.msecsTo(now))*1000));
+                //usleep(fmax(1, (timer_ms-lastPollTime.msecsTo(now))*1000));
                 lock();
                 lastPollTime = QDateTime::currentDateTimeUtc();
                 emit threadLoop(this);

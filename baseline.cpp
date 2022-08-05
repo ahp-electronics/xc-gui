@@ -273,6 +273,7 @@ void Baseline::addCount()
                 if(mag > 0)
                     Counts->append(getPacketTime(), mag);
                 active = true;
+                smoothBuffer(Counts, Counts->count()-1, 1);
             }
         }
         if(!active)
@@ -342,6 +343,7 @@ void Baseline::addCount()
                             stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
                     }
                     free(histo);
+                    smoothBuffer(Counts, 0, Counts->count());
                 }
             }
             else
@@ -475,6 +477,37 @@ bool Baseline::dft() {
     return getLine1()->dft() && getLine2()->dft();
 }
 
+int Baseline::smooth()
+{
+    return fmin(getLine1()->smooth(), getLine2()->smooth());
+}
+
+void Baseline::smoothBuffer(QLineSeries* buf, int offset, int len)
+{
+    if(buf->count() < offset+len)
+        return;
+    if(buf->count() < smooth())
+        return;
+    offset = fmax(offset, smooth());
+    for(int x = offset; x < offset+len; x++) {
+        double val = 0.0;
+        for(int y = 0; y < smooth(); y++) {
+            val += buf->at(x-y).y();
+        }
+        val /= smooth();
+        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
+    }
+}
+
+void Baseline::smoothBuffer(double* buf, int len)
+{
+    for(int x = smooth(); x < len; x++) {
+        for(int y = 0; y < smooth(); y++)
+            buf[x] += buf[x-y];
+        buf[x] /= smooth();
+    }
+}
+
 void Baseline::stackCorrelations()
 {
     scanning = true;
@@ -505,7 +538,7 @@ void Baseline::stackCorrelations()
             lag += ofs;
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts / ahp_xc_get_packettime();
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                 {
@@ -547,6 +580,7 @@ void Baseline::plot(bool success, double o, double s)
             stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
         }
     }
+    smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
 }
 
 Baseline::~Baseline()

@@ -271,6 +271,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         setLocation();
         saveSetting("location_z", getLocation()->xyz.z);
     });
+    connect(ui->Smooth, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        _smooth = value;
+        saveSetting("Smooth", _smooth);
+    });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
     });
@@ -284,6 +289,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
+    ui->Smooth->setValue(readInt("Smooth", 5));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
     if(ahp_xc_get_delaysize() <= 4)
         ui->Resolution->setRange(1, 1048576);
@@ -455,6 +461,7 @@ void Line::addCount()
                 default:
                     break;
             }
+            smoothBuffer(Counts, Counts->count()-1, 1);
         }
         else
         {
@@ -516,6 +523,7 @@ void Line::addCount()
                 {
                     stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
                 }
+                smoothBuffer(Counts, 0, Counts->count());
                 free(histo);
             }
         }
@@ -990,6 +998,32 @@ void Line::TakeDark(Line *sender)
     }
 }
 
+void Line::smoothBuffer(QLineSeries* buf, int offset, int len)
+{
+    if(buf->count() < offset+len)
+        return;
+    if(buf->count() < smooth())
+        return;
+    offset = fmax(offset, smooth());
+    for(int x = offset; x < offset+len; x++) {
+        double val = 0.0;
+        for(int y = 0; y < smooth(); y++) {
+            val += buf->at(x-y).y();
+        }
+        val /= smooth();
+        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
+    }
+}
+
+void Line::smoothBuffer(double* buf, int len)
+{
+    for(int x = smooth(); x < len; x++) {
+        for(int y = 0; y < smooth(); y++)
+            buf[x] += buf[x-y];
+        buf[x] /= smooth();
+    }
+}
+
 void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
 {
     scanning = true;
@@ -1043,6 +1077,7 @@ void Line::plot(bool success, double o, double s)
             stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getMagnitude()[x]);
         }
     }
+    smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
 }
 
 Line::~Line()

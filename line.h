@@ -208,6 +208,10 @@ class Line : public QWidget
         {
             return dark;
         }
+        inline int smooth()
+        {
+            return _smooth;
+        }
         inline dsp_stream_p getStream()
         {
             return stream;
@@ -234,7 +238,8 @@ class Line : public QWidget
         double *percent;
         double localpercent;
         void setPercent();
-
+        void smoothBuffer(QLineSeries* buf, int offset, int len);
+        void smoothBuffer(double* buf, int len);
         void addToVLBIContext();
         void removeFromVLBIContext();
 
@@ -413,6 +418,7 @@ class Line : public QWidget
         Ui::Line *ui { nullptr };
         dsp_stream_p stream { nullptr };
         QString name;
+        int _smooth { 5 };
         int *stop;
         int localstop { 1 };
         int RailMotorIndex {1};

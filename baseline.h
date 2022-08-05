@@ -214,6 +214,9 @@ class Baseline : public QWidget
             return context[index];
         }
         bool dft();
+        int smooth();
+        void smoothBuffer(QLineSeries* buf, int offset, int len);
+        void smoothBuffer(double* buf, int len);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
         double stack {0.0};
 
