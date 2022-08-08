@@ -17,7 +17,7 @@ DriverVer=09/04/2012,13.54.20.543
 %ManufacturerName% = MultiPort,NTamd64
 
 [MultiPort.NTamd64]
-%DeviceName%=MultiPort_Install, USB\Vid_a0a0&Pid_0004
+%DeviceName%=MultiPort_Install, USB\Vid_a0a0&Pid_0005
 
 ; ========== Class definition (for Windows 8 and ealier versions)===========
 
