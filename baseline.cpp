@@ -363,16 +363,11 @@ void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, in
     y /= 2;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
-    if(stacked->count() > idx)
+    if(stacked->contains(x))
     {
-        y += stacked->values().at(idx) / 2;
-        stacked->keys().replace(idx, x);
-        stacked->values().replace(idx, y);
+        y += stacked->value(x) / 2;
     }
-    else
-    {
-        stacked->insert(x, y);
-    }
+    stacked->insert(x, y);
     series->append(x, y);
 }
 
