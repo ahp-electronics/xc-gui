@@ -95,7 +95,6 @@ else(ANDROID)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wl,--subsystem,windows -static-libstdc++ -static-libgcc")
         set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
-        add_definitions(-mwindows -D _win32_IE=0x0500 -D WINVER=0x0500)
     endif(MINGW)
 endif(ANDROID)
 
