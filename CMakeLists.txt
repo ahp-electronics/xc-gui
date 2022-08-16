@@ -90,7 +90,7 @@ else(ANDROID)
         app.rc
     )
     if(MINGW)
-      add_definitions(-mwindows -D _win32_IE=0x0500 -D WINVER=0x0500)
+      add_definitions(-static-libstdc++ -static-libgcc -mwindows -D _win32_IE=0x0500 -D WINVER=0x0500)
       set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
     endif(MINGW)
 endif(ANDROID)
