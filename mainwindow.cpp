@@ -88,9 +88,6 @@ MainWindow::MainWindow(QWidget *parent)
     for (int i = 0; i < ports.length(); i++)
     {
         QString portname =
-#ifndef _WIN32
-            "/dev/" +
-#endif
             ports[i].portName();
         if(portname != ui->XCPort->itemText(0))
             ui->XCPort->addItem(portname);
