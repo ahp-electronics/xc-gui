@@ -36,49 +36,41 @@ class Thread : public QThread
 {
         Q_OBJECT
     private:
-        QString Name;
         QObject* parent;
         QMutex mutex;
-        double timer_ms;
-        double loop_ms;
-        bool runnning { false };
-        bool stopped { false };
+        int timer_ms;
+        int loop_ms;
+        QString Name;
     public:
-        ~Thread() {
-            stop();
-        }
-        Thread(QObject* p, double timer = 20, double loop = 2, QString name = "") : QThread()
+        Thread(QObject* p, int timer = 20, int loop = 2, QString n = "") : QThread()
         {
             parent = p;
             timer_ms = timer;
             loop_ms = loop;
-            Name = name;
-        }
-        void stop()
-        {
-            requestInterruption();
-            unlock();
-            wait();
+            Name = n;
         }
         void run()
         {
             lastPollTime = QDateTime::currentDateTimeUtc();
-            stopped = false;
-            runnning = true;
             while(!isInterruptionRequested())
             {
-                QDateTime now = QDateTime::currentDateTimeUtc();
-                //usleep(fmax(1, (timer_ms-lastPollTime.msecsTo(now))*1000));
-                lock();
-                lastPollTime = QDateTime::currentDateTimeUtc();
-                emit threadLoop(this);
-                timer_ms = loop_ms;
+                QThread::msleep(lastPollTime.msecsTo(QDateTime::currentDateTimeUtc()));
+                if(lock())
+                {
+                    timer_ms = loop_ms;
+                    lastPollTime = QDateTime::currentDateTimeUtc();
+                    emit threadLoop(this);
+                }
             }
-            runnning = false;
         }
-        void lock()
+        void stop()
         {
-            while(!mutex.tryLock(5));
+            requestInterruption();
+            wait();
+        }
+        bool lock()
+        {
+            return mutex.tryLock();
         }
         void unlock()
         {
@@ -92,10 +84,11 @@ class Thread : public QThread
         {
             loop_ms = loop;
         }
-        QObject *getParent()
+        QString getName()
         {
-            return parent;
+            return Name;
         }
+        QObject *getParent() { return parent; }
     private:
         QDateTime lastPollTime;
     signals:

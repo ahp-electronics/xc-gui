@@ -59,8 +59,12 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
     f_stdout = tmpfile();
-    dsp_set_stdout(f_stdout);
-    dsp_set_stderr(f_stdout);
+    if(f_stdout != nullptr) {
+        dsp_set_stdout(f_stdout);
+        dsp_set_stderr(f_stdout);
+    } else {
+        f_stdout = stdout;
+    }
     ui->setupUi(this);
     uiThread = new Thread(this, 200, 10, "uiThread");
     readThread = new Thread(this, 100, 10, "readThread");
