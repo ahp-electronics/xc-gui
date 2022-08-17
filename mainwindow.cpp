@@ -744,6 +744,14 @@ void MainWindow::setVoltage(int level)
 
 MainWindow::~MainWindow()
 {
+    uiThread->stop();
+    vlbiThread->stop();
+    readThread->stop();
+    motorThread->stop();
+    uiThread->wait();
+    vlbiThread->wait();
+    readThread->wait();
+    motorThread->wait();
     if(connected)
     {
         ui->Disconnect->clicked(false);
