@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
         f->close();
         f->~QFile();
     }
-    settings = new QSettings(ini, QSettings::Format::NativeFormat);
+    settings = new QSettings(ini, QSettings::Format::IniFormat);
     connected = false;
     TimeRange = 10;
     f_stdout = tmpfile();
