@@ -82,7 +82,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     {
         Line * line = (Line *)thread->getParent();
         line->addCount();
-        thread->stop();
         thread->unlock();
     });
     connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)

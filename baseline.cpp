@@ -59,7 +59,6 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     {
         Baseline * line = (Baseline *)thread->getParent();
         line->addCount();
-        thread->stop();
         thread->unlock();
     });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
