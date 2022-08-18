@@ -54,7 +54,7 @@ class Thread : public QThread
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
-                QThread::msleep(lastPollTime.msecsTo(QDateTime::currentDateTimeUtc()));
+                QThread::msleep(fmax(1, lastPollTime.msecsTo(lastPollTime.addMSecs(timer_ms))));
                 if(lock())
                 {
                     timer_ms = loop_ms;

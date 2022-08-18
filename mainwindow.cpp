@@ -539,12 +539,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = packet->timestamp + J2000_starttime;
-                    double diff = packettime - lastpackettime;
                     lastpackettime = packettime;
-                    if(diff < 0 || diff > getTimeRange())
-                    {
-                        break;
-                    }
                     for(Line * line : Lines)
                     {
                         line->addCount(packettime);
