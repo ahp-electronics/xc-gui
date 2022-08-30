@@ -403,6 +403,7 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
 
+                    ahp_xc_set_correlation_order(2);
                     ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(QThread::idealThreadCount());
 
