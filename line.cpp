@@ -336,11 +336,11 @@ void Line::updateLocation()
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getRailIndex())) {
             ahp_gt_select_device(getRailIndex());
-            double x = ahp_gt_get_position(0);
+            double x = ahp_gt_get_position(0, nullptr);
             x *= ahp_gt_get_totalsteps(0);
             x /= M_PI / 2;
             x /= 1000.0;
-            double y = ahp_gt_get_position(1);
+            double y = ahp_gt_get_position(1, nullptr);
             y *= ahp_gt_get_totalsteps(1);
             y /= M_PI / 2;
             y /= 1000.0;
@@ -369,7 +369,7 @@ void Line::updateRa()
     {
         if(ahp_gt_is_connected()) {
             if(ahp_gt_is_detected(getMountIndex())) {
-                double v = ahp_gt_get_position(0);
+                double v = ahp_gt_get_position(0, nullptr);
                 v *= 12.0;
                 v /= M_PI;
                 setRa(v);
@@ -384,7 +384,7 @@ void Line::updateDec()
     {
         if(ahp_gt_is_connected()) {
             if(ahp_gt_is_detected(getMountIndex())) {
-                double v = ahp_gt_get_position(1);
+                double v = ahp_gt_get_position(1, nullptr);
                 v *= 180.0;
                 v /= M_PI;
                 setDec(v);
