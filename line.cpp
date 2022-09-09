@@ -199,10 +199,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
 
         clearCorrelations();
         clearCounts();
-        if(mode == Autocorrelator)
-        {
-            mx = 0.0;
-        }
     });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -743,10 +739,6 @@ void Line::setMode(Mode m)
     getMagnitudeElemental()->setStreamSize(1);
     getPhaseElemental()->setStreamSize(1);
     getElemental()->setStreamSize(1);
-    if(m != Counter && mode != Spectrograph)
-    {
-        mx = 0.0;
-    }
     if(m == Autocorrelator)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);

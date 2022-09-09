@@ -453,7 +453,6 @@ class Line : public QWidget
         double base_y;
         double maxfreq { 100000000 };
         double minfreq { 0 };
-        double mx { 0.0 };
         double averageBottom { 0 };
         double averageTop { 1.0 };
         double offset { 0.0 };

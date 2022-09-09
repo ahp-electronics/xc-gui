@@ -67,7 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 200, 10, "uiThread");
-    readThread = new Thread(this, 100, 10, "readThread");
+    readThread = new Thread(this, 100, 1, "readThread");
     vlbiThread = new Thread(this, 100, 1000, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
@@ -540,6 +540,11 @@ MainWindow::MainWindow(QWidget *parent)
                 if(!ahp_xc_get_packet(packet))
                 {
                     double packettime = packet->timestamp + J2000_starttime;
+                    double diff = packettime - lastpackettime;
+                    if (diff >  10.0 || diff < 0) {
+                        resetTimestamp();
+                        break;
+                    }
                     lastpackettime = packettime;
                     for(Line * line : Lines)
                     {

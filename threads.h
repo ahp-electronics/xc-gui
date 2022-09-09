@@ -51,15 +51,15 @@ class Thread : public QThread
         }
         void run()
         {
+            QThread::msleep(timer_ms);
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
-                double diff = fmax(1, fmod((double)QDateTime::currentDateTimeUtc().msecsTo(lastPollTime.addMSecs(timer_ms)), timer_ms));
+                double diff = fmax(1, fmod((double)QDateTime::currentDateTimeUtc().msecsTo(lastPollTime.addMSecs(loop_ms)), loop_ms));
                 QThread::msleep(diff);
+                lastPollTime = QDateTime::currentDateTimeUtc();
                 if(lock())
                 {
-                    timer_ms = loop_ms;
-                    lastPollTime = QDateTime::currentDateTimeUtc();
                     emit threadLoop(this);
                 }
             }
