@@ -184,6 +184,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         saveSetting("ElementalAlign", ui->ElementalAlign->isChecked());
+        ui->MaxDots->setEnabled(ui->ElementalAlign->isChecked());
+        ui->Decimals->setEnabled(ui->ElementalAlign->isChecked());
+        ui->MinScore->setEnabled(ui->ElementalAlign->isChecked());
+        ui->SampleSize->setEnabled(ui->ElementalAlign->isChecked());
     });
     connect(ui->Resolution, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {

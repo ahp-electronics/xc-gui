@@ -159,9 +159,6 @@
     </property>
    </widget>
    <widget class="QLabel" name="maxdots">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -175,9 +172,6 @@
     </property>
    </widget>
    <widget class="QLabel" name="minscore">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -207,9 +201,6 @@
     </property>
    </widget>
    <widget class="QLabel" name="decimals">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -249,9 +240,6 @@
     </property>
    </widget>
    <widget class="QLabel" name="samplesize">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
     <property name="geometry">
      <rect>
       <x>10</x>
