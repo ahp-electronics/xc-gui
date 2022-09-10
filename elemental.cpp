@@ -92,6 +92,8 @@ void Elemental::loadCatalog(QString catalogPath)
 
 void Elemental::unloadCatalog()
 {
+    if(elements.empty())
+        return;
     for (dsp_stream_p element : elements)
     {
         dsp_stream_free_buffer(element);

@@ -23,11 +23,13 @@
    SOFTWARE.
 */
 
+#include <vlbi.h>
 #include "line.h"
 #include "mainwindow.h"
 #include "ui_line.h"
 #include <QMapNode>
 #include <QFile>
+#include <QStandardItemModel>
 #include <QFileDialog>
 #include <QTextStream>
 #include <QDateTime>
@@ -73,11 +75,58 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     stream->samplerate = 1.0/ahp_xc_get_packettime();
     line = n;
     flags = 0;
+    QStandardItemModel *model = new QStandardItemModel();
+    model->setHorizontalHeaderLabels({"Catalog"});
+    QFile index(
+#ifdef WINODWS
+    QDir::currentPath().append("/cat/index.txt")
+#else
+    VLBI_CATALOG_PATH
+#endif
+                );
+    index.open(QFile::ReadOnly);
+    QList <QString> rows;
+    if(index.isOpen()) {
+        int ncatalogs = 0;
+        QString catname = index.readLine().replace("\n", "");
+        while(!catname.isEmpty()) {
+            QStandardItem *catalog = new QStandardItem(QString(catname).replace("/index.txt", ""));
+            QFileInfo fileInfo(index.fileName());
+            QFile cat(fileInfo.dir().path()+"/"+catname);
+            cat.open(QFile::ReadOnly);
+            if(cat.isOpen()) {
+                int nelement = 0;
+                QString element = cat.readLine().replace(".txt\n", "");
+                while(!element.isEmpty()) {
+                    if(element != "index") {
+                        QStandardItem *el = new QStandardItem(element);
+                        el->setEditable(false);
+                        rows.append(fileInfo.dir().path()+"/"+catname+"/"+element+".txt");
+                        catalog->insertRow(nelement++, el);
+                    }
+                    element = cat.readLine().replace(".txt\n", "");
+                }
+                catalog->setData("");
+                catalog->setEditable(false);
+                model->insertRow(ncatalogs++, catalog);
+                cat.close();
+            }
+            catname = index.readLine().replace("\n", "");
+        }
+        index.close();
+        ui->Catalogs->setModel(model);
+    }
     ui->EndChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 1);
     ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     readThread = new Thread(this, 0.01, 0.01, name+" read thread");
+    connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::doubleClicked), [ = ] (const QModelIndex &index)
+    {
+        QString catalog = rows[index.row()];
+        if(!catalog.isEmpty())
+            elemental->loadCatalog(catalog);
+    });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
     {
         Line * line = (Line *)thread->getParent();
@@ -275,6 +324,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
     });
+
     ui->MountMotorIndex->setValue(readInt("MountMotorIndex", getLineIndex() * 2 + 1));
     ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
 
