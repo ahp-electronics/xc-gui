@@ -1090,10 +1090,9 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
                 _lag = lag;
             }
         }
-        elemental->setMagnitude(magnitude_buf, npackets);
-        elemental->setPhase(phase_buf, npackets);
+        elemental->setBuffer(magnitude_buf, npackets);
         if(dft())
-            elemental->idft();
+            elemental->dft();
         if(Align())
             elemental->run();
         else
@@ -1113,9 +1112,9 @@ void Line::plot(bool success, double o, double s)
     for (int x = 0; x < elemental->getStreamSize(); x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getBuffer()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
