@@ -373,8 +373,8 @@ void Line::UpdateBufferSizes()
     end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
     len = end-start;
     step = fmax(1, round((double)len / Resolution));
-    setMagnitudeSize(len);
-    setPhaseSize(len);
+    setMagnitudeSize(len / step);
+    setPhaseSize(len / step);
 }
 
 void Line::runClicked(bool checked)
@@ -1065,13 +1065,15 @@ void Line::smoothBuffer(double* buf, int len)
     }
 }
 
-void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
+void Line::stackCorrelations(ahp_xc_sample *spectrum)
 {
     scanning = true;
     *stop = 0;
     *percent = 0;
+    int npackets = getResolution();
     if(spectrum != nullptr && npackets > 0)
     {
+        npackets--;
         npackets--;
         int lag = 1;
         int _lag = lag;
@@ -1080,7 +1082,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / spectrum[z].correlations[0].counts / ahp_xc_get_packettime();
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y < npackets; y++)
                 {
@@ -1096,7 +1098,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
         if(Align())
             elemental->run();
         else
-            elemental->finish(false, start/step, 1.0/step);
+            elemental->finish(false, start/step, step);
     }
     resetPercentPtr();
     resetStopPtr();
@@ -1105,7 +1107,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum, int npackets)
 
 void Line::plot(bool success, double o, double s)
 {
-    double timespan = ahp_xc_get_sampletime() / s;
+    double timespan = ahp_xc_get_sampletime() * s;
     double offset = o;
     getMagnitude()->clear();
     getPhase()->clear();

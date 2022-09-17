@@ -98,7 +98,7 @@ class Line : public QWidget
             return mode;
         }
         Scale getYScale();
-        void stackCorrelations(ahp_xc_sample *spectrum = nullptr, int npackets = 0);
+        void stackCorrelations(ahp_xc_sample *spectrum = nullptr);
         inline bool applyMedian()
         {
             return applymedian;

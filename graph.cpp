@@ -377,7 +377,7 @@ void Graph::setMode(Mode m)
             break;
         case CrosscorrelatorII:
         case CrosscorrelatorIQ:
-            setupAxes(1.0, 8.0, "Lag (s)", "Magnitude");
+            setupAxes(1.0, 1.0, "Lag (s)", "Magnitude");
             break;
         default:
             setupAxes(1.0, 1.0, "Time (s)", "Counts");

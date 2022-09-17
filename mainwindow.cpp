@@ -529,7 +529,7 @@ MainWindow::MainWindow(QWidget *parent)
                         int off = 0;
                         if(x > 0)
                             off += sizes[x-1]/steps[x-1];
-                        line->stackCorrelations(&spectrum[off], sizes[x]/steps[x]);
+                        line->stackCorrelations(&spectrum[off]);
                     }
                 }
                 if(indexes.count() > 0)

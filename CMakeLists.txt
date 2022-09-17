@@ -39,6 +39,7 @@ find_package(AHPHUB REQUIRED)
 find_package(VLBI REQUIRED)
 find_package(DSP REQUIRED)
 find_package(FFTW3 REQUIRED)
+find_package(URJTAG REQUIRED)
 find_package(M REQUIRED)
 
 include_directories(${CMAKE_INCLUDE_PATH})
@@ -48,6 +49,7 @@ include_directories(${AHPGT_INCLUDE_DIR})
 include_directories(${AHPXC_INCLUDE_DIR})
 include_directories(${AHPHUB_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
+include_directories(${URJTAG_INCLUDE_DIR})
 
 if(ANDROID)
     add_library(xc-gui SHARED
@@ -102,7 +104,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
-target_link_libraries(xc-gui PRIVATE ${M_LIB} ${CMAKE_THREAD_LIBS_INIT} ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHPHUB_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${M_LIB} ${URJTAG_LIBRARIES} ${AHPHUB_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(FILES xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
 install(FILES xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
