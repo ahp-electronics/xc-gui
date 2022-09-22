@@ -540,10 +540,11 @@ MainWindow::MainWindow(QWidget *parent)
                 {
                     double packettime = packet->timestamp + J2000_starttime;
                     double diff = packettime - lastpackettime;
-                    lastpackettime = packettime;
                     if (diff > getTimeRange() || diff < 0) {
+                        resetTimestamp();
                         break;
                     }
+                    lastpackettime = packettime;
                     for(Line * line : Lines)
                     {
                         line->addCount(packettime);
