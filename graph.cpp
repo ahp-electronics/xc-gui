@@ -373,13 +373,13 @@ void Graph::setMode(Mode m)
         switch(mode) {
         case Spectrograph:
         case Autocorrelator:
-            setupAxes(8.0, 1.0, "Frequency (Hz)", "Magnitude");
+            setupAxes(8.0, 1.0, "Frequency (Hz)", "Magnitude (counts)");
             break;
         case CrosscorrelatorII:
         case CrosscorrelatorIQ:
-            setupAxes(1.0, 1.0, "Lag (s)", "Magnitude");
+            setupAxes(1.0, 1.0, "Lag (s)", "Magnitude (counts)");
             break;
-        default:
+        case Counter:
             setupAxes(1.0, 1.0, "Time (s)", "Counts");
             break;
         }

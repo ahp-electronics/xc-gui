@@ -153,6 +153,8 @@ class MainWindow : public QMainWindow
                     ahp_xc_enable_intensity_crosscorrelator(false);
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
                 ahp_xc_set_capture_flags((xc_capture_flags)((cur & ~CAP_ENABLE) | CAP_RESET_TIMESTAMP));
+                resetTimestamp();
+                getGraph()->setMode(m);
                 for(int i = 0; i < Lines.count(); i++)
                 {
                     Lines[i]->setMode(mode);
@@ -164,7 +166,6 @@ class MainWindow : public QMainWindow
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);
                 }
-                getGraph()->setMode(m);
                 startThreads();
             }
         }
@@ -229,6 +230,7 @@ class MainWindow : public QMainWindow
         }
 
 signals:
+        void plotModels();
         void scanStarted();
         void scanFinished(bool complete);
 

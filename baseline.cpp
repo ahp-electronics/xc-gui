@@ -70,6 +70,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     connect(line1, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
     {
+        getMagnitudeStack()->clear();
+        getPhaseStack()->clear();
         getMagnitude()->clear();
         getPhase()->clear();
         getMagnitudes()->clear();
@@ -207,6 +209,7 @@ void Baseline::setMode(Mode m)
     }
     else
     {
+        *stop = 1;
         disconnect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         disconnect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
         disconnect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
@@ -511,7 +514,6 @@ void Baseline::stackCorrelations()
     getLine2()->setPercentPtr(percent);
     getLine1()->resetStopPtr();
     getLine2()->resetStopPtr();
-    updateBufferSizes();
 
     *stop = 0;
     int npackets = 0;
@@ -543,6 +545,7 @@ void Baseline::stackCorrelations()
                 _lag = lag;
             }
         }
+        elemental->setBuffer(magnitude_buf, npackets);
         elemental->setMagnitude(magnitude_buf, npackets);
         elemental->setPhase(phase_buf, npackets);
         if(getLine1()->dft() && getLine2()->dft())
@@ -552,7 +555,7 @@ void Baseline::stackCorrelations()
         if(getLine1()->Align() && getLine2()->Align())
             elemental->run();
         else
-            elemental->finish(false, -head_size/step, 1.0/step);
+            elemental->finish(false, -head_size, step);
         free(spectrum);
     }
     getLine1()->resetPercentPtr();
@@ -562,20 +565,23 @@ void Baseline::stackCorrelations()
 
 void Baseline::plot(bool success, double o, double s)
 {
-    double timespan = ahp_xc_get_sampletime() / s;
+    double timespan = step;
+    if(success)
+        timespan = s;
     double offset = o;
+    int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
-    stack += 1.0;
-    for (int x = 0; x < elemental->getStreamSize(); x++)
+    for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
+    smoothBuffer(getPhase(), 0, getPhase()->count());
 }
 
 Baseline::~Baseline()

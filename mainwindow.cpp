@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     uiThread = new Thread(this, 200, 10, "uiThread");
     readThread = new Thread(this, 100, 1, "readThread");
-    vlbiThread = new Thread(this, 100, 1000, "vlbiThread");
+    vlbiThread = new Thread(this, 1000, 1000, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
     int starty = 80;
@@ -481,17 +481,18 @@ MainWindow::MainWindow(QWidget *parent)
         int npackets;
         if(threadsStopped)
             goto end_unlock;
+        for(Line *line : Lines)
+            if(line->scanActive())
+                line->UpdateBufferSizes();
         switch (getMode())
         {
             case CrosscorrelatorII:
             case CrosscorrelatorIQ:
-                for(int x = 0; x < Baselines.count(); x++)
+                for(Baseline *line : Baselines)
                 {
-                    Baseline * line = Baselines[x];
                     if(line->scanActive())
                     {
                         line->setPercentPtr(&percent);
-                        line->UpdateBufferSizes();
                         line->stackCorrelations();
                     } else {
                         line->resetPercentPtr();
@@ -503,17 +504,15 @@ MainWindow::MainWindow(QWidget *parent)
                 starts.clear();
                 sizes.clear();
                 steps.clear();
-                for(int x = 0; x < Lines.count(); x++)
+                for(Line *line : Lines)
                 {
-                    Line * line = Lines[x];
                     if(line->scanActive())
                     {
                         indexes.append(line->getLineIndex());
                         starts.append(line->getStartChannel());
-                        sizes.append(line->getNumChannels());
+                        sizes.append(line->getChannelBandwidth());
                         steps.append(line->getScanStep());
                         line->setPercentPtr(&percent);
-                        line->UpdateBufferSizes();
                     } else {
                         line->resetPercentPtr();
                     }
@@ -541,11 +540,10 @@ MainWindow::MainWindow(QWidget *parent)
                 {
                     double packettime = packet->timestamp + J2000_starttime;
                     double diff = packettime - lastpackettime;
-                    if (diff >  10.0 || diff < 0) {
-                        resetTimestamp();
+                    lastpackettime = packettime;
+                    if (diff > getTimeRange() || diff < 0) {
                         break;
                     }
-                    lastpackettime = packettime;
                     for(Line * line : Lines)
                     {
                         line->addCount(packettime);
@@ -599,30 +597,21 @@ end_unlock:
                 if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
                     vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
                 else
-                    vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "coverage")), "coverage_stack");
+                    vlbi_copy_model(getVLBIContext(), "coverage_stack", "coverage");
 
                 if(vlbi_has_model(getVLBIContext(), "magnitude_stack"))
                     vlbi_stack_models(getVLBIContext(), "magnitude_stack", "magnitude_stack", "magnitude");
                 else
-                    vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "magnitude")), "magnitude_stack");
+                    vlbi_copy_model(getVLBIContext(), "magnitude_stack", "magnitude");
 
                 if(vlbi_has_model(getVLBIContext(), "phase_stack"))
                     vlbi_stack_models(getVLBIContext(), "phase_stack", "phase_stack", "phase");
                 else
-                    vlbi_add_model(getVLBIContext(), dsp_stream_copy(vlbi_get_model(getVLBIContext(), "phase")), "phase_stack");
+                    vlbi_copy_model(getVLBIContext(), "phase_stack", "phase");
 
                 vlbi_get_ifft(getVLBIContext(), "idft", "magnitude_stack", "phase_stack");
-                getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage_stack");
-                getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude_stack");
-                getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase_stack");
-                getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
-            } else {
-                vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
-                getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
-                getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
-                getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
-                getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
             }
+            emit plotModels();
 
             unlock_vlbi();
         }
@@ -649,6 +638,20 @@ end_unlock:
         }
         thread->unlock();
     });
+    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::plotModels), this, [ = ] () {
+        if(getGraph()->isTracking()) {
+            getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage_stack");
+            getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude_stack");
+            getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase_stack");
+            getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
+        } else {
+            vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
+            getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
+            getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
+            getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
+            getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
+        }
+    });
     resize(1280, 720);
     motorThread->start();
     uiThread->start();
@@ -672,6 +675,8 @@ void MainWindow::startThreads()
 
 void MainWindow::stopThreads()
 {
+    if(ui->Run->text() == "Stop")
+        ui->Run->click();
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
     readThread->stop();

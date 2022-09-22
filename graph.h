@@ -95,6 +95,7 @@ class Graph : public QWidget
         bool threadRunning;
         void addSeries(QAbstractSeries* series, QString name);
         void setupAxes(double base_x = 1.0, double base_y = 1.0, QString title_x = "", QString title_y = "", QString format_x = "%g", QString format_y = "%g", int ticks_x = 8, int ticks_y = 8);
+        void setupZAxis(QLineSeries *series, bool remove, QString title, QString format, int ticks);
         void removeSeries(QAbstractSeries* series);
         void setMode(Mode m);
         inline Mode getMode()
@@ -263,6 +264,10 @@ class Graph : public QWidget
         {
             DecTrackRate = rate;
         }
+        inline void setTracking(bool track)
+        {
+            tracking = track;
+        }
         inline bool isTracking()
         {
             return tracking;
@@ -274,6 +279,7 @@ class Graph : public QWidget
         QLogValueAxis *logaxis_y;
         QValueAxis *axis_x;
         QValueAxis *axis_y;
+        QValueAxis *axis_z;
         bool tracking { false };
         Thread *motorThread;
         Ui::Inputs *inputs;

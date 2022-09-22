@@ -175,6 +175,7 @@ void Elemental::setImaginary(double * buf, int len)
 
 void Elemental::idft()
 {
+    dsp_fourier_2complex_t(stream);
     dsp_fourier_idft(stream);
     dsp_buffer_shift(stream);
 }
@@ -182,5 +183,6 @@ void Elemental::idft()
 void Elemental::dft(int depth)
 {
     dsp_fourier_dft(stream, depth);
+    dsp_fourier_2dsp(stream);
     dsp_buffer_shift(stream);
 }

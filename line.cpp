@@ -74,7 +74,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     dsp_stream_alloc_buffer(stream, stream->len);
     stream->samplerate = 1.0/ahp_xc_get_packettime();
     line = n;
-    flags = 0;
+    flags = (1 << 3);
     QStandardItemModel *model = new QStandardItemModel();
     model->setHorizontalHeaderLabels({"Catalog"});
     QFile index(
@@ -134,40 +134,40 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         thread->stop();
         thread->unlock();
     });
-    connect(ui->flag0, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->flag0, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         flags &= ~(1 << 0);
-        flags |= ui->flag0->isChecked() << 0;
+        flags |= checked << 0;
         ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag0->text(), ui->flag0->isChecked());
+        saveSetting(ui->flag0->text(), checked);
     });
-    connect(ui->flag1, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->flag1, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         flags &= ~(1 << 1);
-        flags |= ui->flag1->isChecked() << 1;
+        flags |= checked << 1;
         ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag1->text(), ui->flag1->isChecked());
+        saveSetting(ui->flag1->text(), checked);
     });
-    connect(ui->flag2, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->flag2, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         flags &= ~(1 << 2);
-        flags |= ui->flag2->isChecked() << 2;
+        flags |= checked << 2;
         ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag2->text(), ui->flag2->isChecked());
+        saveSetting(ui->flag2->text(), checked);
     });
-    connect(ui->flag3, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->flag3, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         flags &= ~(1 << 3);
-        flags |= !ui->flag3->isChecked() << 3;
+        flags |= !checked << 3;
         ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag3->text(), ui->flag3->isChecked());
+        saveSetting(ui->flag3->text(), checked);
     });
-    connect(ui->flag4, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->flag4, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         flags &= ~(1 << 4);
-        flags |= ui->flag4->isChecked() << 4;
+        flags |= checked << 4;
         ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag4->text(), ui->flag4->isChecked());
+        saveSetting(ui->flag4->text(), checked);
     });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
@@ -232,8 +232,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->EndChannel->setValue(ui->StartChannel->value() + 2);
         }
-        UpdateBufferSizes();
-        emit updateBufferSizes();
         saveSetting("StartChannel", ui->StartChannel->value());
     });
     connect(ui->EndChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -242,8 +240,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->StartChannel->setValue(ui->EndChannel->value() - 2);
         }
-        UpdateBufferSizes();
-        emit updateBufferSizes();
         saveSetting("EndChannel", ui->EndChannel->value());
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -373,8 +369,9 @@ void Line::UpdateBufferSizes()
     end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
     len = end-start;
     step = fmax(1, round((double)len / Resolution));
-    setMagnitudeSize(len / step);
-    setPhaseSize(len / step);
+    setMagnitudeSize(getNumChannels());
+    setPhaseSize(getNumChannels());
+    emit updateBufferSizes();
 }
 
 void Line::runClicked(bool checked)
@@ -717,19 +714,24 @@ void Line::setFlag(int flag, bool value)
     switch (flag)
     {
         case 0:
-            ui->flag0->setChecked(value);
+        if(ui->flag0->isChecked() != value)
+            ui->flag0->click();
             break;
         case 1:
-            ui->flag1->setChecked(value);
+        if(ui->flag1->isChecked() != value)
+            ui->flag1->click();
             break;
         case 2:
-            ui->flag2->setChecked(value);
+        if(ui->flag2->isChecked() != value)
+            ui->flag2->click();
             break;
         case 3:
-            ui->flag3->setChecked(value);
+        if(ui->flag3->isChecked() != value)
+            ui->flag3->click();
             break;
         case 4:
-            ui->flag4->setChecked(value);
+        if(ui->flag4->isChecked() != value)
+            ui->flag4->click();
             break;
         default:
             break;
@@ -808,6 +810,7 @@ void Line::setMode(Mode m)
     resetPercentPtr();
     resetStopPtr();
     mode = m;
+    *stop = 1;
     switch(mode) {
     case HolographII:
     case HolographIQ:
@@ -1070,7 +1073,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     scanning = true;
     *stop = 0;
     *percent = 0;
-    int npackets = getResolution();
+    int npackets = getNumChannels();
     if(spectrum != nullptr && npackets > 0)
     {
         npackets--;
@@ -1093,12 +1096,14 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             }
         }
         elemental->setBuffer(magnitude_buf, npackets);
+        elemental->setMagnitude(magnitude_buf, npackets);
+        elemental->setPhase(phase_buf, npackets);
         if(dft())
             elemental->dft();
         if(Align())
             elemental->run();
         else
-            elemental->finish(false, start/step, step);
+            elemental->finish(false, start, step);
     }
     resetPercentPtr();
     resetStopPtr();
@@ -1107,19 +1112,23 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
 
 void Line::plot(bool success, double o, double s)
 {
-    double timespan = ahp_xc_get_sampletime() * s;
+    double timespan = step;
+    if(success)
+        timespan = s;
     double offset = o;
+    int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
-    for (int x = 0; x < elemental->getStreamSize(); x++)
+    for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ((x + offset) * timespan), elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, 1.0 / ((x + offset) * timespan), elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_frequency() / t, elemental->getMagnitude()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
+    smoothBuffer(getPhase(), 0, getPhase()->count());
 }
 
 Line::~Line()

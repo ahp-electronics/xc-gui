@@ -274,9 +274,13 @@ class Line : public QWidget
         {
             return end;
         }
-        inline int getNumChannels()
+        inline int getChannelBandwidth()
         {
             return len;
+        }
+        inline int getNumChannels()
+        {
+            return len / step;
         }
         inline int getScanStep()
         {
