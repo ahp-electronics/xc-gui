@@ -552,8 +552,8 @@ void Line::addCount()
             }
             else
             {
+                Elements->clear();
                 Stack->clear();
-                Elements->setStreamSize(2);
             }
             if(active)
             {
@@ -1133,6 +1133,8 @@ void Line::plot(bool success, double o, double s)
 
 Line::~Line()
 {
+    setActive(false);
+    ahp_xc_set_leds(getLineIndex(), 0);
     readThread->~Thread();
     elemental->~Elemental();
     delete ui;

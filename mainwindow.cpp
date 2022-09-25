@@ -1,4 +1,4 @@
-/*
+﻿/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -136,11 +136,27 @@ MainWindow::MainWindow(QWidget *parent)
             return;
         ui->Mode->setCurrentIndex(0);
         stopThreads();
-        for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
+        for(Baseline * line : Baselines)
         {
-            Lines[l]->setActive(false);
-            ahp_xc_set_leds(l, 0);
+            getGraph()->removeSeries(line->getCounts());
+            getGraph()->removeSeries(line->getMagnitudes());
+            getGraph()->removeSeries(line->getPhases());
+            getGraph()->removeSeries(line->getMagnitude());
+            getGraph()->removeSeries(line->getPhase());
+            line->~Baseline();
         }
+        Baselines.clear();
+        for(Line * line : Lines)
+        {
+            getGraph()->removeSeries(line->getCounts());
+            getGraph()->removeSeries(line->getMagnitudes());
+            getGraph()->removeSeries(line->getPhases());
+            getGraph()->removeSeries(line->getMagnitude());
+            getGraph()->removeSeries(line->getPhase());
+            line->~Line();
+        }
+        Lines.clear();
+        ui->Lines->clear();
         freePacket();
         if(xc_local_port)
             ahp_xc_set_baudrate(R_BASE);
@@ -150,9 +166,6 @@ MainWindow::MainWindow(QWidget *parent)
         {
             xc_socket.disconnectFromHost();
         }
-        Baselines.clear();
-        ui->Lines->clear();
-        Lines.clear();
         if(ahp_gt_is_connected())
         {
             if(ahp_gt_is_connected())

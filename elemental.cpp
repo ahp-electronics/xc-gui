@@ -186,3 +186,9 @@ void Elemental::dft(int depth)
     dsp_fourier_2dsp(stream);
     dsp_buffer_shift(stream);
 }
+
+void Elemental::clear()
+{
+    dsp_stream_set_dim(stream, 0, 1);
+    dsp_stream_alloc_buffer(stream, stream->len);
+}

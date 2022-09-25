@@ -114,6 +114,9 @@ class Line : public QWidget
             getMagnitudeStack()->clear();
             getPhaseStack()->clear();
             getCountStack()->clear();
+            getMagnitudeElemental()->clear();
+            getPhaseElemental()->clear();
+            getCountElemental()->clear();
         }
         inline void clearCounts()
         {

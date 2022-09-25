@@ -87,6 +87,7 @@ class Elemental : public QObject
             dsp_stream_set_dim(stream, 0, size);
             dsp_stream_alloc_buffer(stream, stream->len);
         }
+        void clear();
         inline dsp_stream_p getStream()
         {
             return stream;
