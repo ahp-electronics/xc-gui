@@ -368,7 +368,7 @@ void Line::UpdateBufferSizes()
     start = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->EndChannel->value(), 1));
     end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
     len = end-start;
-    step = fmax(1, round((double)len / Resolution));
+    step = fmax(1, round((double)len / getResolution()));
     setMagnitudeSize(getNumChannels());
     setPhaseSize(getNumChannels());
     emit updateBufferSizes();
@@ -561,10 +561,7 @@ void Line::addCount()
                 Elements->getStream()->buf[1] = getMaxFrequency();
                 dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
                 int size = fmin(Elements->getStreamSize(), getResolution());
-                dsp_t *buf = Elements->getStream()->buf;
-                dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
-                double *histo = dsp_stats_histogram(Elements->getStream(), size);
-                dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
+                double *histo = Elements->histogram(size);
                 Counts->clear();
                 for (int x = 1; x < size; x++)
                 {
@@ -1085,7 +1082,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(lag < npackets && lag >= 0)
             {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude;
+                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude/spectrum[z].correlations[0].counts;
                 phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                 for(int y = lag; y < npackets; y++)
                 {
@@ -1119,16 +1116,18 @@ void Line::plot(bool success, double o, double s)
     int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
+    double *histo = elemental->histogram(len);
     for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_frequency() / t, elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_frequency() / t, elemental->getBuffer()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
     smoothBuffer(getPhase(), 0, getPhase()->count());
+    free(histo);
 }
 
 Line::~Line()

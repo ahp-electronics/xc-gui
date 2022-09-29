@@ -575,9 +575,9 @@ void Baseline::plot(bool success, double o, double s)
     for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
-        } else {
             stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
+        } else {
+            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());

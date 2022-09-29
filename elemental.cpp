@@ -192,3 +192,16 @@ void Elemental::clear()
     dsp_stream_set_dim(stream, 0, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
 }
+
+double *Elemental::histogram(int size)
+{
+    dsp_stream_p tmp = dsp_stream_copy(getStream());
+    dsp_t *buf = tmp->buf;
+    dsp_buffer_stretch(tmp->buf, tmp->len, 0.0, size);
+    dsp_stream_set_buffer(tmp, &buf[2], tmp->len-2);
+    double *histo = dsp_stats_histogram(tmp, size);
+    dsp_stream_set_buffer(tmp, buf, tmp->len+2);
+    dsp_stream_free_buffer(tmp);
+    dsp_stream_free(tmp);
+    return histo;
+}
