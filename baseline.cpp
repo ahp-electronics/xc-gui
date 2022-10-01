@@ -48,7 +48,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     elementalCounts = new Elemental(this);
     elementalPhase = new Elemental(this);
     elementalMagnitude = new Elemental(this);
-    readThread = new Thread(this, 0.01, 0.01, "baseline " +name+" read thread");
+    readThread = new Thread(this, 10, 10, "baseline " +name+" read thread");
     resetPercentPtr();
     resetStopPtr();
     stream = dsp_stream_new();
@@ -343,7 +343,7 @@ void Baseline::addCount()
                     for (int x = 1; x < size; x++)
                     {
                         if(histo[x] != 0)
-                            stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                            stackValue(Counts, Stack, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
                     }
                     free(histo);
                     smoothBuffer(Counts, 0, Counts->count());
@@ -360,7 +360,7 @@ void Baseline::addCount()
     }
 }
 
-void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
+void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
 {
     if(y == 0.0) return;
     y /= 2;
@@ -572,16 +572,18 @@ void Baseline::plot(bool success, double o, double s)
     int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
+    double *histo = elemental->histogram(len);
     for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
     smoothBuffer(getPhase(), 0, getPhase()->count());
+    free(histo);
 }
 
 Baseline::~Baseline()

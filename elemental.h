@@ -88,7 +88,7 @@ class Elemental : public QObject
             dsp_stream_alloc_buffer(stream, stream->len);
         }
         void clear();
-        double *histogram(int size);
+        double *histogram(int size, dsp_stream_p stream = nullptr);
         inline dsp_stream_p getStream()
         {
             return stream;

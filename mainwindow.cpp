@@ -66,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
         f_stdout = stdout;
     }
     ui->setupUi(this);
-    uiThread = new Thread(this, 200, 10, "uiThread");
+    uiThread = new Thread(this, 10, 10, "uiThread");
     readThread = new Thread(this, 100, 1, "readThread");
     vlbiThread = new Thread(this, 1000, 1000, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
@@ -426,7 +426,6 @@ MainWindow::MainWindow(QWidget *parent)
 
                     getGraph()->loadSettings();
                     createPacket();
-                    setMode(Counter);
                     ui->Connect->setEnabled(false);
                     ui->Voltage->setEnabled(ahp_xc_has_leds());
                     ui->Run->setEnabled(true);
@@ -438,6 +437,7 @@ MainWindow::MainWindow(QWidget *parent)
                     {
                         ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     }
+                    setMode(Counter);
                 } else {
                     ahp_xc_disconnect();
                     return;
@@ -667,8 +667,6 @@ end_unlock:
         }
     });
     resize(1280, 720);
-    motorThread->start();
-    uiThread->start();
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
@@ -683,6 +681,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 
 void MainWindow::startThreads()
 {
+    uiThread->start();
     readThread->start();
     motorThread->start();
 }
@@ -693,6 +692,7 @@ void MainWindow::stopThreads()
         ui->Run->click();
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
+    uiThread->stop();
     readThread->stop();
     motorThread->stop();
 }

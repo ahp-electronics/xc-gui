@@ -391,7 +391,7 @@ class Line : public QWidget
         {
             return Resolution;
         }
-        void stackValue(QLineSeries* series, QMap<double, double>* stacked, int index, double x, double y);
+        void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
         inline double getPacketTime() { return packetTime; }
         void addCount();
         inline void addCount(double time, bool threaded = true) {

@@ -55,12 +55,11 @@ class Thread : public QThread
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
-                double diff = fmax(1, fmod((double)QDateTime::currentDateTimeUtc().msecsTo(lastPollTime.addMSecs(loop_ms)), loop_ms));
-                QThread::msleep(diff);
                 lastPollTime = QDateTime::currentDateTimeUtc();
                 if(lock())
                 {
                     emit threadLoop(this);
+                    QThread::msleep(loop_ms);
                 }
             }
         }
@@ -70,7 +69,7 @@ class Thread : public QThread
         }
         bool lock()
         {
-            return mutex.tryLock();
+            return mutex.tryLock(loop_ms);
         }
         void unlock()
         {

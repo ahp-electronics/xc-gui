@@ -120,7 +120,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
     ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
     ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
-    readThread = new Thread(this, 0.01, 0.01, name+" read thread");
+    readThread = new Thread(this, 10, 10, name+" read thread");
     connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::doubleClicked), [ = ] (const QModelIndex &index)
     {
         QString catalog = rows[index.row()];
@@ -562,10 +562,12 @@ void Line::addCount()
                 dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
                 int size = fmin(Elements->getStreamSize(), getResolution());
                 double *histo = Elements->histogram(size);
+                double mn = dsp_stats_min(((double*)&Elements->getStream()->buf[2]), Elements->getStream()->len-2);
+                double mx = dsp_stats_max(((double*)&Elements->getStream()->buf[2]), Elements->getStream()->len-2);
                 Counts->clear();
                 for (int x = 1; x < size; x++)
                 {
-                    stackValue(Counts, Stack, x, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                    stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
                 }
                 smoothBuffer(Counts, 0, Counts->count());
                 free(histo);
@@ -890,7 +892,7 @@ void Line::removeFromVLBIContext()
     }
 }
 
-void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, int idx, double x, double y)
+void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
 {
     if(y == 0.0) return;
     y /= 2;
@@ -1120,9 +1122,9 @@ void Line::plot(bool success, double o, double s)
     for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
         } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), x, ahp_xc_get_frequency() / t, elemental->getBuffer()[x]);
+            stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_frequency() / t, elemental->getBuffer()[x]);
         }
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
