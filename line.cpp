@@ -932,11 +932,62 @@ void Line::SavePlot()
     if(data.open(QFile::WriteOnly | QFile::Truncate))
     {
         QTextStream output(&data);
-        output << "'lag (ns)';'magnitude';'phase'\n";
-        for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
-        {
-            output << "'" + QString::number(getMagnitude()->at(y).x()) + "';'" + QString::number(getMagnitude()->at(y).y()) + "';'"
-                   + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
+        QMap <double, double> counts, mag, phi;
+        switch(getMode()) {
+        case Counter:
+            output << "time (s)";
+            output << ",counts";
+            output << ",autocorrelations (magnitude),autocorrelations (phase)";
+            output << "\n";
+            for(int x = 0; x < getCounts()->count(); x++)
+                counts.insert(getCounts()->at(x).x(), getCounts()->at(x).y());
+            for(int x = 0; x < getMagnitudes()->count(); x++) {
+                mag.insert(getMagnitudes()->at(x).x(), getMagnitudes()->at(x).y());
+                phi.insert(getPhases()->at(x).x(), getPhases()->at(x).y());
+            }
+            for(int i = 0, x = 0, y = 0, z = 0; i < fmax(fmax(getCounts()->count(), getMagnitudes()->count()), getPhases()->count()); i++)
+            {
+                double ctime = DBL_MAX, mtime = DBL_MAX, ptime = DBL_MAX;
+                if(counts.count() > x)
+                    ctime = counts.keys().at(x);
+                if(mag.count() > y)
+                    mtime = mag.keys().at(y);
+                if(phi.count() > y)
+                    ptime = phi.keys().at(z);
+                double time = fmin(fmin(ctime, mtime), ptime);
+                output << QString::number(time);
+                if(counts.keys().at(x) == time) {
+                    output << ","+QString::number(counts[time]);
+                    x++;
+                }
+                if(showAutocorrelations())
+                output << ",";
+                if(mag.keys().at(y) == time) {
+                    output << QString::number(mag[time]);
+                    y++;
+                }
+                output << ",";
+                if(phi.keys().at(z) == time) {
+                    output << QString::number(phi[time]);
+                    z++;
+                }
+                output << "\n";
+            }
+            break;
+        case Spectrograph:
+        case Autocorrelator:
+            if(dft())
+                output << "'lag (ns)','magnitude','phase'\n";
+            else
+                output << "'channel','magnitude','phase'\n";
+            for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
+            {
+                output << "'" + QString::number(getMagnitude()->at(y).x()) + "','" + QString::number(getMagnitude()->at(y).y()) + "','"
+                       + QString::number(getPhase()->at(y).x()) + "','" + QString::number(getPhase()->at(y).y()) + "'\n";
+            }
+            break;
+        default:
+            break;
         }
     }
     data.close();
