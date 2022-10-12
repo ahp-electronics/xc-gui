@@ -123,6 +123,14 @@ MainWindow::MainWindow(QWidget *parent)
         for(Line* line : Lines)
             line->setTimeRange(TimeRange);
     });
+    connect(ui->Order, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+            [ = ](int value)
+    {
+        settings->setValue("Order", value);
+        Order = ui->Order->value();
+        ahp_xc_set_correlation_order(ui->Order->value());
+
+    });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
     {
@@ -194,6 +202,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Voltage->setEnabled(false);
         ui->Disconnect->setEnabled(false);
         ui->Range->setEnabled(false);
+        ui->Order->setEnabled(false);
         ui->Mode->setEnabled(false);
         getGraph()->clearSeries();
         connected = false;
@@ -416,7 +425,9 @@ MainWindow::MainWindow(QWidget *parent)
                         }
                     }
 
-                    ahp_xc_set_correlation_order(2);
+                    ui->Order->setRange(2, ahp_xc_get_nlines());
+                    ui->Order->setValue(settings->value("Order", 2).toInt());
+                    ui->Order->setEnabled(true);
                     ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(QThread::idealThreadCount());
 

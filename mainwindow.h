@@ -261,6 +261,7 @@ signals:
         Mode mode;
         bool connected;
         double TimeRange;
+        int Order;
         Graph *graph;
         Ui::MainWindow *ui;
         double J2000_starttime;
