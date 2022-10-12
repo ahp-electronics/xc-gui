@@ -347,7 +347,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     ui->EndChannel->setValue(readInt("EndChannel", ahp_xc_get_frequency()));
     ui->StartChannel->setValue(readInt("StartChannel", ui->StartChannel->minimum()));
     ui->DFT->setChecked(readBool("DFT", false));
-    ui->flag4->setEnabled(!ahp_xc_has_differential_only());
+    ui->flag3->setEnabled(!ahp_xc_has_cumulative_only());
     ahp_xc_set_leds(line, flags);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
