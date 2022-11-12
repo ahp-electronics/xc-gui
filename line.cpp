@@ -1169,8 +1169,7 @@ void Line::plot(bool success, double o, double s)
     int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
-    double *histo = elemental->histogram(len);
-    for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
+    for (double t = offset + 1; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
             stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
@@ -1180,7 +1179,6 @@ void Line::plot(bool success, double o, double s)
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
     smoothBuffer(getPhase(), 0, getPhase()->count());
-    free(histo);
 }
 
 Line::~Line()

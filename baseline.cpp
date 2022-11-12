@@ -572,7 +572,6 @@ void Baseline::plot(bool success, double o, double s)
     int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
-    double *histo = elemental->histogram(len);
     for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
         if(dft()) {
@@ -583,7 +582,6 @@ void Baseline::plot(bool success, double o, double s)
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
     smoothBuffer(getPhase(), 0, getPhase()->count());
-    free(histo);
 }
 
 Baseline::~Baseline()
