@@ -487,14 +487,18 @@ void Baseline::smoothBuffer(QLineSeries* buf, int offset, int len)
     if(buf->count() < smooth())
         return;
     offset = fmax(offset, smooth());
-    for(int x = offset; x < offset+len; x++) {
+    for(int x = offset/2; x < len-offset/2; x++) {
         double val = 0.0;
-        for(int y = 0; y < smooth(); y++) {
+        for(int y = -offset/2; y < offset/2; y++) {
             val += buf->at(x-y).y();
         }
         val /= smooth();
         buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
     }
+    for(int x = len-1; x >= len-offset/2; x--)
+        buf->remove(buf->at(x).x(), buf->at(x).y());
+    for(int x = offset/2; x >= 0; x--)
+        buf->remove(buf->at(x).x(), buf->at(x).y());
 }
 
 void Baseline::smoothBuffer(double* buf, int len)
@@ -529,6 +533,7 @@ void Baseline::stackCorrelations()
         for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
+            if(lag == 0) continue;
             tail = (lag >= 0);
             if (tail)
                 lag --;

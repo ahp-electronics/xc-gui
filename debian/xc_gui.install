@@ -1,3 +1,4 @@
 usr/bin/xc-gui
 usr/share/applications/xc-gui.desktop
 usr/share/icons/xc-gui.png
+usr/share/ahp/*

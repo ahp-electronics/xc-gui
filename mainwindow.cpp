@@ -35,7 +35,50 @@ static double coverage_delegate(double x, double y)
     return 1.0;
 }
 
+static char *strrand(int len)
+{
+    int i;
+    char* ret = (char*)malloc(len+1);
+    for(i = 0; i < len; i++)
+        ret[i] = 'a' + (rand() % 21);
+    ret[i] = 0;
+    return ret;
+}
+
 QMutex(MainWindow::vlbi_mutex);
+
+bool MainWindow::DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms)
+{
+    QNetworkAccessManager* manager = new QNetworkAccessManager();
+    connect(manager, static_cast<void (QNetworkAccessManager::*)(QNetworkReply*)>(&QNetworkAccessManager::finished), this, [ = ] (QNetworkReply* response) {
+        QString base64 = settings->value("firmware", "").toString();
+        if(response->error() != QNetworkReply::NetworkError::NoError) {
+            base64 = settings->value("firmware", "").toString();
+        } else {
+            QJsonDocument doc = QJsonDocument::fromJson(response->readAll());
+            QJsonObject obj = doc.object();
+            QString data = obj["data"].toString();
+        }
+        if(base64.isNull() || base64.isEmpty()) {
+            return;
+        }
+        QByteArray bin = QByteArray::fromBase64(base64.toUtf8());
+        QFile file(filename);
+        file.open(QIODevice::WriteOnly);
+        file.write(bin, bin.length());
+        file.close();
+    });
+    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url)));
+    QTimer timer;
+    timer.setSingleShot(true);
+    QEventLoop loop;
+    connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
+    connect(response, SIGNAL(finished()), &loop, SLOT(quit()));
+    timer.start(timeout_ms);
+    loop.exec();
+    if(!QFile::exists(filename)) return false;
+    return true;
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -56,6 +99,12 @@ MainWindow::MainWindow(QWidget *parent)
         f->~QFile();
     }
     settings = new QSettings(ini, QSettings::Format::IniFormat);
+    QString url = "https://www.iliaplatone.com/firwmare.php?product=";
+    QString svf_filename = QStandardPaths::standardLocations(QStandardPaths::TempLocation).at(0) + "/" + strrand(32);
+    QString dfu_filename = QStandardPaths::standardLocations(QStandardPaths::TempLocation).at(0) + "/" + strrand(32);
+    if(DownloadFirmware(url+"xc-hub", dfu_filename, settings))
+        has_dfu_firmware = true;
+
     connected = false;
     TimeRange = 10;
     f_stdout = tmpfile();
@@ -84,8 +133,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->XCPort->addItem(settings->value("xc_connection", "no connection").toString());
     ui->MotorPort->clear();
     ui->MotorPort->addItem(settings->value("motor_connection", "no connection").toString());
-    ui->ControlPort->clear();
-    ui->ControlPort->addItem(settings->value("control_connection", "no connection").toString());
     QList<QSerialPortInfo> devices = QSerialPortInfo::availablePorts();
     settings->endGroup();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
@@ -97,18 +144,14 @@ MainWindow::MainWindow(QWidget *parent)
             ui->XCPort->addItem(portname);
         if(portname != ui->MotorPort->itemText(0))
             ui->MotorPort->addItem(portname);
-        if(portname != ui->ControlPort->itemText(0))
-            ui->ControlPort->addItem(portname);
     }
     if(ui->XCPort->itemText(0) != "no connection")
         ui->XCPort->addItem("no connection");
     if(ui->MotorPort->itemText(0) != "no connection")
         ui->MotorPort->addItem("no connection");
-    if(ui->ControlPort->itemText(0) != "no connection")
-        ui->ControlPort->addItem("no connection");
     ui->XCPort->setCurrentIndex(0);
     ui->MotorPort->setCurrentIndex(0);
-    ui->ControlPort->setCurrentIndex(0);
+    ui->Download->setChecked(settings->value("Download", false).toBool());
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &MainWindow::runClicked);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
@@ -183,11 +226,6 @@ MainWindow::MainWindow(QWidget *parent)
         {
             motor_socket.disconnectFromHost();
         }
-        if(ahp_hub_is_connected())
-        {
-            if(ahp_hub_is_connected())
-                ahp_hub_disconnect();
-        }
         if(control_socket.isOpen())
         {
             control_socket.disconnectFromHost();
@@ -216,8 +254,8 @@ MainWindow::MainWindow(QWidget *parent)
         QString xcport, motorport, controlport;
         xcport = ui->XCPort->currentText();
         motorport = ui->MotorPort->currentText();
-        controlport = ui->ControlPort->currentText();
         settings->beginGroup("Connection");
+
         xcFD = -1;
         xc_local_port = false;
         if(xcport == "no connection")
@@ -258,6 +296,30 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 if(!ahp_xc_get_properties())
                 {
+                    if(ui->Download->isChecked()) {
+                        QString product;
+                        if(ahp_xc_has_crosscorrelator())
+                            product.append("x");
+                        else
+                            product.append("a");
+                        product.append("c");
+                        product.append(QString::number(ahp_xc_get_nlines()));
+                        if(DownloadFirmware(url+product, svf_filename, settings))
+                            has_svf_firmware = true;
+                        if(has_svf_firmware) {
+                            QString bsdl_path;
+#ifndef _WIN32
+                           bsdl_path.append("/usr/share/ahp");
+#endif
+                            bsdl_path.append("bsdl/");
+                            QFile file(svf_filename);
+                            file.open(QIODevice::ReadOnly);
+                            int err = ahp_xc_flash_svf(file.handle(), bsdl_path.toStdString().c_str());
+                            file.close();
+                            if (err) goto err_exit;
+                        }
+                    }
+
                     if(ahp_xc_get_packettime() > 0.1 && xc_local_port)
                         ahp_xc_set_baudrate((baud_rate)round(log2(ahp_xc_get_packettime() / 0.1)));
                     motorFD = -1;
@@ -298,45 +360,6 @@ MainWindow::MainWindow(QWidget *parent)
                             if(!ahp_gt_connect(motorport.toUtf8()))
                                 settings->setValue("motor_connection", motorport);
                             motorFD = ahp_gt_get_fd();
-                        }
-                    }
-                    controlFD = -1;
-                    if(controlport == "no connection")
-                    {
-                        settings->setValue("control_connection", controlport);
-                    }
-                    else
-                    {
-                        if(controlport.contains(':'))
-                        {
-                            address = controlport.split(":")[0];
-                            port = controlport.split(":")[1].toInt();
-                            ui->Connect->setEnabled(false);
-                            update();
-                            control_socket.connectToHost(address, port);
-                            control_socket.waitForConnected();
-                            if(control_socket.isValid())
-                            {
-                                control_socket.setReadBufferSize(4096);
-                                controlFD = control_socket.socketDescriptor();
-                                if(ahp_hub_is_connected())
-                                {
-                                    getGraph()->setMotorFD(controlFD);
-                                    if(!ahp_hub_connect_fd(getGraph()->getMotorFD()))
-                                        settings->setValue("control_connection", controlport);
-                                }
-                            }
-                            else
-                            {
-                                ui->Connect->setEnabled(true);
-                                update();
-                            }
-                        }
-                        else
-                        {
-                            if(!ahp_hub_connect(controlport.toUtf8()))
-                                settings->setValue("control_connection", controlport);
-                            controlFD = ahp_hub_get_fd();
                         }
                     }
                     connected = true;
@@ -444,12 +467,10 @@ MainWindow::MainWindow(QWidget *parent)
                     ui->Range->setValue(settings->value("Timerange", 0).toInt());
                     ui->Range->setEnabled(true);
                     ui->Mode->setEnabled(true);
-                    if(ahp_hub_is_connected())
-                    {
-                        ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
-                    }
+                    ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
                     setMode(Counter);
                 } else {
+err_exit:
                     ahp_xc_disconnect();
                     return;
                 }
@@ -493,6 +514,11 @@ MainWindow::MainWindow(QWidget *parent)
             [ = ](double freq)
     {
         (void)freq;
+    });
+    connect(ui->Download, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
+            [ = ](bool checked)
+    {
+        settings->setValue("Download", checked);
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
@@ -767,9 +793,9 @@ void MainWindow::resetTimestamp()
 void MainWindow::setVoltage(int level)
 {
     level = Min(255, Max(0, level));
-    unsigned char v = 0xff - (level & 0x7f);
-    if(ahp_hub_is_connected()) {
-        ahp_hub_send_command(&v, 1);
+    unsigned char v = level;
+    if(ahp_xc_is_connected()) {
+        ahp_xc_set_voltage(0, v);
     }
 }
 

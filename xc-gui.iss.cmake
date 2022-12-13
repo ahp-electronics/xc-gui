@@ -23,6 +23,7 @@ Source: "../{#TargetName}/driver/dpinst32.exe"; DestDir: {app}/driver; DestName:
 Source: "../{#TargetName}/driver/dpinst64.exe"; DestDir: {app}/driver; DestName: dpinst.exe; Check: IsWin64; Flags: ignoreversion
 Source: "../{#TargetName}/driver/xchub*"; DestDir: {app}/driver;
 Source: "../{#TargetName}/driver/ahpbootloader*"; DestDir: {app}/driver;
+Source: "bsdl/*"; DestDir: "{app}/bsdl";
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#TargetName}.exe"

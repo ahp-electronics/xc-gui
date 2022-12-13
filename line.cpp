@@ -116,10 +116,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         index.close();
         ui->Catalogs->setModel(model);
     }
-    ui->EndChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 1);
-    ui->StartChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2 - 3);
-    ui->AutoChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
-    ui->CrossChannel->setRange(ahp_xc_get_frequency()/ahp_xc_get_delaysize(), ahp_xc_get_frequency() / 2);
+    double frequency = ahp_xc_get_frequency();
+    double delaysize = ahp_xc_get_delaysize();
+    int min_frequency = frequency / delaysize;
+    int max_frequency = frequency / 2 - 1;
+    ui->EndChannel->setRange(min_frequency, max_frequency);
+    ui->StartChannel->setRange(min_frequency, max_frequency - 2);
+    ui->AutoChannel->setRange(min_frequency, max_frequency);
+    ui->CrossChannel->setRange(min_frequency, max_frequency);
     readThread = new Thread(this, 10, 10, name+" read thread");
     connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::doubleClicked), [ = ] (const QModelIndex &index)
     {
@@ -1099,14 +1103,19 @@ void Line::smoothBuffer(QLineSeries* buf, int offset, int len)
     if(buf->count() < smooth())
         return;
     offset = fmax(offset, smooth());
-    for(int x = offset; x < offset+len; x++) {
+    for(int x = offset/2; x < len-offset/2; x++) {
         double val = 0.0;
-        for(int y = 0; y < smooth(); y++) {
+        for(int y = -offset/2; y < offset/2; y++) {
             val += buf->at(x-y).y();
         }
         val /= smooth();
         buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
     }
+    for(int x = len-1; x >= len-offset/2; x--)
+        buf->remove(buf->at(x).x(), buf->at(x).y());
+    for(int x = offset/2; x >= 0; x--)
+        buf->remove(buf->at(x).x(), buf->at(x).y());
+
 }
 
 void Line::smoothBuffer(double* buf, int len)

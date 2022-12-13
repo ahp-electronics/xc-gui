@@ -102,5 +102,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINA
 
 target_link_libraries(xc-gui PRIVATE ${CMAKE_THREAD_LIBS_INIT} ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 install(TARGETS xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(FILES xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
-install(FILES xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bsdl DESTINATION ${CMAKE_INSTALL_PREFIX}/share/ahp)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)

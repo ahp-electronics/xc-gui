@@ -35,6 +35,8 @@
 #include <fcntl.h>
 #include <QThread>
 #include <QStatusBar>
+#include <QTimer>
+#include <QTemporaryFile>
 #include <QCoreApplication>
 #include <QMainWindow>
 #include <QSerialPort>
@@ -46,6 +48,10 @@
 #include <QDateTime>
 #include <QTcpSocket>
 #include <QUdpSocket>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QThreadPool>
 #include <QDir>
 #include "graph.h"
@@ -235,6 +241,10 @@ signals:
         void scanFinished(bool complete);
 
     private:
+        bool has_svf_firmware {false};
+        bool has_dfu_firmware {false};
+        bool DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms = 30000);
+        QString base64;
         int currentVoltage {0};
         FILE *f_stdout;
         int threadsStopped { 1 };
