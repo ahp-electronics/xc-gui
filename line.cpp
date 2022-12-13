@@ -1111,11 +1111,12 @@ void Line::smoothBuffer(QLineSeries* buf, int offset, int len)
         val /= smooth();
         buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
     }
-    for(int x = len-1; x >= len-offset/2; x--)
-        buf->remove(buf->at(x).x(), buf->at(x).y());
-    for(int x = offset/2; x >= 0; x--)
-        buf->remove(buf->at(x).x(), buf->at(x).y());
-
+    if(getMode() == Autocorrelator || getMode() == CrosscorrelatorII || getMode() == CrosscorrelatorIQ) {
+        for(int x = len-1; x >= len-offset/2; x--)
+            buf->remove(buf->at(x).x(), buf->at(x).y());
+        for(int x = offset/2; x >= 0; x--)
+            buf->remove(buf->at(x).x(), buf->at(x).y());
+    }
 }
 
 void Line::smoothBuffer(double* buf, int len)
