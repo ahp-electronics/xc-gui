@@ -185,6 +185,7 @@ MainWindow::MainWindow(QWidget *parent)
         (void)checked;
         if(!connected)
             return;
+        ui->Download->setEnabled(true);
         ui->Mode->setCurrentIndex(0);
         stopThreads();
         for(Baseline * line : Baselines)
@@ -296,6 +297,7 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 if(!ahp_xc_get_properties())
                 {
+                    ui->Download->setEnabled(false);
                     if(ui->Download->isChecked()) {
                         QString product;
                         if(ahp_xc_has_crosscorrelator())
@@ -471,11 +473,13 @@ MainWindow::MainWindow(QWidget *parent)
                     setMode(Counter);
                 } else {
 err_exit:
+                    ui->Download->setEnabled(true);
                     ahp_xc_disconnect();
                     return;
                 }
             }
             else {
+                ui->Download->setEnabled(true);
                 ahp_xc_disconnect();
                 return;
             }
