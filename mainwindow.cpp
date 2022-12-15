@@ -49,6 +49,8 @@ QMutex(MainWindow::vlbi_mutex);
 
 bool MainWindow::DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms)
 {
+    QByteArray bin;
+    QFile file(filename);
     QNetworkAccessManager* manager = new QNetworkAccessManager();
     QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url)));
     QTimer timer;
@@ -65,13 +67,13 @@ bool MainWindow::DownloadFirmware(QString url, QString filename, QSettings *sett
         base64 = obj["data"].toString();
     }
     if(base64.isNull() || base64.isEmpty()) {
-        return false;
+        goto dl_end;
     }
-    QByteArray bin = QByteArray::fromBase64(base64.toUtf8());
-    QFile file(filename);
+    bin = QByteArray::fromBase64(base64.toUtf8());
     file.open(QIODevice::WriteOnly);
     file.write(bin, bin.length());
     file.close();
+dl_end:
     response->deleteLater();
     response->manager()->deleteLater();
     if(!QFile::exists(filename)) return false;
