@@ -30,7 +30,6 @@
 #include <QMainWindow>
 #include <ahp_gt.h>
 #include <ahp_xc.h>
-#include <ahp_hub.h>
 #include <vlbi.h>
 #include "threads.h"
 #include <fftw3.h>
