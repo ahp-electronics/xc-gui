@@ -42,6 +42,9 @@ int main(int argc, char *argv[])
     dsp_set_app_name((char*)"xc-gui");
     dsp_set_debug_level(5);
     MainWindow w;
+    QFont font = w.font();
+    font.setPixelSize(12);
+    w.setFont(font);
     w.show();
     a.setWindowIcon(QIcon(":/icons/icon.ico"));
     return a.exec();
