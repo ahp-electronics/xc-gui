@@ -57,6 +57,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
         }
         finish(success, offset, scale);
         thread->stop();
+        thread->unlock();
     });
 }
 
@@ -75,6 +76,12 @@ QStringList Elemental::getElementNames()
         names.append(element->name);
     }
     return names;
+}
+
+void Elemental::loadSpectrum(QString spectrumPath)
+{
+    unloadCatalog();
+    reference = vlbi_astro_load_spectrum((char*)spectrumPath.toStdString().c_str());
 }
 
 void Elemental::loadCatalog(QString catalogPath)

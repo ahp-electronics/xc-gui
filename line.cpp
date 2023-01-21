@@ -85,7 +85,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
 #endif
                 );
     index.open(QFile::ReadOnly);
-    QList <QString> rows;
+    QMap <QString, QString> rows;
     if(index.isOpen()) {
         int ncatalogs = 0;
         QString catname = index.readLine().replace("\n", "");
@@ -93,6 +93,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
             QStandardItem *catalog = new QStandardItem(QString(catname).replace("/index.txt", ""));
             QFileInfo fileInfo(index.fileName());
             QFile cat(fileInfo.dir().path()+"/"+catname);
+            catname = catname.replace("/index.txt", "");
             cat.open(QFile::ReadOnly);
             if(cat.isOpen()) {
                 int nelement = 0;
@@ -101,7 +102,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
                     if(element != "index") {
                         QStandardItem *el = new QStandardItem(element);
                         el->setEditable(false);
-                        rows.append(fileInfo.dir().path()+"/"+catname+"/"+element+".txt");
+                        rows.insert(catname+"/"+element, fileInfo.dir().path()+"/"+catname+"/"+element+".txt");
                         catalog->insertRow(nelement++, el);
                     }
                     element = cat.readLine().replace(".txt\n", "");
@@ -125,11 +126,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     ui->AutoChannel->setRange(min_frequency, max_frequency);
     ui->CrossChannel->setRange(min_frequency, max_frequency);
     readThread = new Thread(this, 10, 10, name+" read thread");
-    connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::doubleClicked), [ = ] (const QModelIndex &index)
+    connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::clicked), [ = ] (const QModelIndex &index)
     {
-        QString catalog = rows[index.row()];
+        QString catalog = index.parent().data().toString();
         if(!catalog.isEmpty())
-            elemental->loadCatalog(catalog);
+            elemental->loadSpectrum(rows[catalog+"/"+index.data().toString()]);
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
     {

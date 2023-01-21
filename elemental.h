@@ -109,6 +109,7 @@ class Elemental : public QObject
         QStringList getElementNames();
         dsp_align_info *stats(QString name);
         void loadCatalog(QString catalogPath);
+        void loadSpectrum(QString spectrumPath);
         void unloadCatalog();
         inline QList <dsp_stream_p> getCatalog()
         {
