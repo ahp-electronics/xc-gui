@@ -184,6 +184,10 @@ class Graph : public QWidget
         {
             return Dec;
         }
+        inline double getDistance()
+        {
+            return Distance;
+        }
         inline double getLatitude()
         {
             return Latitude;
@@ -293,7 +297,9 @@ class Graph : public QWidget
             return image;
         }
         double Latitude, Longitude, Elevation;
-        double Ra, Dec;
+        double Ra {0.0};
+        double Dec {0.0};
+        double Distance { DBL_MAX };
         double Frequency;
         double RaTrackRate {1.0};
         double DecTrackRate {1.0};

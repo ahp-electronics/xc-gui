@@ -257,7 +257,7 @@ signals:
         int xcFD;
         bool xc_local_port { false };
         double lastpackettime;
-        double Ra, Dec;
+        double Ra, Dec, Distance;
         double Latitude, Longitude, Elevation;
         double wavelength;
         int current_context { 0 };

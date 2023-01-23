@@ -237,7 +237,7 @@ void Baseline::addCount()
             vlbi_context ctx = getVLBIContext();
             if(vlbi_has_node(getVLBIContext(), getLine1()->getName().toStdString().c_str()) && vlbi_has_node(ctx, getLine2()->getName().toStdString().c_str())) {
                 vlbi_get_offsets(getVLBIContext(), getPacketTime(), getLine1()->getName().toStdString().c_str(), getLine2()->getName().toStdString().c_str(),
-                                 getGraph()->getRa(), getGraph()->getDec(), &offset1, &offset2);
+                                 getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance(), &offset1, &offset2);
                 offset1 /= ahp_xc_get_sampletime();
                 offset2 /= ahp_xc_get_sampletime();
                 offset1 ++;

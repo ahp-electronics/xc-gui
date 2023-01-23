@@ -95,7 +95,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
         Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
                           QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
-        emit coordinatesUpdated(Ra, Dec, 0);
+        emit coordinatesUpdated(Ra, Dec, Distance);
     });
     connect(inputs->Ra_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -106,7 +106,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
         Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
                           QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
-        emit coordinatesUpdated(Ra, Dec, 0);
+        emit coordinatesUpdated(Ra, Dec, Distance);
     });
     connect(inputs->Ra_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -117,14 +117,14 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
         Ra = fromHMSorDMS(QString::number(inputs->Ra_0->value()) + ":" + QString::number(inputs->Ra_1->value()) + ":" +
                           QString::number(inputs->Ra_2->value()));
         saveSetting("Ra", Ra);
-        emit coordinatesUpdated(Ra, Dec, 0);
+        emit coordinatesUpdated(Ra, Dec, Distance);
     });
     connect(inputs->Dec_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
                            QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
-        emit coordinatesUpdated(Ra, Dec, 0);
+        emit coordinatesUpdated(Ra, Dec, Distance);
     });
     connect(inputs->Dec_1, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -135,7 +135,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
         Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
                            QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
-        emit coordinatesUpdated(Ra, Dec, 0);
+        emit coordinatesUpdated(Ra, Dec, Distance);
     });
     connect(inputs->Dec_2, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -146,7 +146,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
         Dec = fromHMSorDMS(QString::number(inputs->Dec_0->value()) + ":" + QString::number(inputs->Dec_1->value()) + ":" +
                            QString::number(inputs->Dec_2->value()));
         saveSetting("Dec", Dec);
-        emit coordinatesUpdated(Ra, Dec, 0);
+        emit coordinatesUpdated(Ra, Dec, Distance);
     });
     connect(inputs->Lat_0, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {

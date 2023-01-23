@@ -494,11 +494,11 @@ err_exit:
     {
     });
     connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::coordinatesUpdated),
-            [ = ](double ra, double dec, double radius)
+            [ = ](double ra, double dec, double distance)
     {
-        (void)radius;
         Ra = ra;
         Dec = dec;
+        Distance = distance;
     });
     connect(getGraph(), static_cast<void (Graph::*)(double, double, double)>(&Graph::locationUpdated),
             [ = ](double lat, double lon, double el)
@@ -635,7 +635,7 @@ end_unlock:
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), 0};
+            double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance()};
             lock_vlbi();
 
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
