@@ -120,6 +120,7 @@ class Line : public QWidget
         }
         inline void clearCounts()
         {
+            stack_index = 0;
             getCounts()->clear();
             getMagnitudes()->clear();
             getPhases()->clear();
@@ -466,6 +467,7 @@ class Line : public QWidget
         double timespan { 1.0 };
         double Latitude { 0.0 };
         double Longitude { 0.0 };
+        double stack_index { 1.0 };
         timespec starttime { 0 };
         bool applysigmaclipping { false };
         bool applymedian { false };

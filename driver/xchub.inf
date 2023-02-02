@@ -12,9 +12,37 @@ DriverVer=08/13/2022,1.0.0.0
 %ManufacturerName% = Port, NTamd64
 
 [Port.NTamd64]
-%XCCommPort%=PortInstall, USB\Vid_a0a0&Pid_0005&Cdc_Modem&MI_00
-%SyncCommPort%=PortInstall, USB\Vid_a0a0&Pid_0005&Cdc_Modem&MI_02
-%CtlCommPort%=PortInstall, USB\Vid_a0a0&Pid_0005&Cdc_Modem&MI_04
+%ProgrammingIntf%=WinUSBInstall, USB\Vid_1209&Pid_c0ca\0
+%XCCommPort%=PortInstall, USB\Vid_1209&Pid_c0ca\2
+%SyncCommPort%=PortInstall, USB\Vid_1209&Pid_c0ca\4
+
+; =================== WinUSB Installation ===================
+
+[WinUSBInstall]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[WinUSBInstall.Services]
+Include =winusb.inf
+Needs   = WINUSB.NT.Services
+
+[WinUSBInstall.HW]
+AddReg=Dev_AddReg
+
+[WinUSBInstall.Wdf]
+KmdfService=WINUSB, WinWinUSBInstall
+
+[WinWinUSBInstall]
+KmdfLibraryVersion=1.11
+
+[Dev_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{9f543223-cede-4fa3-b376-a25ce9a30e74}"
+
+; [DestinationDirs]
+; If your INF needs to copy files, you must not use the DefaultDestDir directive here.  
+; You must explicitly reference all file-list-section names in this section.
+
+; =================== Ports Installation ===================
 
 [PortInstall]
 include=mdmcpq.inf
@@ -67,8 +95,8 @@ AddService=usbser,,PortInstall_Service_Install,PortInstall_EventLog_Install
 [Strings]
 ManufacturerName="AHP"
 PortInstall.DriverDesc="AHP XC Communication Port"
+ProgrammingIntf="XC Programming Port"
 XCCommPort="XC Communication Port"
 SyncCommPort="Synchronized Communication Port"
-CtlCommPort="Control Communication Port"
 DISK_NAME = "XC Hub Diskette"
 REG_BINARY   = 0x00000001

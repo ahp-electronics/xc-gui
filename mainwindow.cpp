@@ -610,8 +610,13 @@ err_exit:
                 }
                 break;
         }
+        emit repaint();
 end_unlock:
         thread->unlock();
+    });
+    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
+    {
+        getGraph()->paint();
     });
     connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread * thread)
     {
@@ -626,7 +631,6 @@ end_unlock:
             fseek(f_stdout, 0, SEEK_SET);
             ftruncate(fileno(f_stdout), 0);
         }
-        getGraph()->paint();
         ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 150 / 127) + " V~");
         ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
@@ -676,12 +680,9 @@ end_unlock:
     {
         MainWindow* main = (MainWindow*)thread->getParent();
         int fd = -1;
-        fd = main->getControlFD();
-        if(fd >= 0) {
-            if(currentVoltage != ui->Voltage->value()) {
-                currentVoltage = currentVoltage < ui->Voltage->value() ? currentVoltage + 3 : currentVoltage -5;
-                setVoltage(currentVoltage);
-            }
+        if(currentVoltage != ui->Voltage->value()) {
+            currentVoltage = currentVoltage < ui->Voltage->value() ? currentVoltage + 3 : currentVoltage -5;
+            setVoltage(currentVoltage);
         }
         fd = main->getMotorFD();
         if(fd >= 0)

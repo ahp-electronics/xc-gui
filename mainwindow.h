@@ -236,6 +236,7 @@ class MainWindow : public QMainWindow
         }
 
 signals:
+        void repaint();
         void plotModels();
         void scanStarted();
         void scanFinished(bool complete);

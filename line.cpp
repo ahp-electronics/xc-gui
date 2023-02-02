@@ -900,12 +900,12 @@ void Line::removeFromVLBIContext()
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
 {
     if(y == 0.0) return;
-    y /= 2;
+    y /= stack_index;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
     if(stacked->contains(x))
     {
-        y += stacked->value(x) / 2;
+        y += stacked->value(x) * (stack_index-1) / stack_index;
     }
     stacked->insert(x, y);
     series->append(x, y);
@@ -1137,6 +1137,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     int npackets = getNumChannels();
     if(spectrum != nullptr && npackets > 0)
     {
+        stack_index ++;
         npackets--;
         npackets--;
         int lag = 1;
