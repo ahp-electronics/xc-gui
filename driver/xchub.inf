@@ -1,38 +1,52 @@
+;
+;
+; Installs WinUsb
+;
+
 [Version]
 Signature = "$Windows NT$"
 Class     = USBDevice
-ClassGUID = {4D36E978-E325-11CE-BFC1-08002BE10318}
+ClassGUID = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
 Provider  = %ManufacturerName%
 CatalogFile = xchub.cat
-DriverVer=08/13/2022,1.0.0.0
+DriverVer=07/09/2021,19.12.20.000
 
 ; ========== Manufacturer/Models sections ===========
 
 [Manufacturer]
-%ManufacturerName% = Port, NTamd64
+%ManufacturerName% = Standard,NTamd64
 
-[Port.NTamd64]
-%ProgrammingIntf%=WinUSBInstall, USB\Vid_1209&Pid_c0ca\0
-%XCCommPort%=PortInstall, USB\Vid_1209&Pid_c0ca\2
-%SyncCommPort%=PortInstall, USB\Vid_1209&Pid_c0ca\4
+[Standard.NTamd64]
+%DeviceName% =USB_Install, USB\VID_09FB&PID_6001\8D85319E5748
 
-; =================== WinUSB Installation ===================
+; ========== Class definition (for Windows 8 and ealier versions)===========
 
-[WinUSBInstall]
+[ClassInstall32]
+AddReg = ClassInstall_AddReg
+
+[ClassInstall_AddReg]
+HKR,,,,%ClassName%
+HKR,,NoInstallClass,,1
+HKR,,IconPath,%REG_MULTI_SZ%,"%systemroot%\system32\setupapi.dll,-20"
+HKR,,LowerLogoVersion,,5.2
+
+; =================== Installation ===================
+
+[USB_Install]
 Include = winusb.inf
 Needs   = WINUSB.NT
 
-[WinUSBInstall.Services]
+[USB_Install.Services]
 Include =winusb.inf
 Needs   = WINUSB.NT.Services
 
-[WinUSBInstall.HW]
+[USB_Install.HW]
 AddReg=Dev_AddReg
 
-[WinUSBInstall.Wdf]
-KmdfService=WINUSB, WinWinUSBInstall
+[USB_Install.Wdf]
+KmdfService=WINUSB, WinUsb_Install
 
-[WinWinUSBInstall]
+[WinUsb_Install]
 KmdfLibraryVersion=1.11
 
 [Dev_AddReg]
@@ -42,61 +56,10 @@ HKR,,DeviceInterfaceGUIDs,0x10000,"{9f543223-cede-4fa3-b376-a25ce9a30e74}"
 ; If your INF needs to copy files, you must not use the DefaultDestDir directive here.  
 ; You must explicitly reference all file-list-section names in this section.
 
-; =================== Ports Installation ===================
-
-[PortInstall]
-include=mdmcpq.inf
-CopyFiles=PortInstall.CopyFiles
-AddReg=PortInstall.AddReg
-AddProperty=PortInstall.AddProperty
-
-[PortInstall.Services]
-include=mdmcpq.inf
-AddService=usbser, 0x00000000, LowerFilter_Service_Inst
-
-[PortInstall.HW]
-
-[PortInstall.AddReg]
-HKR,,PortSubClass,%REG_BINARY%,02
-HKR,,EnumPropPages32,,"MsPorts.dll,SerialPortPropPageProvider"
-
-[PortInstall.AddProperty]
-GenericDriverInstalled,,,,1
-
-[PortInstall.Services]
-AddService = usbser,0x00000002,PortInstall_Service_Install, PortInstall_EventLog_Install
-
-[PortInstall_Service_Install]
-DisplayName   = %PortInstall.DriverDesc%
-ServiceType   = 1           ; SERVICE_KERNEL_DRIVER
-StartType     = 3           ; SERVICE_DEMAND_START
-ErrorControl  = 1           ; SERVICE_ERROR_NORMAL
-ServiceBinary = %12%\usbser.sys
-
-[PortInstall_EventLog_Install]
-AddReg=PortInstall_EventLog_AddReg
-
-[PortInstall_EventLog_AddReg]
-HKR,,EventMessageFile,0x00020000,"%%SystemRoot%%\System32\IoLogMsg.dll;%%SystemRoot%%\System32\Drivers\usbser.sys"
-HKR,,TypesSupported,0x00010001,7
-
-[PortInstall_ModemFilter_Install]
-CopyFiles=PortInstall_CopyFiles 
-
-[PortInstall_ModemFilter_Install.Hw]
-AddReg=PortInstall_ModemFilter_AddReg
-
-[PortInstall_ModemFilter_AddReg]
-HKR,,LowerFilters,%REG_MULTI_SZ%,"usbser"
-
-[PortInstall_ModemFilter_Install.Services]
-AddService=usbser,,PortInstall_Service_Install,PortInstall_EventLog_Install
+; =================== Strings ===================
 
 [Strings]
 ManufacturerName="AHP"
-PortInstall.DriverDesc="AHP XC Communication Port"
-ProgrammingIntf="XC Programming Port"
-XCCommPort="XC Communication Port"
-SyncCommPort="Synchronized Communication Port"
-DISK_NAME = "XC Hub Diskette"
-REG_BINARY   = 0x00000001
+ClassName="Universal Serial Bus devices"
+DeviceName="AHP Hub Port"
+REG_MULTI_SZ = 0x00010000
