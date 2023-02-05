@@ -17,7 +17,7 @@ DriverVer=07/09/2021,19.12.20.000
 %ManufacturerName% = Standard,NTamd64
 
 [Standard.NTamd64]
-%DeviceName% =USB_Install, USB\VID_1209&PID_C0CA&MI_00
+%DeviceName% =USB_Install, USB\VID_1209&PID_C0CA&MI_00\6&1A42B044&1&0000
 
 ; ========== Class definition (for Windows 8 and ealier versions)===========
 
