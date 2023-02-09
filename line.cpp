@@ -79,7 +79,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     model->setHorizontalHeaderLabels({"Catalog"});
     QFile index(
 #ifdef WINODWS
-    QDir::currentPath().append("/cat/index.txt")
+    "./cat/index.txt"
 #else
     VLBI_CATALOG_PATH
 #endif
