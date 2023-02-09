@@ -9,7 +9,7 @@ Class     = USBDevice
 ClassGUID = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
 Provider  = %ManufacturerName%
 CatalogFile = xchub.cat
-DriverVer=07/09/2021,19.12.20.000
+DriverVer=02/10/2023,1.0.0.000
 
 ; ========== Manufacturer/Models sections ===========
 
