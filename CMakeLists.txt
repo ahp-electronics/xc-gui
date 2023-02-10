@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8 .. 3.20)
 
 project(xc-gui LANGUAGES C CXX)
 
@@ -30,7 +30,7 @@ set(XC_GUI_VERSION "${XC_GUI_VERSION_MAJOR}.${XC_GUI_VERSION_MINOR}.${XC_GUI_VER
 #endif()
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 
-find_package(Qt6 COMPONENTS Widgets Network SerialPort Charts Network REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Network SerialPort Charts Network REQUIRED)
 find_package(Threads REQUIRED)
 find_package(M REQUIRED)
 find_package(AHPXC REQUIRED)
