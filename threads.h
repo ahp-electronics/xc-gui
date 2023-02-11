@@ -38,34 +38,37 @@ class Thread : public QThread
     private:
         QObject* parent;
         QMutex mutex;
+        int next_ms;
         int timer_ms;
         int loop_ms;
         QString Name;
     public:
-        Thread(QObject* p, int timer = 20, int loop = 2, QString n = "") : QThread()
+        Thread(QObject* p, int timer = 20, int loop = 20, QString n = "") : QThread()
         {
             parent = p;
             timer_ms = timer;
             loop_ms = loop;
+            next_ms = timer_ms;
             Name = n;
         }
         void run()
         {
-            QThread::msleep(timer_ms);
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
                 lastPollTime = QDateTime::currentDateTimeUtc();
+                next_ms = loop_ms;
                 if(lock())
                 {
                     emit threadLoop(this);
-                    QThread::msleep(loop_ms);
+                    QThread::msleep(next_ms);
                 }
             }
         }
         void stop()
         {
             requestInterruption();
+            next_ms = timer_ms;
         }
         bool lock()
         {
