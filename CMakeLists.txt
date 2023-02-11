@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8 .. 3.20)
+cmake_minimum_required(VERSION 2.8..3.20)
 
 project(xc-gui LANGUAGES C CXX)
 
