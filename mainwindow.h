@@ -235,6 +235,11 @@ class MainWindow : public QMainWindow
             mutex.unlock();
         }
 
+        QString homedir;
+        QString bsdl_filename;
+        QString svf_filename;
+        QString dfu_filename;
+
 signals:
         void repaint();
         void plotModels();

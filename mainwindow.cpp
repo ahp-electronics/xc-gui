@@ -85,7 +85,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     setAccessibleName("MainWindow");
-    QString homedir = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).at(0);
+    homedir = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).at(0);
     QString ini = homedir + "/settings.ini";
     if(!QDir(homedir).exists())
     {
@@ -100,8 +100,9 @@ MainWindow::MainWindow(QWidget *parent)
     }
     settings = new QSettings(ini, QSettings::Format::IniFormat);
     QString url = "https://www.iliaplatone.com/firwmare.php?product=";
-    QString svf_filename = QStandardPaths::standardLocations(QStandardPaths::TempLocation).at(0) + "/" + strrand(32);
-    QString dfu_filename = QStandardPaths::standardLocations(QStandardPaths::TempLocation).at(0) + "/" + strrand(32);
+    bsdl_filename = homedir + "/" + strrand(32) + ".bsm";
+    svf_filename = homedir + "/" + strrand(32);
+    dfu_filename = homedir + "/" + strrand(32);
     if(DownloadFirmware(url+"xc-hub", dfu_filename, settings))
         has_dfu_firmware = true;
 
@@ -309,11 +310,9 @@ MainWindow::MainWindow(QWidget *parent)
                         if(DownloadFirmware(url+product, svf_filename, settings))
                             has_svf_firmware = true;
                         if(has_svf_firmware) {
-                            QString bsdl_path;
-#ifndef _WIN32
-                           bsdl_path.append("/usr/share/ahp");
-#endif
-                            bsdl_path.append("bsdl/");
+                            if(DownloadFirmware(url+"ecp5u", bsdl_filename, settings))
+                                has_svf_firmware = true;
+                            QString bsdl_path = homedir;
                             QFile file(svf_filename);
                             file.open(QIODevice::ReadOnly);
                             int err = ahp_xc_flash_svf(file.handle(), bsdl_path.toStdString().c_str());
