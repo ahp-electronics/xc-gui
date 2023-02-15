@@ -242,6 +242,7 @@ class Line : public QWidget
         void updateDec();
         bool isRailBusy();
         bool isMountBusy();
+        double getLocalTime();
         double *percent;
         double localpercent;
         void setPercent();
@@ -305,6 +306,10 @@ class Line : public QWidget
         inline void setLongitude(double longitude)
         {
             Longitude = longitude;
+        }
+        inline void setElevation(double elevation)
+        {
+            Elevation = elevation;
         }
         inline double getMinFrequency()
         {
@@ -467,6 +472,7 @@ class Line : public QWidget
         double timespan { 1.0 };
         double Latitude { 0.0 };
         double Longitude { 0.0 };
+        double Elevation { 0.0 };
         double stack_index { 1.0 };
         timespec starttime { 0 };
         bool applysigmaclipping { false };

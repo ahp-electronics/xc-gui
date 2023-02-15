@@ -509,6 +509,7 @@ err_exit:
         {
             Lines[x]->setLatitude(Latitude);
             Lines[x]->setLongitude(Longitude);
+            Lines[x]->setElevation(Elevation);
         }
         for(int i = 0; i < vlbi_total_contexts; i++)
             vlbi_set_location(getVLBIContext(i), Latitude, Longitude, Elevation);

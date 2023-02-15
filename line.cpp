@@ -27,6 +27,7 @@
 #include "line.h"
 #include "mainwindow.h"
 #include "ui_line.h"
+#include <sys/time.h>
 #include <QMapNode>
 #include <QFile>
 #include <QStandardItemModel>
@@ -611,34 +612,26 @@ bool Line::isMountBusy()
     return false;
 }
 
+double Line::getLocalTime()
+{
+    struct tm *t;
+    time_t n = time(nullptr);
+    t = localtime(&n);
+    struct timezone tz;
+    tz.tz_dsttime = t->tm_isdst;
+    tz.tz_minuteswest = t->tm_gmtoff;
+    struct timeval now;
+    gettimeofday(&now, &tz);
+    return (double) now.tv_sec + now.tv_usec / 1000000.0;
+}
+
 void Line::gotoRaDec(double ra, double dec) {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getMountIndex())) {
-            timespec ts = vlbi_time_string_to_timespec(QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).toStdString().c_str());
-            double j2000 = vlbi_time_timespec_to_J2000time(ts);
-            double lst = vlbi_time_J2000time_to_lst(j2000, getLongitude());
-            double ha = vlbi_astro_get_local_hour_angle(lst, ra);
-            ha *= M_PI / 12.0;
-            ha += M_PI / 2.0;
-            dec *= M_PI / 180.0;
-            dec -= M_PI / 2.0;
-            if(!isForkMount()) {
-                if(ha < M_PI * 3.0 / 2.0 && ha > M_PI / 2.0)
-                    dec = -dec;
-                if((ha > M_PI / 2.0 && ha < M_PI) || (ha > M_PI * 3.0 / 2.0 && ha < M_PI * 2.0)) {
-                    flipMount(true);
-                    ha = M_PI - ha;
-                    dec = -dec;
-                } else {
-                    flipMount(false);
-                }
-                if(ha > M_PI) {
-                    ha -= M_PI;
-                }
-            }
             ahp_gt_select_device(getMountIndex());
-            ahp_gt_goto_absolute(0, ha, 800.0);
-            ahp_gt_goto_absolute(1, dec, 800.0);
+            ahp_gt_set_location(Latitude, Longitude, Elevation);
+            ahp_gt_set_time(getLocalTime());
+            ahp_gt_goto_radec(ra, dec);
         }
     }
 }
