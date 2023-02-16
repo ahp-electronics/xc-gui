@@ -612,25 +612,11 @@ bool Line::isMountBusy()
     return false;
 }
 
-double Line::getLocalTime()
-{
-    struct tm *t;
-    time_t n = time(nullptr);
-    t = localtime(&n);
-    struct timezone tz;
-    tz.tz_dsttime = t->tm_isdst;
-    tz.tz_minuteswest = t->tm_gmtoff;
-    struct timeval now;
-    gettimeofday(&now, &tz);
-    return (double) now.tv_sec + now.tv_usec / 1000000.0;
-}
-
 void Line::gotoRaDec(double ra, double dec) {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getMountIndex())) {
             ahp_gt_select_device(getMountIndex());
             ahp_gt_set_location(Latitude, Longitude, Elevation);
-            ahp_gt_set_time(getLocalTime());
             ahp_gt_goto_radec(ra, dec);
         }
     }

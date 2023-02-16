@@ -242,7 +242,6 @@ class Line : public QWidget
         void updateDec();
         bool isRailBusy();
         bool isMountBusy();
-        double getLocalTime();
         double *percent;
         double localpercent;
         void setPercent();
