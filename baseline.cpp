@@ -532,6 +532,8 @@ void Baseline::stackCorrelations()
         int lag = ofs-1;
         int _lag = lag;
         bool tail = false;
+        dsp_buffer_set(magnitude_buf, npackets, 0);
+        dsp_buffer_set(phase_buf, npackets, 0);
         for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
@@ -540,16 +542,18 @@ void Baseline::stackCorrelations()
             if (tail)
                 lag --;
             lag += ofs;
-            if(lag < npackets && lag >= 0)
-            {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude/spectrum[z].correlations[0].counts;
-                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
-                for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
+            if(spectrum[z].correlations[0].magnitude > 2) {
+                if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[y] = magnitude_buf[lag];
-                    phase_buf[y] = phase_buf[lag];
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude/pow(spectrum[z].correlations[0].counts, 2);
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                    for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
+                    {
+                        magnitude_buf[y] = magnitude_buf[lag];
+                        phase_buf[y] = phase_buf[lag];
+                    }
+                    _lag = lag;
                 }
-                _lag = lag;
             }
         }
         elemental->setBuffer(magnitude_buf, npackets);

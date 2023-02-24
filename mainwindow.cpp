@@ -681,7 +681,7 @@ end_unlock:
         MainWindow* main = (MainWindow*)thread->getParent();
         int fd = -1;
         if(currentVoltage != ui->Voltage->value()) {
-            currentVoltage = currentVoltage < ui->Voltage->value() ? currentVoltage + 3 : currentVoltage -5;
+            currentVoltage = currentVoltage < ui->Voltage->value() ? currentVoltage + 11 : currentVoltage -17;
             setVoltage(currentVoltage);
         }
         fd = main->getMotorFD();

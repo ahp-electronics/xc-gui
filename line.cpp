@@ -1121,19 +1121,23 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         npackets--;
         int lag = 1;
         int _lag = lag;
+        dsp_buffer_set(magnitude_buf, npackets, 0);
+        dsp_buffer_set(phase_buf, npackets, 0);
         for (int x = 0, z = 1; x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
-            if(lag < npackets && lag >= 0)
-            {
-                magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude/spectrum[z].correlations[0].counts;
-                phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
-                for(int y = lag; y < npackets; y++)
+            if(spectrum[z].correlations[0].magnitude > 2) {
+                if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[y] = magnitude_buf[lag];
-                    phase_buf[y] = phase_buf[lag];
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude/pow(spectrum[z].correlations[0].counts, 2);
+                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                    for(int y = lag; y < npackets; y++)
+                    {
+                        magnitude_buf[y] = magnitude_buf[lag];
+                        phase_buf[y] = phase_buf[lag];
+                    }
+                    _lag = lag;
                 }
-                _lag = lag;
             }
         }
         elemental->setBuffer(magnitude_buf, npackets);
