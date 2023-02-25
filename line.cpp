@@ -79,7 +79,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     QStandardItemModel *model = new QStandardItemModel();
     model->setHorizontalHeaderLabels({"Catalog"});
     QFile index(
-#ifdef WINODWS
+#ifdef _WIN32
     QCoreApplication::applicationDirPath()+"\\cat\\index.txt"
 #else
     VLBI_CATALOG_PATH
@@ -1123,7 +1123,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         int _lag = lag;
         dsp_buffer_set(magnitude_buf, npackets, 0);
         dsp_buffer_set(phase_buf, npackets, 0);
-        for (int x = 0, z = 1; x < npackets; x++, z++)
+        for (int x = 0, z = 2; x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             if(spectrum[z].correlations[0].magnitude > 2) {

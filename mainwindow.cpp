@@ -526,6 +526,8 @@ err_exit:
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
     {
+        int y = 0;
+        int off = 0;
         ahp_xc_packet* packet = getPacket();
         QList<unsigned int> indexes;
         QList<off_t> starts;
@@ -558,8 +560,9 @@ err_exit:
                 starts.clear();
                 sizes.clear();
                 steps.clear();
-                for(Line *line : Lines)
+                for(int x = 0; x < Lines.count(); x++)
                 {
+                    Line* line = Lines[x];
                     if(line->scanActive())
                     {
                         indexes.append(line->getLineIndex());
@@ -574,15 +577,14 @@ err_exit:
                 npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
-                for(int x = 0; x < indexes.count(); x++)
+                for(int x = 0; x < Lines.count(); x++)
                 {
-                    Line * line = Lines[indexes[x]];
-                    if(line->isActive())
+                    Line* line = Lines[x];
+                    if(line->scanActive())
                     {
-                        int off = 0;
-                        if(x > 0)
-                            off += sizes[x-1]/steps[x-1];
                         line->stackCorrelations(&spectrum[off]);
+                        off += sizes[y]/steps[y];
+                        y++;
                     }
                 }
                 if(indexes.count() > 0)
