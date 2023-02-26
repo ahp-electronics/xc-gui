@@ -41,7 +41,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     QWidget(pw),
     ui(new Ui::Line)
 {
-    setAccessibleName("Line");
+    setAccessibleName(ln);
     ui->setupUi(this);
     settings = s;
     localpercent = 0;
@@ -1013,12 +1013,10 @@ void Line::motor_unlock()
 
 void Line::setActive(bool a)
 {
-    activeStateChanging(this);
-    if(a) {
-        if(getMode() == Counter || getMode() == Spectrograph) {
+    if(getMode() == Counter || getMode() == Spectrograph) {
+        if(a)
             running = (showCounts() || showAutocorrelations());
-        }
-    }
+    } else running = a;
     emit activeStateChanged(this);
 }
 

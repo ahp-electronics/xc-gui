@@ -93,8 +93,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
             [ = ](Line * sender)
     {
         getCounts()->clear();
-        bool newstate = getLine1()->isActive() && getLine2()->isActive() && getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
-        *stop = !newstate;
+        bool newstate = getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
+        *stop = !(getLine1()->isActive() && getLine2()->isActive());
         if(oldstate != newstate)
         {
             emit activeStateChanging(this);
@@ -120,8 +120,8 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
             [ = ](Line * sender)
     {
         getCounts()->clear();
-        bool newstate = getLine1()->isActive() && getLine2()->isActive();
-        *stop = !newstate;
+        bool newstate = getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
+        *stop = !(getLine1()->isActive() && getLine2()->isActive());
         if(oldstate != newstate)
         {
             if(newstate)
@@ -413,7 +413,7 @@ bool Baseline::isActive(bool atleast1)
 {
     if(atleast1)
         return getLine1()->isActive() || getLine2()->isActive();
-    return getLine1()->isActive() && getLine2()->isActive();
+    return running;
 }
 
 bool Baseline::scanActive(bool atleast1)
