@@ -77,7 +77,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         getMagnitudes()->clear();
         getPhases()->clear();
         getCounts()->clear();
-        stack = 0.0;
+        stack_index = 0.0;
     });
     connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
             [ = ]()
@@ -87,7 +87,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         getMagnitudes()->clear();
         getPhases()->clear();
         getCounts()->clear();
-        stack = 0.0;
+        stack_index = 0.0;
     });
     connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
             [ = ](Line * sender)
@@ -196,10 +196,6 @@ void Baseline::setMode(Mode m)
     getCountStack()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
-    getCountElemental()->setStreamSize(1);
-    getMagnitudeElemental()->setStreamSize(1);
-    getPhaseElemental()->setStreamSize(1);
-    getElemental()->setStreamSize(1);
     if(mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
     {
         connect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
@@ -328,25 +324,26 @@ void Baseline::addCount()
             {
                 if(getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations())
                 {
-                    Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
-                    Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
-                    Elements->getStream()->buf[0] = fmin(getLine1()->getMinFrequency(), getLine1()->getMinFrequency());
-                    Elements->getStream()->buf[1] = fmax(getLine2()->getMaxFrequency(), getLine2()->getMaxFrequency());
-                    dsp_buffer_normalize(Elements->getStream()->buf, Elements->getStreamSize(), Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                    stack ++;
-                    int size = fmin(Elements->getStreamSize(), fmax(getLine1()->getResolution(), getLine2()->getResolution()));
-                    dsp_t *buf = Elements->getStream()->buf;
-                    dsp_stream_set_buffer(Elements->getStream(), &buf[2], Elements->getStreamSize()-2);
-                    double *histo = dsp_stats_histogram(Elements->getStream(), size);
-                    dsp_stream_set_buffer(Elements->getStream(), buf, Elements->getStreamSize()+2);
-                    Counts->clear();
-                    for (int x = 1; x < size; x++)
-                    {
-                        if(histo[x] != 0)
-                            stackValue(Counts, Stack, Elements->getStream()->buf[0] + x * (Elements->getStream()->buf[1]-Elements->getStream()->buf[0]) / size, histo[x]);
+                    if(Elements->lock()) {
+                        Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
+                        Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
+                        Elements->getStream()->buf[0] = fmin(getLine1()->getMinFrequency(), getLine1()->getMinFrequency());
+                        Elements->getStream()->buf[1] = fmax(getLine2()->getMaxFrequency(), getLine2()->getMaxFrequency());
+                        Elements->unlock();
+                        Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
+                        stack_index ++;
+                        int size = fmin(Elements->getStreamSize(), fmax(getLine1()->getResolution(), getLine2()->getResolution()));
+                        double *histo = Elements->histogram(size);
+                        double mn = Elements->min(2, Elements->getStream()->len-2);
+                        double mx = Elements->max(2, Elements->getStream()->len-2);
+                        Counts->clear();
+                        for (int x = 1; x < size; x++)
+                        {
+                            stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
+                        }
+                        smoothBuffer(Counts, 0, Counts->count());
+                        free(histo);
                     }
-                    free(histo);
-                    smoothBuffer(Counts, 0, Counts->count());
                 }
             }
             else
@@ -545,7 +542,7 @@ void Baseline::stackCorrelations()
             if(spectrum[z].correlations[0].magnitude > 2) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude/pow(spectrum[z].correlations[0].counts, 2);
+                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / ahp_xc_get_packettime() / pow(spectrum[z].correlations[0].counts, 2);
                     phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
                     for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                     {
@@ -585,11 +582,7 @@ void Baseline::plot(bool success, double o, double s)
     getPhase()->clear();
     for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
     {
-        if(dft()) {
-            stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
-        } else {
-            stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
-        }
+        stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
     smoothBuffer(getPhase(), 0, getPhase()->count());

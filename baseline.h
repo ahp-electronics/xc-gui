@@ -218,7 +218,6 @@ class Baseline : public QWidget
         void smoothBuffer(QLineSeries* buf, int offset, int len);
         void smoothBuffer(double* buf, int len);
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
-        double stack {0.0};
 
         void lock()
         {
@@ -292,6 +291,7 @@ class Baseline : public QWidget
         QLineSeries* magnitudes;
         QLineSeries* magnitude;
         QLineSeries* phase;
+        double stack_index { 1.0 };
         Line* line1;
         Line* line2;
 signals:

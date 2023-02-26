@@ -434,10 +434,12 @@ MainWindow::MainWindow(QWidget *parent)
                                 case CrosscorrelatorII:
                                 case CrosscorrelatorIQ:
                                     getGraph()->addSeries(Baselines[idx]->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                    getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
                                     break;
                                 case Counter:
                                 case Spectrograph:
                                     getGraph()->addSeries(Baselines[idx]->getMagnitudes(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                    getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
                                     break;
                                 case HolographII:
                                 case HolographIQ:
@@ -633,7 +635,7 @@ end_unlock:
             fseek(f_stdout, 0, SEEK_SET);
             ftruncate(fileno(f_stdout), 0);
         }
-        ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 150 / 127) + " V~");
+        ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
         ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
     });
@@ -682,10 +684,7 @@ end_unlock:
     {
         MainWindow* main = (MainWindow*)thread->getParent();
         int fd = -1;
-        if(currentVoltage != ui->Voltage->value()) {
-            currentVoltage = currentVoltage < ui->Voltage->value() ? currentVoltage + 11 : currentVoltage -17;
-            setVoltage(currentVoltage);
-        }
+        setVoltage(ui->Voltage->value());
         fd = main->getMotorFD();
         if(fd >= 0)
         {

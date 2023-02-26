@@ -318,6 +318,14 @@ class Line : public QWidget
         {
             return maxfreq;
         }
+        inline void setMinFrequency(double value)
+        {
+            minfreq = value;
+        }
+        inline void setMaxFrequency(double value)
+        {
+            maxfreq = value;
+        }
         void TakeDark(Line* sender);
         bool DarkTaken();
         void GetDark();
@@ -397,6 +405,7 @@ class Line : public QWidget
             return Resolution;
         }
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
+
         inline double getPacketTime() { return packetTime; }
         void addCount();
         inline void addCount(double time, bool threaded = true) {
@@ -451,6 +460,7 @@ class Line : public QWidget
         QLineSeries* magnitudes { nullptr };
         QLineSeries* phases { nullptr };
         QLineSeries* counts { nullptr };
+        double stack_index { 1.0 };
         Graph* graph;
         unsigned int line { 0 };
         int flags { 0x8 };
@@ -472,7 +482,6 @@ class Line : public QWidget
         double Latitude { 0.0 };
         double Longitude { 0.0 };
         double Elevation { 0.0 };
-        double stack_index { 1.0 };
         timespec starttime { 0 };
         bool applysigmaclipping { false };
         bool applymedian { false };

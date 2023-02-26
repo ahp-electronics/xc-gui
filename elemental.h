@@ -11,6 +11,7 @@ class Elemental : public QObject
 {
         Q_OBJECT
     private:
+        QMutex mutex;
         int matches;
         Thread *scanThread;
         dsp_stream_p stream;
@@ -26,6 +27,8 @@ class Elemental : public QObject
         explicit Elemental(QObject *parent = nullptr);
         ~Elemental();
 
+        inline bool lock() { return mutex.tryLock(10); }
+        inline void unlock() { mutex.unlock(); }
         void run();
         void finish(bool done = false, double ofs = 0.0, double sc = 1.0);
         dsp_stream_p reference;
@@ -84,10 +87,15 @@ class Elemental : public QObject
         }
         inline void setStreamSize(int size)
         {
+            while(!lock()) QThread::msleep(100);
             dsp_stream_set_dim(stream, 0, size);
             dsp_stream_alloc_buffer(stream, stream->len);
+            unlock();
         }
         void clear();
+        double min(off_t offset, size_t len);
+        double max(off_t offset, size_t len);
+        void normalize(double min, double max);
         double *histogram(int size, dsp_stream_p stream = nullptr);
         inline dsp_stream_p getStream()
         {

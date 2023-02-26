@@ -37,6 +37,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
     connect(scanThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
     {
         Elemental* parent = (Elemental*)thread->getParent();
+        while(!lock()) { QThread::msleep(100); }
         dsp_stream_p stream = parent->getStream();
         success = false;
         offset = 0.0;
@@ -55,6 +56,7 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
                 matches++;
             }
         }
+        unlock();
         finish(success, offset, scale);
         thread->stop();
         thread->unlock();
@@ -127,8 +129,10 @@ dsp_align_info *Elemental::stats(QString name)
 
 void Elemental::run()
 {
+    while(!lock()) QThread::msleep(100);
     vlbi_astro_scan_spectrum(stream, getSampleSize());
     pwarn("Found %d lines\n", stream->stars_count);
+    unlock();
     if(!scanThread->isRunning())
         scanThread->start();
 }
@@ -140,68 +144,108 @@ void Elemental::finish(bool done, double ofs, double sc)
 
 void Elemental::setBuffer(double * buf, int len)
 {
+    while(!lock()) QThread::msleep(100);
     success = false;
     offset = 0.0;
     scale = 1.0;
     dsp_stream_set_dim(stream, 0, len);
     dsp_stream_alloc_buffer(stream, stream->len);
     dsp_buffer_copy(buf, stream->buf, stream->len);
+    unlock();
 }
 
 void Elemental::setMagnitude(double * buf, int len)
 {
+    while(!lock()) QThread::msleep(100);
     dsp_stream_set_dim(stream, 0, len);
     dsp_stream_alloc_buffer(stream, stream->len);
     dsp_buffer_copy(buf, stream->magnitude->buf, stream->len);
+    unlock();
 }
 
 void Elemental::setPhase(double * buf, int len)
 {
+    while(!lock()) QThread::msleep(100);
     dsp_stream_set_dim(stream, 0, len);
     dsp_stream_alloc_buffer(stream, stream->len);
     dsp_buffer_copy(buf, stream->phase->buf, stream->len);
+    unlock();
 }
 
 void Elemental::setReal(double * buf, int len)
 {
+    while(!lock()) QThread::msleep(100);
     dsp_stream_set_dim(stream, 0, len);
     dsp_stream_alloc_buffer(stream, stream->len);
     for(int i = 0; i < stream->len; i++)
         stream->dft.complex[i].real = buf[i];
     dsp_fourier_2dsp(stream);
+    unlock();
 }
 
 void Elemental::setImaginary(double * buf, int len)
 {
+    while(!lock()) QThread::msleep(100);
     dsp_stream_set_dim(stream, 0, len);
     dsp_stream_alloc_buffer(stream, stream->len);
     for(int i = 0; i < stream->len; i++)
         stream->dft.complex[i].imaginary = buf[i];
     dsp_fourier_2dsp(stream);
+    unlock();
 }
 
 void Elemental::idft()
 {
+    while(!lock()) QThread::msleep(100);
     dsp_fourier_2complex_t(stream);
     dsp_fourier_idft(stream);
     dsp_buffer_shift(stream);
+    unlock();
 }
 
 void Elemental::dft(int depth)
 {
+    while(!lock()) QThread::msleep(100);
     dsp_fourier_dft(stream, depth);
     dsp_fourier_2dsp(stream);
     dsp_buffer_shift(stream);
+    unlock();
 }
 
 void Elemental::clear()
 {
+    while(!lock()) QThread::msleep(100);
     dsp_stream_set_dim(stream, 0, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
+    unlock();
+}
+
+double Elemental::min(off_t offset, size_t len)
+{
+    while(!lock()) QThread::msleep(100);
+    double min = dsp_stats_min(((dsp_t*)&getStream()->buf[offset]), len);
+    unlock();
+    return min;
+}
+
+double Elemental::max(off_t offset, size_t len)
+{
+    while(!lock()) QThread::msleep(100);
+    double max = dsp_stats_max(((dsp_t*)&getStream()->buf[offset]), len);
+    unlock();
+    return max;
+}
+
+void Elemental::normalize(double min, double max)
+{
+    while(!lock()) QThread::msleep(100);
+    dsp_buffer_normalize(getStream()->buf, getStreamSize(), min, max);
+    unlock();
 }
 
 double *Elemental::histogram(int size, dsp_stream_p str)
 {
+    while(!lock()) QThread::msleep(100);
     if(str == nullptr)
         str = getStream();
     dsp_stream_p tmp = dsp_stream_copy(str);
@@ -212,5 +256,6 @@ double *Elemental::histogram(int size, dsp_stream_p str)
     dsp_stream_set_buffer(tmp, buf, tmp->len+2);
     dsp_stream_free_buffer(tmp);
     dsp_stream_free(tmp);
+    unlock();
     return histo;
 }
