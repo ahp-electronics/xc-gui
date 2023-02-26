@@ -324,26 +324,26 @@ void Baseline::addCount()
             {
                 if(getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations())
                 {
+                    Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
                     if(Elements->lock()) {
-                        Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
                         Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
                         Elements->getStream()->buf[0] = fmin(getLine1()->getMinFrequency(), getLine1()->getMinFrequency());
                         Elements->getStream()->buf[1] = fmax(getLine2()->getMaxFrequency(), getLine2()->getMaxFrequency());
                         Elements->unlock();
-                        Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                        stack_index ++;
-                        int size = fmin(Elements->getStreamSize(), fmax(getLine1()->getResolution(), getLine2()->getResolution()));
-                        double *histo = Elements->histogram(size);
-                        double mn = Elements->min(2, Elements->getStream()->len-2);
-                        double mx = Elements->max(2, Elements->getStream()->len-2);
-                        Counts->clear();
-                        for (int x = 1; x < size; x++)
-                        {
-                            stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
-                        }
-                        smoothBuffer(Counts, 0, Counts->count());
-                        free(histo);
                     }
+                    Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
+                    stack_index ++;
+                    int size = fmin(Elements->getStreamSize(), fmax(getLine1()->getResolution(), getLine2()->getResolution()));
+                    double *histo = Elements->histogram(size);
+                    double mn = Elements->min(2, Elements->getStream()->len-2);
+                    double mx = Elements->max(2, Elements->getStream()->len-2);
+                    Counts->clear();
+                    for (int x = 1; x < size; x++)
+                    {
+                        stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
+                    }
+                    smoothBuffer(Counts, 0, Counts->count());
+                    free(histo);
                 }
             }
             else

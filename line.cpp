@@ -572,20 +572,20 @@ void Line::addCount()
                     Elements->getStream()->buf[0] = getMinFrequency();
                     Elements->getStream()->buf[1] = getMaxFrequency();
                     Elements->unlock();
-                    Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                    stack_index ++;
-                    int size = fmin(Elements->getStreamSize(), getResolution());
-                    double *histo = Elements->histogram(size);
-                    double mn = Elements->min(2, Elements->getStream()->len-2);
-                    double mx = Elements->max(2, Elements->getStream()->len-2);
-                    Counts->clear();
-                    for (int x = 1; x < size; x++)
-                    {
-                        stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
-                    }
-                    smoothBuffer(Counts, 0, Counts->count());
-                    free(histo);
                 }
+                Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
+                stack_index ++;
+                int size = fmin(Elements->getStreamSize(), getResolution());
+                double *histo = Elements->histogram(size);
+                double mn = Elements->min(2, Elements->getStream()->len-2);
+                double mx = Elements->max(2, Elements->getStream()->len-2);
+                Counts->clear();
+                for (int x = 1; x < size; x++)
+                {
+                    stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
+                }
+                smoothBuffer(Counts, 0, Counts->count());
+                free(histo);
             }
         }
     }
