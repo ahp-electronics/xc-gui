@@ -126,19 +126,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     ui->StartChannel->setRange(min_frequency, max_frequency - 2);
     ui->AutoChannel->setRange(min_frequency, max_frequency);
     ui->CrossChannel->setRange(min_frequency, max_frequency);
-    readThread = new Thread(this, 10, 10, name+" read thread");
     connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::clicked), [ = ] (const QModelIndex &index)
     {
         QString catalog = index.parent().data().toString();
         if(!catalog.isEmpty())
             elemental->loadSpectrum(rows[catalog+"/"+index.data().toString()]);
-    });
-    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread* thread)
-    {
-        Line * line = (Line *)thread->getParent();
-        line->addCount();
-        thread->stop();
-        thread->unlock();
     });
     connect(ui->flag0, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -195,6 +187,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         ui->MinScore->setEnabled(ui->ElementalAlign->isChecked());
         ui->SampleSize->setEnabled(ui->ElementalAlign->isChecked());
     });
+    connect(ui->Repeatitions, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        Repeatitions = value;
+        saveSetting("Repeatitions", Repeatitions);
+    });
     connect(ui->Resolution, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         Resolution = value;
@@ -203,13 +200,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->AutoChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         AutoChannel = value;
-        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(AutoChannel, 1)), 1, 1);
+        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(AutoChannel, 1)), 1, 1, 1);
         saveSetting("AutoChannel", AutoChannel);
     });
     connect(ui->CrossChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         CrossChannel = value;
-        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(CrossChannel, 1)), 1, 1);
+        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(CrossChannel, 1)), 1, 1, 1);
         saveSetting("CrossChannel", CrossChannel);
     });
     connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -349,7 +346,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         ui->Resolution->setRange(1, 1048576);
     else
         ui->Resolution->setRange(1, ahp_xc_get_delaysize());
-    ui->Resolution->setValue(readInt("Resolution", ui->Resolution->maximum()));
+    ui->Repeatitions->setValue(readInt("Repeatitions", 1));
+    ui->Resolution->setValue(readInt("Resolution", 100));
     ui->AutoChannel->setValue(readInt("AutoChannel", ui->AutoChannel->maximum()));
     ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
     ui->EndChannel->setValue(readInt("EndChannel", ahp_xc_get_frequency()));
@@ -377,6 +375,7 @@ void Line::UpdateBufferSizes()
     end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
     len = end-start;
     step = fmax(1, round((double)len / getResolution()));
+    repeat = fmax(1, round((double)len / getRepeatitions()));
     setMagnitudeSize(getNumChannels());
     setPhaseSize(getNumChannels());
     emit updateBufferSizes();
@@ -448,9 +447,10 @@ void Line::updateDec()
     }
 }
 
-void Line::addCount()
+void Line::addCount(double starttime, ahp_xc_packet *packet)
 {
-    ahp_xc_packet *packet = getPacket();
+    if(packet == nullptr)
+        packet = getPacket();
     QLineSeries *counts[3] =
     {
         getCounts(),
@@ -497,7 +497,7 @@ void Line::addCount()
             {
                 for(int d = Counts->count() - 1; d >= 0; d--)
                 {
-                    if(Counts->at(d).x() < getPacketTime() - getTimeRange())
+                    if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange())
                         Counts->remove(d);
                 }
             }
@@ -505,12 +505,12 @@ void Line::addCount()
             {
                 case 0:
                     if(showCounts()) {
-                        Counts->append(getPacketTime(), (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
+                        Counts->append(packet->timestamp + starttime, (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
                     }
                     break;
                 case 1:
                     if(showAutocorrelations()) {
-                        Counts->append(getPacketTime(), (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
+                        Counts->append(packet->timestamp + starttime, (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime());
                     }
                     break;
                 default:
@@ -1129,11 +1129,13 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         for (int x = 0, z = 2; x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
-            if(spectrum[z].correlations[0].magnitude > 2) {
+            ahp_xc_correlation correlation;
+            memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
+            if(correlation.magnitude > 2) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / ahp_xc_get_packettime() / pow(spectrum[z].correlations[0].counts, 2);
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                    magnitude_buf[lag] = (double)correlation.magnitude / pow(correlation.counts, 2);
+                    phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {
                         magnitude_buf[y] = magnitude_buf[lag];
@@ -1179,7 +1181,6 @@ Line::~Line()
 {
     setActive(false);
     ahp_xc_set_leds(getLineIndex(), 0);
-    readThread->~Thread();
     elemental->~Elemental();
     delete ui;
 }

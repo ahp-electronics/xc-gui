@@ -117,7 +117,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 10, 10, "uiThread");
-    readThread = new Thread(this, 100, 1, "readThread");
+    readThread = new Thread(this, 1, 1, "readThread");
     vlbiThread = new Thread(this, 1000, 1000, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
@@ -388,6 +388,10 @@ MainWindow::MainWindow(QWidget *parent)
                                 [ = ](Line* sender) {
                             (void)sender;
                         });
+                        connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+                        {
+                            Lines[l]->addCount(J2000_starttime, packet);
+                        });
                         connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                             switch(m) {
                             case Autocorrelator:
@@ -427,6 +431,10 @@ MainWindow::MainWindow(QWidget *parent)
                             Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
                             Baselines[idx]->setGraph(getGraph());
                             Baselines[idx]->setStopPtr(&threadsStopped);
+                            connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+                            {
+                                Baselines[idx]->addCount(J2000_starttime, packet);
+                            });
                             connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                                 switch(m) {
                                 case Autocorrelator:
@@ -530,11 +538,12 @@ err_exit:
     {
         int y = 0;
         int off = 0;
-        ahp_xc_packet* packet = getPacket();
+        ahp_xc_packet *packet;
         QList<unsigned int> indexes;
         QList<off_t> starts;
         QList<size_t> sizes;
         QList<size_t> steps;
+        QList<size_t> repeats;
         ahp_xc_sample *spectrum = nullptr;
         int npackets;
         if(threadsStopped)
@@ -562,6 +571,7 @@ err_exit:
                 starts.clear();
                 sizes.clear();
                 steps.clear();
+                repeats.clear();
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line* line = Lines[x];
@@ -571,12 +581,13 @@ err_exit:
                         starts.append(line->getStartChannel());
                         sizes.append(line->getChannelBandwidth());
                         steps.append(line->getScanStep());
+                        repeats.append(line->getRepeatitions());
                         line->setPercentPtr(&percent);
                     } else {
                         line->resetPercentPtr();
                     }
                 }
-                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &threadsStopped, &percent);
+                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), repeats.toVector().data(), &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)
@@ -594,23 +605,10 @@ err_exit:
                 free(spectrum);
                 break;
             default:
-                if(!ahp_xc_get_packet(packet))
-                {
-                    double packettime = packet->timestamp + J2000_starttime;
-                    double diff = packettime - lastpackettime;
-                    if (diff > getTimeRange() || diff < 0) {
-                        resetTimestamp();
-                        break;
-                    }
-                    lastpackettime = packettime;
-                    for(Line * line : Lines)
-                    {
-                        line->addCount(packettime);
-                    }
-                    for(Baseline * line : Baselines)
-                    {
-                        line->addCount(packettime);
-                    }
+                if(!ahp_xc_get_packet(getPacket())) {
+                    packet = ahp_xc_copy_packet(getPacket());
+                    emit newPacket(packet);
+                    ahp_xc_free_packet(packet);
                 }
                 break;
         }
@@ -798,10 +796,9 @@ void MainWindow::resetTimestamp()
 
 void MainWindow::setVoltage(int level)
 {
-    level = Min(255, Max(0, level));
-    unsigned char v = level;
-    if(ahp_xc_is_connected()) {
-        ahp_xc_set_voltage(0, v);
+    if(ahp_xc_is_detected() && currentVoltage != level) {
+        currentVoltage = Min(255, Max(0, level));
+        ahp_xc_set_voltage(0, currentVoltage);
     }
 }
 

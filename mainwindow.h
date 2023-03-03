@@ -53,6 +53,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QThreadPool>
+#include <QQueue>
 #include <QDir>
 #include "graph.h"
 #include "line.h"
@@ -83,6 +84,10 @@ class MainWindow : public QMainWindow
         void resizeEvent(QResizeEvent* event);
         QList<Line*> Lines;
         QList<Baseline*> Baselines;
+        inline ahp_xc_packet* getPacket()
+        {
+            return (packet == nullptr) ? createPacket() : packet;
+        }
         inline double getFrequency()
         {
             return ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider();
@@ -114,10 +119,6 @@ class MainWindow : public QMainWindow
                 line->setPacket (packet);
             for(Baseline* line : Baselines)
                 line->setPacket (packet);
-            return packet;
-        }
-        inline ahp_xc_packet * getPacket()
-        {
             return packet;
         }
         inline void freePacket()
@@ -180,6 +181,7 @@ class MainWindow : public QMainWindow
         void resetTimestamp();
         void VlbiThread(Thread * thread);
         QDateTime start;
+        QQueue <ahp_xc_packet*> packetFifo;
         Thread *readThread;
         Thread *uiThread;
         Thread *vlbiThread;
@@ -241,6 +243,7 @@ class MainWindow : public QMainWindow
         QString dfu_filename;
 
 signals:
+        void newPacket(ahp_xc_packet*);
         void repaint();
         void plotModels();
         void scanStarted();

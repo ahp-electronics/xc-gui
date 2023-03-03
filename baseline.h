@@ -228,14 +228,7 @@ class Baseline : public QWidget
             mutex.unlock();
         }
         inline double getPacketTime() { return packetTime; }
-        void addCount();
-        inline void addCount(double time, bool threaded = true) {
-            packetTime = time;
-            if(threaded)
-                readThread->start();
-            else
-                addCount();
-        }
+        void addCount(double starttime, ahp_xc_packet *packet = nullptr);
         inline double getTimeRange() { return timeRange; }
         inline void setTimeRange(double range) { timeRange = range; }
         inline ahp_xc_packet* getPacket() { return packet; }
@@ -253,7 +246,6 @@ class Baseline : public QWidget
         ahp_xc_packet* packet;
         double timeRange { 10.0 };
         double packetTime { 0.0 };
-        Thread *readThread { nullptr };
         QMutex mutex;
         bool running { false };
         void updateBufferSizes();

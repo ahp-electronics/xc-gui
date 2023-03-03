@@ -48,20 +48,12 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     elementalCounts = new Elemental(this);
     elementalPhase = new Elemental(this);
     elementalMagnitude = new Elemental(this);
-    readThread = new Thread(this, 10, 10, "baseline " +name+" read thread");
     resetPercentPtr();
     resetStopPtr();
     stream = dsp_stream_new();
     dsp_stream_add_dim(stream, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
     stream->samplerate = 1.0/ahp_xc_get_packettime();
-    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread* thread)
-    {
-        Baseline * line = (Baseline *)thread->getParent();
-        line->addCount();
-        thread->stop();
-        thread->unlock();
-    });
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
     line1 = n1;
     line2 = n2;
@@ -179,8 +171,8 @@ QVariant Baseline::readSetting(QString setting, QVariant defaultValue)
 void Baseline::setDelay(double s)
 {
     if(ahp_xc_has_crosscorrelator()) {
-        ahp_xc_set_channel_cross((uint32_t)getLine1()->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0);
-        ahp_xc_set_channel_cross((uint32_t)getLine2()->getLineIndex(), (off_t)fmax(0, -s * ahp_xc_get_frequency()), 1, 0);
+        ahp_xc_set_channel_cross((uint32_t)getLine1()->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0, 1);
+        ahp_xc_set_channel_cross((uint32_t)getLine2()->getLineIndex(), (off_t)fmax(0, -s * ahp_xc_get_frequency()), 1, 0, 1);
     }
 }
 
@@ -213,9 +205,10 @@ void Baseline::setMode(Mode m)
     }
 }
 
-void Baseline::addCount()
+void Baseline::addCount(double starttime, ahp_xc_packet *packet)
 {
-    ahp_xc_packet *packet = getPacket();
+    if(packet == nullptr)
+        packet = getPacket();
     double mag = 0.0;
     QLineSeries *Counts = getMagnitudes();
     bool active = false;
@@ -232,7 +225,7 @@ void Baseline::addCount()
             double offset1 = 0, offset2 = 0;
             vlbi_context ctx = getVLBIContext();
             if(vlbi_has_node(getVLBIContext(), getLine1()->getName().toStdString().c_str()) && vlbi_has_node(ctx, getLine2()->getName().toStdString().c_str())) {
-                vlbi_get_offsets(getVLBIContext(), getPacketTime(), getLine1()->getName().toStdString().c_str(), getLine2()->getName().toStdString().c_str(),
+                vlbi_get_offsets(getVLBIContext(), packet->timestamp + starttime, getLine1()->getName().toStdString().c_str(), getLine2()->getName().toStdString().c_str(),
                                  getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance(), &offset1, &offset2);
                 offset1 /= ahp_xc_get_sampletime();
                 offset2 /= ahp_xc_get_sampletime();
@@ -240,14 +233,14 @@ void Baseline::addCount()
                 offset2 ++;
                 if(ahp_xc_intensity_crosscorrelator_enabled())
                 {
-                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
-                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
+                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0, 1);
+                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0, 1);
                 }
                 stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
                 stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
             } else {
-                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
-                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
+                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0, 1);
+                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0, 1);
             }
             unlock();
         }
@@ -261,7 +254,7 @@ void Baseline::addCount()
                 {
                     for(int d = Counts->count() - 1; d >= 0; d--)
                     {
-                        if(Counts->at(d).x() < getPacketTime() - getTimeRange())
+                        if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange())
                             Counts->remove(d);
                     }
                 }
@@ -270,7 +263,7 @@ void Baseline::addCount()
                 else
                     mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
                 if(mag > 0)
-                    Counts->append(getPacketTime(), mag);
+                    Counts->append(packet->timestamp + starttime, mag);
                 active = true;
                 smoothBuffer(Counts, Counts->count()-1, 1);
             }
@@ -522,7 +515,7 @@ void Baseline::stackCorrelations()
     int npackets = 0;
     step = fmax(getLine1()->getScanStep(), getLine2()->getScanStep());
     npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
-               head_size, start2, tail_size, step, stop, percent);
+               head_size, start2, tail_size, step, 1, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
         int ofs = head_size/step;
@@ -590,6 +583,5 @@ void Baseline::plot(bool success, double o, double s)
 
 Baseline::~Baseline()
 {
-    readThread->~Thread();
     threadRunning = false;
 }

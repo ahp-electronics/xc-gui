@@ -290,6 +290,10 @@ class Line : public QWidget
         {
             return step;
         }
+        inline int getRepeatitions()
+        {
+            return Repeatitions;
+        }
         inline double getLatitude()
         {
             return Latitude;
@@ -407,14 +411,7 @@ class Line : public QWidget
         void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
 
         inline double getPacketTime() { return packetTime; }
-        void addCount();
-        inline void addCount(double time, bool threaded = true) {
-            packetTime = time;
-            if(threaded)
-                readThread->start();
-            else
-                addCount();
-        }
+        void addCount(double starttime, ahp_xc_packet *packet = nullptr);
         inline double getTimeRange() { return timeRange; }
         inline void setTimeRange(double range) { timeRange = range; }
         inline ahp_xc_packet* getPacket() { return packet; }
@@ -424,7 +421,6 @@ class Line : public QWidget
         ahp_xc_packet* packet;
         double timeRange { 10.0 };
         double packetTime { 0.0 };
-        Thread *readThread { nullptr };
         double Ra, Dec;
         static QMutex motor_mutex;
         QMutex mutex;
@@ -468,6 +464,8 @@ class Line : public QWidget
         off_t end { 1 };
         size_t len { 1 };
         size_t step {1};
+        size_t repeat {1};
+        int Repeatitions { 1 };
         int Resolution { 1024 };
         int AutoChannel { 1 };
         int CrossChannel { 0 };
