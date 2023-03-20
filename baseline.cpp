@@ -171,8 +171,8 @@ QVariant Baseline::readSetting(QString setting, QVariant defaultValue)
 void Baseline::setDelay(double s)
 {
     if(ahp_xc_has_crosscorrelator()) {
-        ahp_xc_set_channel_cross((uint32_t)getLine1()->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0, 1);
-        ahp_xc_set_channel_cross((uint32_t)getLine2()->getLineIndex(), (off_t)fmax(0, -s * ahp_xc_get_frequency()), 1, 0, 1);
+        ahp_xc_set_channel_cross((uint32_t)getLine1()->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0);
+        ahp_xc_set_channel_cross((uint32_t)getLine2()->getLineIndex(), (off_t)fmax(0, -s * ahp_xc_get_frequency()), 1, 0);
     }
 }
 
@@ -233,14 +233,14 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                 offset2 ++;
                 if(ahp_xc_intensity_crosscorrelator_enabled())
                 {
-                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0, 1);
-                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0, 1);
+                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
+                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
                 }
                 stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
                 stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
             } else {
-                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0, 1);
-                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0, 1);
+                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
+                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
             }
             unlock();
         }
@@ -515,7 +515,7 @@ void Baseline::stackCorrelations()
     int npackets = 0;
     step = fmax(getLine1()->getScanStep(), getLine2()->getScanStep());
     npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
-               head_size, start2, tail_size, step, 1, stop, percent);
+               head_size, start2, tail_size, step, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
         int ofs = head_size/step;
@@ -532,11 +532,13 @@ void Baseline::stackCorrelations()
             if (tail)
                 lag --;
             lag += ofs;
-            if(spectrum[z].correlations[0].magnitude > 2) {
+            ahp_xc_correlation correlation;
+            memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
+            if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = (double)spectrum[z].correlations[0].magnitude / ahp_xc_get_packettime() / pow(spectrum[z].correlations[0].counts, 2);
-                    phase_buf[lag] = (double)spectrum[z].correlations[0].phase;
+                    magnitude_buf[lag] = (double)correlation.magnitude / correlation.counts;
+                    phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                     {
                         magnitude_buf[y] = magnitude_buf[lag];

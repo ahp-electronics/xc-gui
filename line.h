@@ -290,10 +290,6 @@ class Line : public QWidget
         {
             return step;
         }
-        inline int getRepeatitions()
-        {
-            return Repeatitions;
-        }
         inline double getLatitude()
         {
             return Latitude;
@@ -464,8 +460,6 @@ class Line : public QWidget
         off_t end { 1 };
         size_t len { 1 };
         size_t step {1};
-        size_t repeat {1};
-        int Repeatitions { 1 };
         int Resolution { 1024 };
         int AutoChannel { 1 };
         int CrossChannel { 0 };

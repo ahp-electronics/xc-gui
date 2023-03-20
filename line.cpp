@@ -187,11 +187,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         ui->MinScore->setEnabled(ui->ElementalAlign->isChecked());
         ui->SampleSize->setEnabled(ui->ElementalAlign->isChecked());
     });
-    connect(ui->Repeatitions, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        Repeatitions = value;
-        saveSetting("Repeatitions", Repeatitions);
-    });
     connect(ui->Resolution, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         Resolution = value;
@@ -200,13 +195,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->AutoChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         AutoChannel = value;
-        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(AutoChannel, 1)), 1, 1, 1);
+        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(AutoChannel, 1)), 1, 1);
         saveSetting("AutoChannel", AutoChannel);
     });
     connect(ui->CrossChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         CrossChannel = value;
-        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(CrossChannel, 1)), 1, 1, 1);
+        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(CrossChannel, 1)), 1, 1);
         saveSetting("CrossChannel", CrossChannel);
     });
     connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -323,7 +318,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->Smooth, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
-        _smooth = value;
+        _smooth = Resolution * value / 25;
         saveSetting("Smooth", _smooth);
     });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
@@ -346,7 +341,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         ui->Resolution->setRange(1, 1048576);
     else
         ui->Resolution->setRange(1, ahp_xc_get_delaysize());
-    ui->Repeatitions->setValue(readInt("Repeatitions", 1));
     ui->Resolution->setValue(readInt("Resolution", 100));
     ui->AutoChannel->setValue(readInt("AutoChannel", ui->AutoChannel->maximum()));
     ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
@@ -375,7 +369,6 @@ void Line::UpdateBufferSizes()
     end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
     len = end-start;
     step = fmax(1, round((double)len / getResolution()));
-    repeat = fmax(1, round((double)len / getRepeatitions()));
     setMagnitudeSize(getNumChannels());
     setPhaseSize(getNumChannels());
     emit updateBufferSizes();
@@ -1131,10 +1124,10 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            if(correlation.magnitude > 2) {
+            if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = (double)correlation.magnitude / pow(correlation.counts, 2);
+                    magnitude_buf[lag] = (double)correlation.magnitude / correlation.counts;
                     phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {

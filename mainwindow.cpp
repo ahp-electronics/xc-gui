@@ -581,13 +581,12 @@ err_exit:
                         starts.append(line->getStartChannel());
                         sizes.append(line->getChannelBandwidth());
                         steps.append(line->getScanStep());
-                        repeats.append(line->getRepeatitions());
                         line->setPercentPtr(&percent);
                     } else {
                         line->resetPercentPtr();
                     }
                 }
-                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), repeats.toVector().data(), &threadsStopped, &percent);
+                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)
