@@ -606,7 +606,10 @@ err_exit:
             default:
                 if(!ahp_xc_get_packet(getPacket())) {
                     packet = ahp_xc_copy_packet(getPacket());
-                    emit newPacket(packet);
+                    double diff = packet->timestamp - lastpackettime;
+                    lastpackettime = packet->timestamp;
+                    if(diff < TimeRange)
+                        emit newPacket(packet);
                     ahp_xc_free_packet(packet);
                 }
                 break;
