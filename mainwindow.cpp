@@ -113,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
         dsp_set_stdout(f_stdout);
         dsp_set_stderr(f_stdout);
     } else {
-        f_stdout = stdout;
+        f_stdout = tmpfile();
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 10, 10, "uiThread");
@@ -626,13 +626,14 @@ end_unlock:
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
+        fseek(f_stdout, 0, SEEK_SET);
         QTextStream str(f_stdout);
         QString text = str.readLine();
         if(text.isEmpty())
             statusBar()->showMessage("Ready");
         else {
+            statusBar()->clearMessage();
             statusBar()->showMessage(text.replace("\n", ""));
-            fseek(f_stdout, 0, SEEK_SET);
             ftruncate(fileno(f_stdout), 0);
         }
         ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
