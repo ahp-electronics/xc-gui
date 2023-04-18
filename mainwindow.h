@@ -241,6 +241,8 @@ class MainWindow : public QMainWindow
         QString bsdl_filename;
         QString svf_filename;
         QString dfu_filename;
+        QString stdout_filename;
+        int fd_stdout;
 
 signals:
         void newPacket(ahp_xc_packet*);

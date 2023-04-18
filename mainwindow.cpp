@@ -103,17 +103,21 @@ MainWindow::MainWindow(QWidget *parent)
     bsdl_filename = homedir + "/" + strrand(32) + ".bsm";
     svf_filename = homedir + "/" + strrand(32);
     dfu_filename = homedir + "/" + strrand(32);
+    stdout_filename = homedir + "/" + strrand(32);
     if(DownloadFirmware(url+"xc-hub", dfu_filename, settings))
         has_dfu_firmware = true;
 
     connected = false;
     TimeRange = 10;
-    f_stdout = tmpfile();
+    fd_stdout = open(stdout_filename.toStdString().c_str(), O_RDWR|O_CREAT);
+    if(fd_stdout > -1) {
+        f_stdout = fdopen(fd_stdout, "r+");
+    }
     if(f_stdout != nullptr) {
         dsp_set_stdout(f_stdout);
         dsp_set_stderr(f_stdout);
     } else {
-        f_stdout = tmpfile();
+        f_stdout = stderr;
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 10, 10, "uiThread");
@@ -630,12 +634,11 @@ end_unlock:
         QTextStream str(f_stdout);
         QString text = str.readLine();
         if(text.isEmpty())
-            statusBar()->showMessage("Ready");
-        else {
-            statusBar()->clearMessage();
-            statusBar()->showMessage(text.replace("\n", ""));
+            text = "Ready";
+        else
             ftruncate(fileno(f_stdout), 0);
-        }
+        statusBar()->clearMessage();
+        statusBar()->showMessage(text);
         ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
         ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
@@ -822,5 +825,6 @@ MainWindow::~MainWindow()
     getGraph()->~Graph();
     settings->~QSettings();
     fclose(f_stdout);
+    //unlink(stdout_filename.toStdString().c_str());
     delete ui;
 }
