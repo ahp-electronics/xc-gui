@@ -85,16 +85,19 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     VLBI_CATALOG_PATH
 #endif
                 );
+#ifdef _WIN32
+    dir_separator = '\\';
+#endif
     index.open(QFile::ReadOnly);
     QMap <QString, QString> rows;
     if(index.isOpen()) {
         int ncatalogs = 0;
         QString catname = index.readLine().replace("\n", "");
         while(!catname.isEmpty()) {
-            QStandardItem *catalog = new QStandardItem(QString(catname).replace("/index.txt", ""));
+            QStandardItem *catalog = new QStandardItem(QString(catname).replace(dir_separator+"index.txt", ""));
             QFileInfo fileInfo(index.fileName());
-            QFile cat(fileInfo.dir().path()+"/"+catname);
-            catname = catname.replace("/index.txt", "");
+            QFile cat(fileInfo.dir().path()+dir_separator+catname);
+            catname = catname.replace(dir_separator+"index.txt", "");
             cat.open(QFile::ReadOnly);
             if(cat.isOpen()) {
                 int nelement = 0;
@@ -103,7 +106,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
                     if(element != "index") {
                         QStandardItem *el = new QStandardItem(element);
                         el->setEditable(false);
-                        rows.insert(catname+"/"+element, fileInfo.dir().path()+"/"+catname+"/"+element+".txt");
+                        rows.insert(catname+dir_separator+element, fileInfo.dir().path()+dir_separator+catname+dir_separator+element+".txt");
                         catalog->insertRow(nelement++, el);
                     }
                     element = cat.readLine().replace(".txt\n", "");
@@ -130,7 +133,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     {
         QString catalog = index.parent().data().toString();
         if(!catalog.isEmpty())
-            elemental->loadSpectrum(rows[catalog+"/"+index.data().toString()]);
+            elemental->loadSpectrum(rows[catalog+dir_separator+index.data().toString()]);
     });
     connect(ui->flag0, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {

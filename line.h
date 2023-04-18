@@ -452,6 +452,7 @@ class Line : public QWidget
         QLineSeries* magnitudes { nullptr };
         QLineSeries* phases { nullptr };
         QLineSeries* counts { nullptr };
+        QChar dir_separator { '/' };
         double stack_index { 1.0 };
         Graph* graph;
         unsigned int line { 0 };
