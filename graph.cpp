@@ -458,8 +458,10 @@ void Graph::clearSeries()
 void Graph::setPixmap(QImage *picture, QLabel *view)
 {
     lock();
-    if(picture != nullptr)
+    if(picture != nullptr) {
         view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
+        view->update(view->rect());
+    }
     unlock();
 }
 
