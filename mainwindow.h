@@ -90,7 +90,7 @@ class MainWindow : public QMainWindow
         }
         inline double getFrequency()
         {
-            return ahp_xc_get_frequency() >> ahp_xc_get_frequency_divider();
+            return ahp_xc_get_frequency();
         }
         inline double getRa()
         {
