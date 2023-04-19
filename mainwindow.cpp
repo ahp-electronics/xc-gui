@@ -103,7 +103,7 @@ MainWindow::MainWindow(QWidget *parent)
     bsdl_filename = homedir + "/" + strrand(32) + ".bsm";
     svf_filename = homedir + "/" + strrand(32);
     dfu_filename = homedir + "/" + strrand(32);
-    stdout_filename = homedir + "/" + strrand(32);
+    stdout_filename = homedir + "/" + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::RFC2822Date) + ".log";
     if(DownloadFirmware(url+"xc-hub", dfu_filename, settings))
         has_dfu_firmware = true;
 
@@ -116,6 +116,7 @@ MainWindow::MainWindow(QWidget *parent)
     if(f_stdout != nullptr) {
         dsp_set_stdout(f_stdout);
         dsp_set_stderr(f_stdout);
+        ahp_set_stderr(f_stdout);
     } else {
         f_stdout = stderr;
     }
@@ -632,12 +633,11 @@ end_unlock:
             Lines.at(x)->paint();
         fseek(f_stdout, 0, SEEK_END);
         int len = ftell(f_stdout);
-        fseek(f_stdout, 0, SEEK_SET);
+        fseek(f_stdout, lastlog_pos, SEEK_SET);
+        lastlog_pos = len;
         len -= ftell(f_stdout);
         char *text = new char[len];
         fread(text, 1, len, f_stdout);
-        ftruncate(fileno(f_stdout), 0);
-        fseek(f_stdout, 0, SEEK_SET);
         statusBar()->clearMessage();
         if(len == 0)
             statusBar()->showMessage("Ready", 1000);
@@ -840,6 +840,5 @@ MainWindow::~MainWindow()
     getGraph()->~Graph();
     settings->~QSettings();
     fclose(f_stdout);
-    unlink(stdout_filename.toStdString().c_str());
     delete ui;
 }

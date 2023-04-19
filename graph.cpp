@@ -236,7 +236,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     });
     connect(inputs->Synthesize, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
-        tracking = checked;
+        setTracking(checked);
         saveSetting("Synthesize", tracking);
     });
 }

@@ -252,6 +252,7 @@ signals:
         void scanFinished(bool complete);
 
     private:
+        int lastlog_pos { 0 };
         bool has_svf_firmware {false};
         bool has_dfu_firmware {false};
         bool DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms = 30000);
