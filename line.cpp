@@ -94,10 +94,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         int ncatalogs = 0;
         QString catname = index.readLine().replace("\n", "");
         while(!catname.isEmpty()) {
-            QStandardItem *catalog = new QStandardItem(QString(catname).replace(dir_separator+"index.txt", ""));
+            QStandardItem *catalog = new QStandardItem(QString(catname).replace(dir_separator+QString("index.txt"), ""));
             QFileInfo fileInfo(index.fileName());
             QFile cat(fileInfo.dir().path()+dir_separator+catname);
-            catname = catname.replace(dir_separator+"index.txt", "");
+            catname = catname.replace(dir_separator+QString("index.txt"), "");
             cat.open(QFile::ReadOnly);
             if(cat.isOpen()) {
                 int nelement = 0;
