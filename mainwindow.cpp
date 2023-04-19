@@ -109,8 +109,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connected = false;
     TimeRange = 10;
-    fd_stdout = open(stdout_filename.toStdString().c_str(), O_RDWR|O_CREAT);
-    if(fd_stdout > -1) {
+    fd_stdout = open(stdout_filename.toStdString().c_str(), O_CREAT|O_RDWR, 0666);
+    if(fd_stdout != -1) {
         f_stdout = fdopen(fd_stdout, "r+");
     }
     if(f_stdout != nullptr) {
@@ -630,15 +630,30 @@ end_unlock:
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
+        fseek(f_stdout, 0, SEEK_END);
+        int len = ftell(f_stdout);
         fseek(f_stdout, 0, SEEK_SET);
-        QTextStream str(f_stdout);
-        QString text = str.readLine();
-        if(text.isEmpty())
-            text = "Ready";
-        else
-            ftruncate(fileno(f_stdout), 0);
+        len -= ftell(f_stdout);
+        char *text = new char[len];
+        fread(text, 1, len, f_stdout);
+        ftruncate(fileno(f_stdout), 0);
+        fseek(f_stdout, 0, SEEK_SET);
         statusBar()->clearMessage();
-        statusBar()->showMessage(text);
+        if(len == 0)
+            statusBar()->showMessage("Ready", 1000);
+        else {
+            char *next = text;
+            char *line = next;
+            char *eol = strchr(next, '\n');
+            while(eol > next) {
+                line = next;
+                *eol = 0;
+                next = eol+1;
+                eol = strchr(next, '\n');
+            }
+            statusBar()->showMessage(line, 1000);
+        }
+        free(text);
         ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
         ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
@@ -825,6 +840,6 @@ MainWindow::~MainWindow()
     getGraph()->~Graph();
     settings->~QSettings();
     fclose(f_stdout);
-    //unlink(stdout_filename.toStdString().c_str());
+    unlink(stdout_filename.toStdString().c_str());
     delete ui;
 }
