@@ -109,10 +109,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     connected = false;
     TimeRange = 10;
+#ifdef _WIN32
+    fd_stdout = stdout;
+#else
     fd_stdout = open(stdout_filename.toStdString().c_str(), O_CREAT|O_RDWR, 0666);
     if(fd_stdout != -1) {
         f_stdout = fdopen(fd_stdout, "r+");
     }
+#endif
     if(f_stdout != nullptr) {
         dsp_set_stdout(f_stdout);
         dsp_set_stderr(f_stdout);
