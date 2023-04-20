@@ -496,11 +496,11 @@ void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)
     {
+#ifndef _WIN32
         setPixmap(getCoverage(), getCoverageView());
         setPixmap(getMagnitude(), getMagnitudeView());
         setPixmap(getPhase(), getPhaseView());
         setPixmap(getIdft(), getIdftView());
-#ifndef _WIN32
         updateInfo();
 #endif
     }
