@@ -668,7 +668,7 @@ end_unlock:
         {
             double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance()};
             lock_vlbi();
-
+#ifndef _WIN32
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
@@ -678,7 +678,7 @@ end_unlock:
             vlbi_get_uv_plot(getVLBIContext(), "phase",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                              getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, &threadsStopped);
-
+#endif
             if(getGraph()->isTracking()) {
                 if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
                     vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
