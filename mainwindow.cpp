@@ -773,9 +773,7 @@ void MainWindow::runClicked(bool checked)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
             readThread->stop();
-#ifndef _WIN32
             vlbiThread->start();
-#endif
             readThread->start();
         }
         for(int x = 0; x < Lines.count(); x++) {
@@ -797,9 +795,7 @@ void MainWindow::runClicked(bool checked)
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
-#ifndef _WIN32
             vlbiThread->stop();
-#endif
         }
         for(int x = 0; x < Lines.count(); x++) {
             Lines[x]->setActive(false);
