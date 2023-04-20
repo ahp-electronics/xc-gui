@@ -500,7 +500,9 @@ void Graph::paint()
         setPixmap(getMagnitude(), getMagnitudeView());
         setPixmap(getPhase(), getPhaseView());
         setPixmap(getIdft(), getIdftView());
+#ifndef _WIN32
         updateInfo();
+#endif
     }
     else
     {
