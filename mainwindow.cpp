@@ -110,7 +110,7 @@ MainWindow::MainWindow(QWidget *parent)
     connected = false;
     TimeRange = 10;
 #ifdef _WIN32
-    fd_stdout = stdout;
+    f_stdout = stdout;
 #else
     fd_stdout = open(stdout_filename.toStdString().c_str(), O_CREAT|O_RDWR, 0666);
     if(fd_stdout != -1) {
