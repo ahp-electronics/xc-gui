@@ -468,6 +468,7 @@ void Graph::setPixmap(QImage *picture, QLabel *view)
 void Graph::plotModel(QImage* picture, char* model)
 {
     lock();
+#ifndef _WIN32
     if(vlbi_has_model(getVLBIContext(), model)) {
         unsigned char* pixels = (unsigned char*)picture->bits();
         dsp_stream_p stream = vlbi_get_model(getVLBIContext(), model);
@@ -478,6 +479,7 @@ void Graph::plotModel(QImage* picture, char* model)
         dsp_stream_free(data);
     }
     unlock();
+#endif
 }
 
 void Graph::createModel(QString model)
