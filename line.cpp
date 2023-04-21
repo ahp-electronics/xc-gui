@@ -1175,7 +1175,6 @@ void Line::plot(bool success, double o, double s)
 
 Line::~Line()
 {
-    setActive(false);
     ahp_xc_set_leds(getLineIndex(), 0);
     elemental->~Elemental();
     delete ui;

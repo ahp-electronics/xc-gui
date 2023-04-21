@@ -85,8 +85,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     setAccessibleName("MainWindow");
+#ifdef _WIN32
+    QString dir_separator = "\\";
+#else
+    QString dir_separator = "/";
+#endif
     homedir = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).at(0);
-    QString ini = homedir + "/settings.ini";
+    QString ini = homedir + dir_separator + "settings.ini";
     if(!QDir(homedir).exists())
     {
         QDir().mkdir(homedir);
@@ -100,29 +105,25 @@ MainWindow::MainWindow(QWidget *parent)
     }
     settings = new QSettings(ini, QSettings::Format::IniFormat);
     QString url = "https://www.iliaplatone.com/firwmare.php?product=";
-    bsdl_filename = homedir + "/" + strrand(32) + ".bsm";
-    svf_filename = homedir + "/" + strrand(32);
-    dfu_filename = homedir + "/" + strrand(32);
-    stdout_filename = homedir + "/" + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::RFC2822Date) + ".log";
+    bsdl_filename = homedir + dir_separator + strrand(32) + ".bsm";
+    svf_filename = homedir + dir_separator + strrand(32);
+    dfu_filename = homedir + dir_separator + strrand(32);
+    stdout_filename = homedir + dir_separator + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).replace(":", "") + ".log";
     if(DownloadFirmware(url+"xc-hub", dfu_filename, settings))
         has_dfu_firmware = true;
 
     connected = false;
     TimeRange = 10;
-#ifdef _WIN32
-    f_stdout = stdout;
-#else
     fd_stdout = open(stdout_filename.toStdString().c_str(), O_CREAT|O_RDWR, 0666);
     if(fd_stdout != -1) {
         f_stdout = fdopen(fd_stdout, "r+");
+    } else {
+        f_stdout = stderr;
     }
-#endif
     if(f_stdout != nullptr) {
         dsp_set_stdout(f_stdout);
         dsp_set_stderr(f_stdout);
         ahp_set_stderr(f_stdout);
-    } else {
-        f_stdout = stderr;
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 10, 10, "uiThread");
@@ -208,6 +209,8 @@ MainWindow::MainWindow(QWidget *parent)
             line->~Baseline();
         }
         Baselines.clear();
+        for(Line * line : Lines)
+            line->setActive(false);
         for(Line * line : Lines)
         {
             getGraph()->removeSeries(line->getCounts());
@@ -300,7 +303,7 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 xc_local_port = true;
-                ahp_xc_connect(xcport.toUtf8(), false);
+                ahp_xc_connect(xcport.toStdString().c_str(), false);
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
@@ -472,7 +475,7 @@ MainWindow::MainWindow(QWidget *parent)
                     ui->Order->setValue(settings->value("Order", 2).toInt());
                     ui->Order->setEnabled(true);
                     ahp_xc_max_threads(QThread::idealThreadCount());
-                    vlbi_max_threads(QThread::idealThreadCount());
+                    vlbi_max_threads(1);
 
                     for(int i = 0; i < vlbi_total_contexts; i++) {
                         context[i] = vlbi_init();
@@ -666,17 +669,17 @@ end_unlock:
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            double radec[3] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance()};
+            double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance()};
             lock_vlbi();
             vlbi_get_uv_plot(getVLBIContext(), "coverage",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, nullptr);
             vlbi_get_uv_plot(getVLBIContext(), "magnitude",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, &threadsStopped);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, nullptr);
             vlbi_get_uv_plot(getVLBIContext(), "phase",
                              getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, &threadsStopped);
+                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, nullptr);
             if(getGraph()->isTracking()) {
                 if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
                     vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
@@ -772,9 +775,7 @@ void MainWindow::runClicked(bool checked)
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
-            readThread->stop();
             vlbiThread->start();
-            readThread->start();
         }
         for(int x = 0; x < Lines.count(); x++) {
             if(getMode() == Autocorrelator) {

@@ -32,7 +32,6 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 
 find_package(Qt5 COMPONENTS Widgets Network SerialPort Charts Network REQUIRED)
 find_package(Threads REQUIRED)
-find_package(M REQUIRED)
 find_package(AHPXC REQUIRED)
 find_package(AHPGT REQUIRED)
 find_package(VLBI REQUIRED)

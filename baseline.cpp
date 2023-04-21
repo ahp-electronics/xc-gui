@@ -233,14 +233,14 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                 offset2 ++;
                 if(ahp_xc_intensity_crosscorrelator_enabled())
                 {
-                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
-                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
+                    ahp_xc_set_channel_auto(getLine1()->getLineIndex(), offset1, 1, 1);
+                    ahp_xc_set_channel_auto(getLine2()->getLineIndex(), offset2, 1, 1);
                 }
                 stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
                 stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
             } else {
-                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 0);
-                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 0);
+                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 1);
+                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 1);
             }
             unlock();
         }

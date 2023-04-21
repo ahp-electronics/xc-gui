@@ -42,6 +42,7 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QSettings>
+#include <QFile>
 #include <QMutex>
 #include <QIODevice>
 #include <QStandardPaths>
@@ -55,6 +56,7 @@
 #include <QThreadPool>
 #include <QQueue>
 #include <QDir>
+#include <QMessageBox>
 #include "graph.h"
 #include "line.h"
 #include "baseline.h"
