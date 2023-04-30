@@ -26,6 +26,7 @@
 #include "baseline.h"
 #include "line.h"
 #include "graph.h"
+#include "mainwindow.h"
 Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidget *parent) :
     QWidget(parent)
 {
@@ -116,6 +117,7 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
         *stop = !(getLine1()->isActive() && getLine2()->isActive());
         if(oldstate != newstate)
         {
+            emit activeStateChanging(this);
             if(newstate)
             {
                 if(stream != nullptr)
@@ -221,28 +223,29 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
         {
             dsp_stream_p stream = getStream();
             if(stream == nullptr) break;
-            lock();
-            double offset1 = 0, offset2 = 0;
-            vlbi_context ctx = getVLBIContext();
-            if(vlbi_has_node(getVLBIContext(), getLine1()->getName().toStdString().c_str()) && vlbi_has_node(ctx, getLine2()->getName().toStdString().c_str())) {
-                vlbi_get_offsets(getVLBIContext(), packet->timestamp + starttime, getLine1()->getName().toStdString().c_str(), getLine2()->getName().toStdString().c_str(),
-                                 getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance(), &offset1, &offset2);
-                offset1 /= ahp_xc_get_sampletime();
-                offset2 /= ahp_xc_get_sampletime();
-                offset1 ++;
-                offset2 ++;
-                if(ahp_xc_intensity_crosscorrelator_enabled())
-                {
-                    ahp_xc_set_channel_auto(getLine1()->getLineIndex(), offset1, 1, 1);
-                    ahp_xc_set_channel_auto(getLine2()->getLineIndex(), offset2, 1, 1);
+            if(MainWindow::lock_vlbi()) {
+                double offset1 = 0, offset2 = 0;
+                vlbi_context ctx = getVLBIContext();
+                if(vlbi_has_node(getVLBIContext(), getLine1()->getName().toStdString().c_str()) && vlbi_has_node(ctx, getLine2()->getName().toStdString().c_str())) {
+                    vlbi_get_offsets(getVLBIContext(), packet->timestamp + starttime, getLine1()->getName().toStdString().c_str(), getLine2()->getName().toStdString().c_str(),
+                                     getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance(), &offset1, &offset2);
+                    offset1 /= ahp_xc_get_sampletime();
+                    offset2 /= ahp_xc_get_sampletime();
+                    offset1 ++;
+                    offset2 ++;
+                    if(ahp_xc_intensity_crosscorrelator_enabled())
+                    {
+                        ahp_xc_set_channel_auto(getLine1()->getLineIndex(), offset1, 1, 1);
+                        ahp_xc_set_channel_auto(getLine2()->getLineIndex(), offset2, 1, 1);
+                    }
+                    stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                    stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                } else {
+                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 1);
+                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 1);
                 }
-                stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
-            } else {
-                ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 1);
-                ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 1);
+                MainWindow::unlock_vlbi();
             }
-            unlock();
         }
         break;
     case Counter:
@@ -384,7 +387,7 @@ void Baseline::addToVLBIContext(int index)
 {
     if(index < 0)
     {
-        index = getMode() - HolographIQ;
+        index = getMode() - HolographII;
         if(index < 0) return;
     }
     vlbi_set_baseline_stream(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
@@ -395,7 +398,7 @@ void Baseline::removeFromVLBIContext(int index)
 {
     if(index < 0)
     {
-        index = getMode() - HolographIQ;
+        index = getMode() - HolographII;
         if (index < 0) return;
     }
     vlbi_unlock_baseline(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),

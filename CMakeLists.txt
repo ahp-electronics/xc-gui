@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(XC_GUI_VERSION_MAJOR 0)
 set(XC_GUI_VERSION_MINOR 9)
-set(XC_GUI_VERSION_RELEASE 8)
+set(XC_GUI_VERSION_RELEASE 9)
 set(XC_GUI_VERSION "${XC_GUI_VERSION_MAJOR}.${XC_GUI_VERSION_MINOR}.${XC_GUI_VERSION_RELEASE}")
 
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.
@@ -86,13 +86,13 @@ else(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/resource.qrc
         ${CMAKE_CURRENT_SOURCE_DIR}/app.rc
     )
-    if(MINGW)
+    if(WIN32)
         target_link_libraries(xc-gui PRIVATE comctl32)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wl,--subsystem,windows -static-libstdc++ -static-libgcc")
         set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
-    endif(MINGW)
+    endif(WIN32)
 endif(ANDROID)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/icon.ico COPYONLY )

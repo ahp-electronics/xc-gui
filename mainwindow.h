@@ -221,9 +221,9 @@ class MainWindow : public QMainWindow
         }
 
         static QMutex vlbi_mutex;
-        static void lock_vlbi()
+        static bool lock_vlbi()
         {
-            while(!vlbi_mutex.tryLock(1));
+            return vlbi_mutex.tryLock(1);
         }
         static void unlock_vlbi()
         {
@@ -261,7 +261,7 @@ signals:
         QString base64;
         int currentVoltage {0};
         FILE *f_stdout;
-        int threadsStopped { 1 };
+        int32_t threadsStopped { 1 };
         void plotModel(QImage* picture, char* model);
         QMutex mutex;
         void stopThreads();

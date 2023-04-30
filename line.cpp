@@ -402,14 +402,17 @@ void Line::updateLocation()
 void Line::setLocation(int value)
 {
     (void)value;
-    if(stream != nullptr)
-    {
-        getLocation()->xyz.x = ui->x_location->value() / 1000;
-        getLocation()->xyz.y = ui->y_location->value() / 1000;
-        getLocation()->xyz.z = ui->z_location->value() / 1000;
-        saveSetting("location_x", getLocation()->xyz.x);
-        saveSetting("location_y", getLocation()->xyz.y);
-        saveSetting("location_z", getLocation()->xyz.z);
+    if(MainWindow::lock_vlbi()) {
+        if(stream != nullptr)
+        {
+            getLocation()->xyz.x = ui->x_location->value() / 1000;
+            getLocation()->xyz.y = ui->y_location->value() / 1000;
+            getLocation()->xyz.z = ui->z_location->value() / 1000;
+            saveSetting("location_x", getLocation()->xyz.x);
+            saveSetting("location_y", getLocation()->xyz.y);
+            saveSetting("location_z", getLocation()->xyz.z);
+            MainWindow::unlock_vlbi();
+        }
     }
 }
 
@@ -470,18 +473,18 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
     case HolographIQ:
     case HolographII:
     if(getVLBIContext() == nullptr) break;
-    lock();
-    if(scanActive())
-    {
-        dsp_stream_p stream = getStream();
-        if(stream == nullptr) break;
-        stream->buf[stream->len - 1] = (double)packet->counts[getLineIndex()];
-        updateLocation();
-        if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
-            addToVLBIContext();
-    } else if(vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
+    if(MainWindow::lock_vlbi()) {
+        if(scanActive())
+        {
+            dsp_stream_p stream = getStream();
+            if(stream == nullptr) break;
+            stream->buf[stream->len - 1] = (double)packet->counts[getLineIndex()];
+            if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
+                addToVLBIContext();
+        } else if(vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
             removeFromVLBIContext();
-    unlock();
+        MainWindow::unlock_vlbi();
+    }
     break;
     case Counter:
     for (int z = 0; z < 2; z++)

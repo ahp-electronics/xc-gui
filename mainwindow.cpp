@@ -28,7 +28,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 vlbi_context context[vlbi_total_contexts];
-static double coverage_delegate(double x, double y)
+double coverage_delegate(double x, double y)
 {
     (void)x;
     (void)y;
@@ -303,7 +303,7 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 xc_local_port = true;
-                ahp_xc_connect(xcport.toStdString().c_str(), false);
+                ahp_xc_connect(xcport.toUtf8(), false);
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
@@ -669,37 +669,47 @@ end_unlock:
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance()};
-            lock_vlbi();
-            vlbi_get_uv_plot(getVLBIContext(), "coverage",
-                             getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, nullptr);
-            vlbi_get_uv_plot(getVLBIContext(), "magnitude",
-                             getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, nullptr);
-            vlbi_get_uv_plot(getVLBIContext(), "phase",
-                             getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                             getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, nullptr);
-            if(getGraph()->isTracking()) {
-                if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
-                    vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
-                else
-                    vlbi_copy_model(getVLBIContext(), "coverage_stack", "coverage");
+            double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance() };
+            if(lock_vlbi()) {
+                vlbi_get_uv_plot(getVLBIContext(), "coverage",
+                                 getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
+                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
+                vlbi_get_uv_plot(getVLBIContext(), "magnitude",
+                                 getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
+                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, &threadsStopped);
+                vlbi_get_uv_plot(getVLBIContext(), "phase",
+                                 getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
+                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, &threadsStopped);
+                if(getGraph()->isTracking()) {
+                    if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
+                        vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
+                    else
+                        vlbi_copy_model(getVLBIContext(), "coverage_stack", "coverage");
 
-                if(vlbi_has_model(getVLBIContext(), "magnitude_stack"))
-                    vlbi_stack_models(getVLBIContext(), "magnitude_stack", "magnitude_stack", "magnitude");
-                else
-                    vlbi_copy_model(getVLBIContext(), "magnitude_stack", "magnitude");
+                    if(vlbi_has_model(getVLBIContext(), "magnitude_stack"))
+                        vlbi_stack_models(getVLBIContext(), "magnitude_stack", "magnitude_stack", "magnitude");
+                    else
+                        vlbi_copy_model(getVLBIContext(), "magnitude_stack", "magnitude");
 
-                if(vlbi_has_model(getVLBIContext(), "phase_stack"))
-                    vlbi_stack_models(getVLBIContext(), "phase_stack", "phase_stack", "phase");
-                else
-                    vlbi_copy_model(getVLBIContext(), "phase_stack", "phase");
+                    if(vlbi_has_model(getVLBIContext(), "phase_stack"))
+                        vlbi_stack_models(getVLBIContext(), "phase_stack", "phase_stack", "phase");
+                    else
+                        vlbi_copy_model(getVLBIContext(), "phase_stack", "phase");
 
-                vlbi_get_ifft(getVLBIContext(), "idft", "magnitude_stack", "phase_stack");
+                    vlbi_get_ifft(getVLBIContext(), "idft", "magnitude_stack", "phase_stack");
+                } else {
+                    if(vlbi_has_model(getVLBIContext(), "magnitude") && vlbi_has_model(getVLBIContext(), "phase"))
+                        vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
+                }
+                if(vlbi_has_model(getVLBIContext(), "coverage"))
+                    vlbi_del_model(getVLBIContext(), "coverage");
+                if(vlbi_has_model(getVLBIContext(), "magnitude"))
+                    vlbi_del_model(getVLBIContext(), "magnitude");
+                if(vlbi_has_model(getVLBIContext(), "phase"))
+                    vlbi_del_model(getVLBIContext(), "phase");
+                if(vlbi_has_model(getVLBIContext(), "idft"))
+                    emit plotModels();
             }
-            emit plotModels();
-
             unlock_vlbi();
         }
         thread->unlock();
@@ -726,7 +736,6 @@ end_unlock:
             getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase_stack");
             getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
         } else {
-            vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
             getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
             getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
             getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
@@ -771,11 +780,10 @@ void MainWindow::runClicked(bool checked)
     if(ui->Run->text() == "Run")
     {
         ui->Run->setText("Stop");
-        lock_vlbi();
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
-            vlbiThread->start();
+            //vlbiThread->start();
         }
         for(int x = 0; x < Lines.count(); x++) {
             if(getMode() == Autocorrelator) {
@@ -787,7 +795,6 @@ void MainWindow::runClicked(bool checked)
             emit scanStarted();
         threadsStopped = false;
         resetTimestamp();
-        unlock_vlbi();
     }
     else
     {
