@@ -384,6 +384,7 @@ void Graph::setMode(Mode m)
         case Counter:
             setupAxes(1.0, 1.0, "Time (s)", "Counts");
             break;
+        default:break;
         }
 
         correlator->setVisible(false);
@@ -460,7 +461,6 @@ void Graph::setPixmap(QImage *picture, QLabel *view)
     lock();
     if(picture != nullptr) {
         view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
-        view->update(view->rect());
     }
     unlock();
 }

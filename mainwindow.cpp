@@ -701,12 +701,6 @@ end_unlock:
                     if(vlbi_has_model(getVLBIContext(), "magnitude") && vlbi_has_model(getVLBIContext(), "phase"))
                         vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 }
-                if(vlbi_has_model(getVLBIContext(), "coverage"))
-                    vlbi_del_model(getVLBIContext(), "coverage");
-                if(vlbi_has_model(getVLBIContext(), "magnitude"))
-                    vlbi_del_model(getVLBIContext(), "magnitude");
-                if(vlbi_has_model(getVLBIContext(), "phase"))
-                    vlbi_del_model(getVLBIContext(), "phase");
                 if(vlbi_has_model(getVLBIContext(), "idft"))
                     emit plotModels();
             }
@@ -783,7 +777,7 @@ void MainWindow::runClicked(bool checked)
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
-            //vlbiThread->start();
+            vlbiThread->start();
         }
         for(int x = 0; x < Lines.count(); x++) {
             if(getMode() == Autocorrelator) {
