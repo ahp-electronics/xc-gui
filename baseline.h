@@ -48,7 +48,7 @@ class Baseline : public QWidget
         Q_OBJECT
 
     public:
-        Baseline(QString name, int index, Line* n1, Line* n2, QSettings *settings = nullptr, QWidget *parent = nullptr);
+        Baseline(QString name, int index, QList<Line*> nodes, QSettings *settings = nullptr, QWidget *parent = nullptr);
         ~Baseline();
 
         inline void setName(QString n)
@@ -155,13 +155,23 @@ class Baseline : public QWidget
         {
             return scanning;
         }
-        inline Line* getLine1()
+        inline Line* getLine(int index)
         {
-            return line1;
+            return lines[index];
         }
-        inline Line* getLine2()
+        inline void setCorrelationOrder(int order)
         {
-            return line2;
+            correlation_order = fmax(order, 2);
+            start = (int*)realloc(start, sizeof(int) * correlation_order);
+            lines = (Line**)realloc(lines, sizeof(Line*) * correlation_order);
+            for(int x = 0; x < correlation_order; x++) {
+                int idx = (Index + x * (Index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
+                lines[x] = Nodes[x];
+            }
+        }
+        inline int getCorrelationOrder()
+        {
+            return correlation_order;
         }
 
         bool isActive(bool atleast1 = false);
@@ -258,8 +268,7 @@ class Baseline : public QWidget
         double offset { 0.0 };
         double timespan { 1.0 };
         int Index;
-        int start1 {0};
-        int start2 {0};
+        int *start;
         int len {1};
         int step {1};
         int tail_size {1};
@@ -283,9 +292,10 @@ class Baseline : public QWidget
         QLineSeries* magnitudes;
         QLineSeries* magnitude;
         QLineSeries* phase;
+        QList<Line*> Nodes;
         double stack_index { 1.0 };
-        Line* line1;
-        Line* line2;
+        int correlation_order {2};
+        Line** lines;
 signals:
         void activeStateChanging(Baseline*);
         void activeStateChanged(Baseline*);

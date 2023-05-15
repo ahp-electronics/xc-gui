@@ -26,14 +26,15 @@
 #include "baseline.h"
 #include "line.h"
 #include "graph.h"
-#include "mainwindow.h"
-Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidget *parent) :
+
+Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidget *parent) :
     QWidget(parent)
 {
     setAccessibleName("Baseline");
     settings = s;
     name = n;
     Index = index;
+    Nodes = nodes;
     localpercent = 0;
     localstop = 1;
     dark = new QMap<double, double>();
@@ -56,94 +57,67 @@ Baseline::Baseline(QString n, int index, Line *n1, Line *n2, QSettings *s, QWidg
     dsp_stream_alloc_buffer(stream, stream->len);
     stream->samplerate = 1.0/ahp_xc_get_packettime();
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
-    line1 = n1;
-    line2 = n2;
-    connect(line1, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
-    connect(line2, static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
-    connect(line1, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
-            [ = ]()
-    {
-        getMagnitudeStack()->clear();
-        getPhaseStack()->clear();
-        getMagnitude()->clear();
-        getPhase()->clear();
-        getMagnitudes()->clear();
-        getPhases()->clear();
-        getCounts()->clear();
-        stack_index = 0.0;
-    });
-    connect(line2, static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
-            [ = ]()
-    {
-        getMagnitude()->clear();
-        getPhase()->clear();
-        getMagnitudes()->clear();
-        getPhases()->clear();
-        getCounts()->clear();
-        stack_index = 0.0;
-    });
-    connect(line1, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
-            [ = ](Line * sender)
-    {
-        getCounts()->clear();
-        bool newstate = getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
-        *stop = !(getLine1()->isActive() && getLine2()->isActive());
-        if(oldstate != newstate)
+    setCorrelationOrder(ahp_xc_get_correlation_order());
+    for(int x = 0; x < getCorrelationOrder(); x++) {
+        int idx = (x + (x / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
+        lines[x] = nodes[idx];
+        connect(lines[x], static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
+        connect(lines[x], static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
+                [ = ]()
         {
-            emit activeStateChanging(this);
-            if(newstate)
-            {
-                if(stream != nullptr)
-                {
-                    lock();
-                    getLine2()->resetTimestamp();
-                    if(getMode() == HolographIQ)
-                        addToVLBIContext();
-                    else
-                        removeFromVLBIContext();
-                    unlock();
-                }
-                emit activeStateChanged(this);
-            }
-        }
-        running = newstate;
-        oldstate = newstate;
-    });
-    connect(line2, static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
-            [ = ](Line * sender)
-    {
-        getCounts()->clear();
-        bool newstate = getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations();
-        *stop = !(getLine1()->isActive() && getLine2()->isActive());
-        if(oldstate != newstate)
+            getMagnitudeStack()->clear();
+            getPhaseStack()->clear();
+            getMagnitude()->clear();
+            getPhase()->clear();
+            getMagnitudes()->clear();
+            getPhases()->clear();
+            getCounts()->clear();
+            stack_index = 0.0;
+        });
+        connect(lines[x], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+                [ = ](Line * sender)
         {
-            emit activeStateChanging(this);
-            if(newstate)
-            {
-                if(stream != nullptr)
-                {
-                    lock();
-                    getLine1()->resetTimestamp();
-                    if(getMode() == HolographIQ)
-                        addToVLBIContext();
-                    else
-                        removeFromVLBIContext();
-                    unlock();
-                }
-                emit activeStateChanged(this);
+            getCounts()->clear();
+            bool newstate = getLine(x)->showCrosscorrelations();
+            *stop = !getLine(x)->isActive();
+            for(int y = 0; y < getCorrelationOrder(); y++) {
+                if(y == x) continue;
+                newstate = newstate && getLine(y)->showCrosscorrelations();
+                *stop = !(*stop && getLine(y)->isActive());
             }
-        }
-        running = newstate;
-        oldstate = newstate;
-    });
+            if(oldstate != newstate)
+            {
+                emit activeStateChanging(this);
+                if(newstate)
+                {
+                    if(stream != nullptr)
+                    {
+                        lock();
+                        for(int y = 0; y < getCorrelationOrder(); y++) {
+                            if(y == x) continue;
+                            getLine(y)->resetTimestamp();
+                        }
+                        if(getMode() == HolographIQ)
+                            addToVLBIContext();
+                        else
+                            removeFromVLBIContext();
+                        unlock();
+                    }
+                    emit activeStateChanged(this);
+                }
+            }
+            running = newstate;
+            oldstate = newstate;
+        });
+    }
 }
 
 void Baseline::updateBufferSizes()
 {
-    start1 = getLine1()->getStartChannel();
-    start2 = getLine2()->getStartChannel();
-    head_size = getLine1()->getEndChannel();
-    tail_size = getLine2()->getEndChannel();
+    for(int x = 0; x < getCorrelationOrder(); x++) {
+        start[x] = getLine(x)->getStartChannel();
+        head_size = getLine(x)->getEndChannel();
+    }
     len = head_size + tail_size;
     setMagnitudeSize(len);
     setPhaseSize(len);
@@ -173,8 +147,9 @@ QVariant Baseline::readSetting(QString setting, QVariant defaultValue)
 void Baseline::setDelay(double s)
 {
     if(ahp_xc_has_crosscorrelator()) {
-        ahp_xc_set_channel_cross((uint32_t)getLine1()->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0);
-        ahp_xc_set_channel_cross((uint32_t)getLine2()->getLineIndex(), (off_t)fmax(0, -s * ahp_xc_get_frequency()), 1, 0);
+        for(int x = 0; x < getCorrelationOrder(); x++) {
+            ahp_xc_set_channel_cross((uint32_t)getLine(x)->getLineIndex(), (off_t)fmax(0, s * ahp_xc_get_frequency()), 1, 0);
+        }
     }
 }
 
@@ -192,18 +167,18 @@ void Baseline::setMode(Mode m)
     getPhaseStack()->clear();
     if(mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
     {
-        connect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
-        connect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
-        connect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
-        connect(getLine2(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+        for(int x = 0; x < getCorrelationOrder(); x++) {
+            connect(getLine(x), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
+            connect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+        }
     }
     else
     {
         *stop = 1;
-        disconnect(getLine1(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
-        disconnect(getLine2(), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
-        disconnect(getLine1(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
-        disconnect(getLine2(), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+        for(int x = 0; x < getCorrelationOrder(); x++) {
+            disconnect(getLine(x), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
+            disconnect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
+        }
     }
 }
 
@@ -211,7 +186,6 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
 {
     if(packet == nullptr)
         packet = getPacket();
-    double mag = 0.0;
     QLineSeries *Counts = getMagnitudes();
     bool active = false;
     switch(getMode()) {
@@ -223,52 +197,54 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
         {
             dsp_stream_p stream = getStream();
             if(stream == nullptr) break;
-            if(MainWindow::lock_vlbi()) {
-                double offset1 = 0, offset2 = 0;
-                vlbi_context ctx = getVLBIContext();
-                if(vlbi_has_node(getVLBIContext(), getLine1()->getName().toStdString().c_str()) && vlbi_has_node(ctx, getLine2()->getName().toStdString().c_str())) {
-                    vlbi_get_offsets(getVLBIContext(), packet->timestamp + starttime, getLine1()->getName().toStdString().c_str(), getLine2()->getName().toStdString().c_str(),
-                                     getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance(), &offset1, &offset2);
-                    offset1 /= ahp_xc_get_sampletime();
-                    offset2 /= ahp_xc_get_sampletime();
-                    offset1 ++;
-                    offset2 ++;
+            lock();
+            double offset = 0;
+            for(int x = 0; x < getCorrelationOrder(); x++) {
+                if(vlbi_has_node(getVLBIContext(), getLine(x)->getName().toStdString().c_str())) {
+                    offset = vlbi_get_offset(getVLBIContext(), packet->timestamp + starttime, getLine(x)->getName().toStdString().c_str(),
+                                     getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance());
+                    offset /= ahp_xc_get_sampletime();
+                    offset ++;
                     if(ahp_xc_intensity_crosscorrelator_enabled())
                     {
-                        ahp_xc_set_channel_auto(getLine1()->getLineIndex(), offset1, 1, 1);
-                        ahp_xc_set_channel_auto(getLine2()->getLineIndex(), offset2, 1, 1);
+                        ahp_xc_set_channel_auto(getLine(x)->getLineIndex(), offset, 1, 0);
+                    } else {
+                        stream->dft.complex[0].real = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                        stream->dft.complex[0].imaginary = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
                     }
-                    stream->dft.complex[0].real = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                    stream->dft.complex[0].imaginary = packet->crosscorrelations[getLineIndex()].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
                 } else {
-                    ahp_xc_set_channel_cross(getLine1()->getLineIndex(), offset1, 1, 1);
-                    ahp_xc_set_channel_cross(getLine2()->getLineIndex(), offset2, 1, 1);
+                    ahp_xc_set_channel_cross(getLine(x)->getLineIndex(), offset, 1, 0);
                 }
-                MainWindow::unlock_vlbi();
             }
+            unlock();
         }
         break;
     case Counter:
         if(isActive())
         {
-            if(getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations())
-            {
-                if(Counts->count() > 0)
+            for(int x = 0; x < getCorrelationOrder(); x++) {
+                if(getLine(x)->showCrosscorrelations())
                 {
-                    for(int d = Counts->count() - 1; d >= 0; d--)
+                    if(Counts->count() > 0)
                     {
-                        if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange())
-                            Counts->remove(d);
+                        for(int d = Counts->count() - 1; d >= 0; d--)
+                        {
+                            if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange())
+                                Counts->remove(d);
+                        }
                     }
+                    double mag = 0.0;
+                    if(ahp_xc_intensity_crosscorrelator_enabled())
+                        for(int x = 0; x < getCorrelationOrder(); x++) {
+                            mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
+                        mag = (double)sqrt(mag) / ahp_xc_get_packettime();
+                    } else
+                        mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude / ahp_xc_get_packettime();
+                    if(mag > 0)
+                        Counts->append(packet->timestamp + starttime, mag);
+                    active = true;
+                    smoothBuffer(Counts, Counts->count()-1, 1);
                 }
-                if(ahp_xc_intensity_crosscorrelator_enabled())
-                    mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()], 2)) / ahp_xc_get_packettime();
-                else
-                    mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-                if(mag > 0)
-                    Counts->append(packet->timestamp + starttime, mag);
-                active = true;
-                smoothBuffer(Counts, Counts->count()-1, 1);
             }
         }
         if(!active)
@@ -276,7 +252,7 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
             Counts->clear();
         }
         break;
-        case Spectrograph:
+    case Spectrograph:
         QLineSeries *counts[2] =
         {
             getMagnitudes(),
@@ -295,16 +271,10 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
         double mag = 0.0;
         double rad = 0.0;
         if(ahp_xc_intensity_crosscorrelator_enabled()) {
-            mag = (double)sqrt(pow(packet->counts[getLine1()->getLineIndex()], 2) + pow(packet->counts[getLine2()->getLineIndex()],
-                               2)) * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2);
-            if(mag > 0.0)
-            {
-                double r = packet->counts[getLine1()->getLineIndex()] * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2) / mag;
-                double i = packet->counts[getLine2()->getLineIndex()] * M_PI * 2 / pow(packet->counts[getLine1()->getLineIndex()] + packet->counts[getLine2()->getLineIndex()], 2) / mag;
-                rad = acos(i);
-                if(r < 0.0)
-                    rad = M_PI * 2 - rad;
-            }
+            double mag = 0.0;
+            for(int x = 0; x < getCorrelationOrder(); x++)
+                mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
+            mag = (double)sqrt(mag) / ahp_xc_get_packettime();
         }
         else
         {
@@ -318,18 +288,29 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
             Elemental *Elements = elementals[z];
             if(isActive())
             {
-                if(getLine1()->showCrosscorrelations() && getLine2()->showCrosscorrelations())
+                bool show_correlations = false;
+                for(int x = 0; x < getCorrelationOrder(); x++)
+                    show_correlations |= getLine(x)->showCrosscorrelations();
+                if(show_correlations)
                 {
                     Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
                     if(Elements->lock()) {
                         Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
-                        Elements->getStream()->buf[0] = fmin(getLine1()->getMinFrequency(), getLine1()->getMinFrequency());
-                        Elements->getStream()->buf[1] = fmax(getLine2()->getMaxFrequency(), getLine2()->getMaxFrequency());
+                        double mn = DBL_MAX;
+                        double mx = DBL_MIN;
+                        for(int x = 0; x < getCorrelationOrder(); x++) {
+                            mn = fmin(getLine(x)->getMinFrequency(), mn);
+                            mx = fmax(getLine(x)->getMinFrequency(), mx);
+                        }
+                        Elements->getStream()->buf[0] = mn;
+                        Elements->getStream()->buf[1] = mx;
                         Elements->unlock();
                     }
                     Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
                     stack_index ++;
-                    int size = fmin(Elements->getStreamSize(), fmax(getLine1()->getResolution(), getLine2()->getResolution()));
+                    int size = INT32_MAX;
+                    for(int x = 0; x < getCorrelationOrder(); x++)
+                        fmin(Elements->getStreamSize(), fmax(getLine(x)->getResolution(), size));
                     double *histo = Elements->histogram(size);
                     double mn = Elements->min(2, Elements->getStream()->len-2);
                     double mx = Elements->max(2, Elements->getStream()->len-2);
@@ -387,36 +368,48 @@ void Baseline::addToVLBIContext(int index)
 {
     if(index < 0)
     {
-        index = getMode() - HolographII;
+        index = getMode() - HolographIQ;
         if(index < 0) return;
     }
-    vlbi_set_baseline_stream(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
-                             getLine2()->getLastName().toStdString().c_str(), getStream());
+    const char** names = (const char**)malloc(sizeof(const char*)*getCorrelationOrder());
+    for(int x = 0; x < getCorrelationOrder(); x++)
+        names[x] = getLine(x)->getLastName().toStdString().c_str();
+    vlbi_set_baseline_stream(getVLBIContext(), names, getStream());
 }
 
 void Baseline::removeFromVLBIContext(int index)
 {
     if(index < 0)
     {
-        index = getMode() - HolographII;
+        index = getMode() - HolographIQ;
         if (index < 0) return;
     }
-    vlbi_unlock_baseline(getVLBIContext(), getLine1()->getLastName().toStdString().c_str(),
-                         getLine2()->getLastName().toStdString().c_str());
+    const char** names = (const char**)malloc(sizeof(const char*)*getCorrelationOrder());
+    for(int x = 0; x < getCorrelationOrder(); x++)
+        names[x] = getLine(x)->getLastName().toStdString().c_str();
+    vlbi_unlock_baseline(getVLBIContext(), names);
 }
 
 bool Baseline::isActive(bool atleast1)
 {
+    bool active = false;
+    for(int x = 0; x < getCorrelationOrder(); x++)
+        active |= getLine(x)->isActive();
     if(atleast1)
-        return getLine1()->isActive() || getLine2()->isActive();
+        return active;
     return running;
 }
 
 bool Baseline::scanActive(bool atleast1)
 {
-    if(atleast1)
-        return getLine1()->scanActive() || getLine2()->scanActive();
-    return getLine1()->scanActive() && getLine2()->scanActive();
+    bool active = getLine(0)->scanActive();
+    for(int x = 1; x < getCorrelationOrder(); x++) {
+        if(atleast1)
+            active |= getLine(x)->scanActive();
+        else
+            active &= getLine(x)->scanActive();
+    }
+    return active;
 }
 
 void Baseline::TakeDark(Line* sender)
@@ -465,12 +458,18 @@ void Baseline::SavePlot()
 }
 
 bool Baseline::dft() {
-    return getLine1()->dft() && getLine2()->dft();
+    bool dft = getLine(0)->dft();
+    for(int x = 0; x < getCorrelationOrder(); x++)
+        dft &= getLine(x)->dft();
+    return dft;
 }
 
 int Baseline::smooth()
 {
-    return fmin(getLine1()->smooth(), getLine2()->smooth());
+    int value = INT32_MAX;
+    for(int x = 0; x < getCorrelationOrder(); x++)
+        value = fmin(getLine(x)->smooth(), value);
+    return value;
 }
 
 void Baseline::smoothBuffer(QLineSeries* buf, int offset, int len)
@@ -509,16 +508,16 @@ void Baseline::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
-    getLine1()->setPercentPtr(percent);
-    getLine2()->setPercentPtr(percent);
-    getLine1()->resetStopPtr();
-    getLine2()->resetStopPtr();
+    getLine(0)->setPercentPtr(percent);
+    getLine(1)->setPercentPtr(percent);
+    getLine(0)->resetStopPtr();
+    getLine(1)->resetStopPtr();
 
     *stop = 0;
     int npackets = 0;
-    step = fmax(getLine1()->getScanStep(), getLine2()->getScanStep());
-    npackets = ahp_xc_scan_crosscorrelations(getLine1()->getLineIndex(), getLine2()->getLineIndex(), &spectrum, start1,
-               head_size, start2, tail_size, step, stop, percent);
+    step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
+    npackets = ahp_xc_scan_crosscorrelations(getLine(0)->getLineIndex(), getLine(1)->getLineIndex(), &spectrum, start[0],
+               head_size, start[1], tail_size, step, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
         int ofs = head_size/step;
@@ -554,18 +553,18 @@ void Baseline::stackCorrelations()
         elemental->setBuffer(magnitude_buf, npackets);
         elemental->setMagnitude(magnitude_buf, npackets);
         elemental->setPhase(phase_buf, npackets);
-        if(getLine1()->dft() && getLine2()->dft())
+        if(getLine(0)->dft() && getLine(1)->dft())
         {
             elemental->dft();
         }
-        if(getLine1()->Align() && getLine2()->Align())
+        if(getLine(0)->Align() && getLine(1)->Align())
             elemental->run();
         else
             elemental->finish(false, -head_size, step);
         free(spectrum);
     }
-    getLine1()->resetPercentPtr();
-    getLine2()->resetPercentPtr();
+    getLine(0)->resetPercentPtr();
+    getLine(1)->resetPercentPtr();
     scanning = false;
 }
 

@@ -183,6 +183,7 @@ MainWindow::MainWindow(QWidget *parent)
         settings->setValue("Order", value);
         Order = ui->Order->value();
         ahp_xc_set_correlation_order(ui->Order->value());
+        vlbi_set_correlation_order(getVLBIContext(), ui->Order->value());
 
     });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
@@ -433,47 +434,38 @@ MainWindow::MainWindow(QWidget *parent)
                         Lines[l]->setStopPtr(&threadsStopped);
                         ui->Lines->addTab(Lines[l], name);
                     }
-                    int idx = 0;
-                    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
+                    for(unsigned int idx = 0; idx < ahp_xc_get_nbaselines(); idx++)
                     {
-                        for(unsigned int i = l + 1; i < ahp_xc_get_nlines(); i++)
+                        QString name = "Baseline " + QString::number(idx);
+                        fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
+                        Baselines.append(new Baseline(name, idx, Lines, settings));
+                        Baselines[idx]->setGraph(getGraph());
+                        Baselines[idx]->setStopPtr(&threadsStopped);
+                        connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                         {
-                            QString name = "Baseline " + QString::number(l + 1) + "*" + QString::number(i + 1);
-                            fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
-                            Baselines.append(new Baseline(name, idx, Lines[l], Lines[i], settings));
-                            Baselines[idx]->setGraph(getGraph());
-                            Baselines[idx]->setStopPtr(&threadsStopped);
-                            connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
-                            {
-                                Baselines[idx]->addCount(J2000_starttime, packet);
-                            });
-                            connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
-                                switch(m) {
-                                case Autocorrelator:
-                                    break;
-                                case CrosscorrelatorII:
-                                case CrosscorrelatorIQ:
-                                    getGraph()->addSeries(Baselines[idx]->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                    getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
-                                    break;
-                                case Counter:
-                                case Spectrograph:
-                                    getGraph()->addSeries(Baselines[idx]->getMagnitudes(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                    getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
-                                    break;
-                                case HolographII:
-                                case HolographIQ:
-                                    break;
-                                default: break;
-                                }
-                            });
-                            idx++;
-                        }
+                            Baselines[idx]->addCount(J2000_starttime, packet);
+                        });
+                        connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
+                            switch(m) {
+                            case Autocorrelator:
+                                break;
+                            case CrosscorrelatorII:
+                            case CrosscorrelatorIQ:
+                                getGraph()->addSeries(Baselines[idx]->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                                break;
+                            case Counter:
+                            case Spectrograph:
+                                getGraph()->addSeries(Baselines[idx]->getMagnitudes(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                                break;
+                            case HolographII:
+                            case HolographIQ:
+                                break;
+                            default: break;
+                            }
+                        });
                     }
-
-                    ui->Order->setRange(2, ahp_xc_get_nlines());
-                    ui->Order->setValue(settings->value("Order", 2).toInt());
-                    ui->Order->setEnabled(true);
                     ahp_xc_max_threads(QThread::idealThreadCount());
                     vlbi_max_threads(1);
 
@@ -483,6 +475,10 @@ MainWindow::MainWindow(QWidget *parent)
 
                     getGraph()->loadSettings();
                     createPacket();
+
+                    ui->Order->setRange(2, ahp_xc_get_nlines());
+                    ui->Order->setValue(settings->value("Order", 2).toInt());
+                    ui->Order->setEnabled(true);
                     ui->Connect->setEnabled(false);
                     ui->Voltage->setEnabled(ahp_xc_has_leds());
                     ui->Run->setEnabled(true);
