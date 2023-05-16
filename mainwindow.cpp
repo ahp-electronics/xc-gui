@@ -647,7 +647,10 @@ err_exit:
 end_unlock:
         thread->unlock();
     });
-    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ] { getGraph()->update(getGraph()->rect());});
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
+    {
+        getGraph()->update(getGraph()->rect());
+    });
     connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
     {
         getGraph()->paint();
@@ -659,27 +662,29 @@ end_unlock:
         fseek(f_stdout, 0, SEEK_END);
         int len = ftell(f_stdout);
         fseek(f_stdout, lastlog_pos, SEEK_SET);
-        lastlog_pos = len;
+        lastlog_pos = fmax(0, len);
         len -= ftell(f_stdout);
-        char text[len];
-        fread(text, 1, len, f_stdout);
-        statusBar()->clearMessage();
-        if(len == 0)
-            statusBar()->showMessage("Ready", 1000);
-        else {
-            char *next = text;
-            char *line = next;
-            char *eol = strchr(next, '\n');
-            while(eol > next) {
-                line = next;
-                *eol = 0;
-                next = eol+1;
-                eol = strchr(next, '\n');
+        if(len > 0) {
+            char text[len];
+            fread(text, 1, len, f_stdout);
+            statusBar()->clearMessage();
+            if(len == 0)
+                statusBar()->showMessage("Ready", 1000);
+            else {
+                char *next = text;
+                char *line = next;
+                char *eol = strchr(next, '\n');
+                while(eol > next) {
+                    line = next;
+                    *eol = 0;
+                    next = eol+1;
+                    eol = strchr(next, '\n');
+                }
+                statusBar()->showMessage(line, 1000);
             }
-            statusBar()->showMessage(line, 1000);
+            ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
+            ui->voltageLabel->update(ui->voltageLabel->rect());
         }
-        ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
-        ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
