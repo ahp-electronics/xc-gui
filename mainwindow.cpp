@@ -182,9 +182,10 @@ MainWindow::MainWindow(QWidget *parent)
     {
         settings->setValue("Order", value);
         Order = ui->Order->value();
-        ahp_xc_set_correlation_order(ui->Order->value());
-        vlbi_set_correlation_order(getVLBIContext(), ui->Order->value());
-
+        while(!lock_vlbi());
+        ahp_xc_set_correlation_order(Order);
+        vlbi_set_correlation_order(getVLBIContext(), Order);
+        unlock_vlbi();
     });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
@@ -397,9 +398,28 @@ MainWindow::MainWindow(QWidget *parent)
                         fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         Lines[l]->setTimeRange(TimeRange);
-                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanging),
+                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
                                 [ = ](Line* sender) {
                             (void)sender;
+                            int max_order = 0;
+                            for(Line *line : Lines)
+                                if(line->scanActive())
+                                    max_order ++;
+
+                            while(lock_vlbi());
+                            if(max_order >= 2) {
+                                ui->Order->blockSignals(true);
+                                ui->Order->setRange(2, fmax(2, max_order));
+                                ui->Order->setValue(Order);
+                                ahp_xc_set_correlation_order(fmin(Order, ui->Order->maximum()));
+                                vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
+                                ui->Order->blockSignals(false);
+                                enable_vlbi = true;
+                            } else {
+                                enable_vlbi = false;
+                                ui->Order->setRange(0, 0);
+                            }
+                            unlock_vlbi();
                         });
                         connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                         {
@@ -432,6 +452,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), Lines[l], &Line::runClicked);
                         Lines[l]->setGraph(getGraph());
                         Lines[l]->setStopPtr(&threadsStopped);
+                        Lines[l]->Initialize();
                         ui->Lines->addTab(Lines[l], name);
                     }
                     for(unsigned int idx = 0; idx < ahp_xc_get_nbaselines(); idx++)
@@ -476,8 +497,8 @@ MainWindow::MainWindow(QWidget *parent)
                     getGraph()->loadSettings();
                     createPacket();
 
-                    ui->Order->setRange(2, ahp_xc_get_nlines());
-                    ui->Order->setValue(settings->value("Order", 2).toInt());
+                    ui->Order->setRange(0, 0);
+                    Order = settings->value("Order", 2).toInt();
                     ui->Order->setEnabled(true);
                     ui->Connect->setEnabled(false);
                     ui->Voltage->setEnabled(ahp_xc_has_leds());
@@ -626,6 +647,7 @@ err_exit:
 end_unlock:
         thread->unlock();
     });
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ] { getGraph()->update(getGraph()->rect());});
     connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
     {
         getGraph()->paint();
@@ -639,7 +661,7 @@ end_unlock:
         fseek(f_stdout, lastlog_pos, SEEK_SET);
         lastlog_pos = len;
         len -= ftell(f_stdout);
-        char *text = new char[len];
+        char text[len];
         fread(text, 1, len, f_stdout);
         statusBar()->clearMessage();
         if(len == 0)
@@ -656,7 +678,6 @@ end_unlock:
             }
             statusBar()->showMessage(line, 1000);
         }
-        free(text);
         ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
         ui->voltageLabel->update(ui->voltageLabel->rect());
         thread->unlock();
@@ -666,7 +687,7 @@ end_unlock:
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
             double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance() };
-            if(lock_vlbi()) {
+            if(lock_vlbi() && enable_vlbi) {
                 vlbi_get_uv_plot(getVLBIContext(), "coverage",
                                  getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                                  getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
@@ -699,8 +720,8 @@ end_unlock:
                 }
                 if(vlbi_has_model(getVLBIContext(), "idft"))
                     emit plotModels();
+                unlock_vlbi();
             }
-            unlock_vlbi();
         }
         thread->unlock();
     });

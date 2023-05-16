@@ -26,6 +26,7 @@
 #include "baseline.h"
 #include "line.h"
 #include "graph.h"
+#include "mainwindow.h"
 
 Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidget *parent) :
     QWidget(parent)
@@ -37,6 +38,8 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     Nodes = nodes;
     localpercent = 0;
     localstop = 1;
+    start = (int*)malloc(sizeof(int));
+    lines = (Line**)malloc(sizeof(Line*));
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     countStack = new QMap<double, double>();
@@ -92,7 +95,7 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
                 {
                     if(stream != nullptr)
                     {
-                        lock();
+                        while(!MainWindow::lock_vlbi());
                         for(int y = 0; y < getCorrelationOrder(); y++) {
                             if(y == x) continue;
                             getLine(y)->resetTimestamp();
@@ -101,7 +104,7 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
                             addToVLBIContext();
                         else
                             removeFromVLBIContext();
-                        unlock();
+                        MainWindow::unlock_vlbi();
                     }
                     emit activeStateChanged(this);
                 }
@@ -197,26 +200,27 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
         {
             dsp_stream_p stream = getStream();
             if(stream == nullptr) break;
-            lock();
-            double offset = 0;
-            for(int x = 0; x < getCorrelationOrder(); x++) {
-                if(vlbi_has_node(getVLBIContext(), getLine(x)->getName().toStdString().c_str())) {
-                    offset = vlbi_get_offset(getVLBIContext(), packet->timestamp + starttime, getLine(x)->getName().toStdString().c_str(),
-                                     getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance());
-                    offset /= ahp_xc_get_sampletime();
-                    offset ++;
-                    if(ahp_xc_intensity_crosscorrelator_enabled())
-                    {
-                        ahp_xc_set_channel_auto(getLine(x)->getLineIndex(), offset, 1, 0);
+            if(MainWindow::lock_vlbi()) {
+                double offset = 0;
+                for(int x = 0; x < getCorrelationOrder(); x++) {
+                    if(vlbi_has_node(getVLBIContext(), getLine(x)->getName().toStdString().c_str())) {
+                        offset = vlbi_get_offset(getVLBIContext(), packet->timestamp + starttime, getLine(x)->getName().toStdString().c_str(),
+                                         getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance());
+                        offset /= ahp_xc_get_sampletime();
+                        offset ++;
+                        if(ahp_xc_intensity_crosscorrelator_enabled())
+                        {
+                            ahp_xc_set_channel_auto(getLine(x)->getLineIndex(), offset, 1, 0);
+                        } else {
+                            stream->dft.complex[0].real = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                            stream->dft.complex[0].imaginary = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                        }
                     } else {
-                        stream->dft.complex[0].real = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                        stream->dft.complex[0].imaginary = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                        ahp_xc_set_channel_cross(getLine(x)->getLineIndex(), offset, 1, 0);
                     }
-                } else {
-                    ahp_xc_set_channel_cross(getLine(x)->getLineIndex(), offset, 1, 0);
                 }
+                MainWindow::unlock_vlbi();
             }
-            unlock();
         }
         break;
     case Counter:
@@ -332,6 +336,19 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
         }
         break;
     }
+}
+
+void Baseline::setCorrelationOrder(int order)
+{
+    while(!MainWindow::lock_vlbi());
+    correlation_order = fmax(order, 2);
+    start = (int*)realloc(start, sizeof(int) * correlation_order);
+    lines = (Line**)realloc(lines, sizeof(Line*) * correlation_order);
+    for(int x = 0; x < correlation_order; x++) {
+        int idx = (Index + x * (Index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
+        lines[x] = Nodes[idx];
+    }
+    MainWindow::unlock_vlbi();
 }
 
 void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)

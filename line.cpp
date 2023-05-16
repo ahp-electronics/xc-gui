@@ -326,7 +326,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
+        emit scanActiveStateChanging(this);
+        emit scanActiveStateChanging(this);
     });
+}
+
+void Line::Initialize()
+{
 
     ui->MountMotorIndex->setValue(readInt("MountMotorIndex", getLineIndex() * 2 + 1));
     ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
@@ -849,6 +855,7 @@ void Line::setMode(Mode m)
         ui->EndChannel->setEnabled(true);
         break;
     }
+    emit scanActiveStateChanging(this);
     ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
 

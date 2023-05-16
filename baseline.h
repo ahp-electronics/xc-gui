@@ -159,16 +159,7 @@ class Baseline : public QWidget
         {
             return lines[index];
         }
-        inline void setCorrelationOrder(int order)
-        {
-            correlation_order = fmax(order, 2);
-            start = (int*)realloc(start, sizeof(int) * correlation_order);
-            lines = (Line**)realloc(lines, sizeof(Line*) * correlation_order);
-            for(int x = 0; x < correlation_order; x++) {
-                int idx = (Index + x * (Index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
-                lines[x] = Nodes[x];
-            }
-        }
+        void setCorrelationOrder(int order);
         inline int getCorrelationOrder()
         {
             return correlation_order;

@@ -545,8 +545,8 @@ void Graph::paint()
         double diff = mx - mn;
         axis_y->setRange(mn - diff * 0.2, mx + diff * 0.2);
         logaxis_y->setRange(mn - diff * 0.2, mx + diff * 0.2);
-        update(rect());
     }
+    emit Refresh();
 }
 
 double Graph::getJ2000Time()

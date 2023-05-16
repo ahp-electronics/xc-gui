@@ -84,6 +84,8 @@ class Line : public QWidget
         bool showCounts();
         bool showAutocorrelations();
         bool showCrosscorrelations();
+        void Initialize();
+
         inline QString getName()
         {
             return name;
@@ -488,6 +490,7 @@ class Line : public QWidget
         void SavePlot();
 
     signals:
+        void scanActiveStateChanging(Line*);
         void activeStateChanging(Line*);
         void activeStateChanged(Line*);
         void updateBufferSizes();

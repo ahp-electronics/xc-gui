@@ -328,6 +328,7 @@ class Graph : public QWidget
         QSettings *settings;
 
     signals:
+        void Refresh();
         void modeChanging(Mode m);
         void modeChanged(Mode m);
         void frequencyUpdated(double);

@@ -155,6 +155,7 @@ class MainWindow : public QMainWindow
             if(connected)
             {
                 stopThreads();
+                freePacket();
                 mode = m;
                 if(mode == CrosscorrelatorII || mode == HolographII)
                     ahp_xc_enable_intensity_crosscorrelator(true);
@@ -175,6 +176,7 @@ class MainWindow : public QMainWindow
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);
                 }
+                createPacket();
                 startThreads();
             }
         }
@@ -255,6 +257,7 @@ signals:
 
     private:
         int lastlog_pos { 0 };
+        bool enable_vlbi {false};
         bool has_svf_firmware {false};
         bool has_dfu_firmware {false};
         bool DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms = 30000);
