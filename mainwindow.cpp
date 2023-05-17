@@ -201,6 +201,8 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Download->setEnabled(true);
         ui->Mode->setCurrentIndex(0);
         stopThreads();
+        for(Line * line : Lines)
+            line->setActive(false);
         for(Baseline * line : Baselines)
         {
             getGraph()->removeSeries(line->getCounts());
@@ -210,8 +212,6 @@ MainWindow::MainWindow(QWidget *parent)
             getGraph()->removeSeries(line->getPhase());
             line->~Baseline();
         }
-        for(Line * line : Lines)
-            line->setActive(false);
         for(Line * line : Lines)
         {
             getGraph()->removeSeries(line->getCounts());

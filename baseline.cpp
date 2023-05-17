@@ -83,12 +83,15 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
                 [ = ](Line * sender)
         {
             getCounts()->clear();
-            bool newstate = getLine(x)->showCrosscorrelations();
-            *stop = !getLine(x)->isActive();
+            Line* line = getLine(x);
+            bool newstate = line->showCrosscorrelations();
+            *stop = !line->isActive();
             for(int y = 0; y < getCorrelationOrder(); y++) {
                 if(y == x) continue;
-                newstate = newstate && getLine(y)->showCrosscorrelations();
-                *stop = !(*stop && getLine(y)->isActive());
+                line = getLine(y);
+                newstate = newstate && line->showCrosscorrelations();
+                if(line != nullptr)
+                *stop = !(*stop && line->isActive());
             }
             if(oldstate != newstate)
             {
