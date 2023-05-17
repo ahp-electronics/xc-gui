@@ -251,7 +251,6 @@ class MainWindow : public QMainWindow
 signals:
         void newPacket(ahp_xc_packet*);
         void repaint();
-        void plotModels();
         void scanStarted();
         void scanFinished(bool complete);
 
@@ -298,5 +297,10 @@ signals:
         int gt_address;
         QList<double> position_multipliers;
         QList<int> gt_addresses;
+
+        void readThreadCallback(Thread* sender);
+        void uiThreadCallback(Thread* sender);
+        void vlbiThreadCallback(Thread* sender);
+        void motorThreadCallback(Thread* sender);
 };
 #endif // MAINWINDOW_H

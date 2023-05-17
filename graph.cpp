@@ -28,6 +28,7 @@
 #include <cfloat>
 #include <QTextFormat>
 #include "ahp_xc.h"
+#include "mainwindow.h"
 
 Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     QWidget(parent),
@@ -365,8 +366,10 @@ void Graph::setMode(Mode m)
     mode = m;
     if(mode == HolographIQ || mode == HolographII)
     {
+        while(!MainWindow::lock_vlbi());
         correlator->setVisible(true);
         chart->setVisible(false);
+        MainWindow::unlock_vlbi();
     }
     else
     {
@@ -456,16 +459,7 @@ void Graph::clearSeries()
     chart->series().clear();
 }
 
-void Graph::setPixmap(QImage *picture, QLabel *view)
-{
-    lock();
-    if(picture != nullptr) {
-        view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
-    }
-    unlock();
-}
-
-void Graph::plotModel(QImage* picture, char* model)
+void Graph::plotModel(QImage* picture, QLabel *view, char* model)
 {
     lock();
     if(vlbi_has_model(getVLBIContext(), model)) {
@@ -476,6 +470,7 @@ void Graph::plotModel(QImage* picture, char* model)
         dsp_buffer_copy(data->buf, pixels, data->len);
         dsp_stream_free_buffer(data);
         dsp_stream_free(data);
+        view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
     }
     unlock();
 }
@@ -496,10 +491,16 @@ void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)
     {
-        setPixmap(getCoverage(), getCoverageView());
-        setPixmap(getMagnitude(), getMagnitudeView());
-        setPixmap(getPhase(), getPhaseView());
-        setPixmap(getIdft(), getIdftView());
+        if(isTracking()) {
+            plotModel(getCoverage(), getCoverageView(), (char*)"coverage_stack");
+            plotModel(getMagnitude(), getMagnitudeView(), (char*)"magnitude_stack");
+            plotModel(getPhase(), getPhaseView(), (char*)"phase_stack");
+        } else {
+            plotModel(getCoverage(), getCoverageView(), (char*)"coverage");
+            plotModel(getMagnitude(), getMagnitudeView(), (char*)"magnitude");
+            plotModel(getPhase(), getPhaseView(), (char*)"phase");
+        }
+        plotModel(getIdft(), getIdftView(), (char*)"idft");
         updateInfo();
     }
     if(mode != HolographIQ && mode != HolographII)
@@ -546,7 +547,7 @@ void Graph::paint()
         axis_y->setRange(mn - diff * 0.2, mx + diff * 0.2);
         logaxis_y->setRange(mn - diff * 0.2, mx + diff * 0.2);
     }
-    emit Refresh();
+    update(rect());
 }
 
 double Graph::getJ2000Time()

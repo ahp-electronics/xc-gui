@@ -91,7 +91,6 @@ class Graph : public QWidget
 
         void updateInfo();
         void clearSeries();
-        void setPixmap(QImage *picture, QLabel *view);
         bool threadRunning;
         void addSeries(QAbstractSeries* series, QString name);
         void setupAxes(double base_x = 1.0, double base_y = 1.0, QString title_x = "", QString title_y = "", QString format_x = "%g", QString format_y = "%g", int ticks_x = 8, int ticks_y = 8);
@@ -232,7 +231,7 @@ class Graph : public QWidget
         QString toDMS(double dms);
         double fromHMSorDMS(QString dms);
 
-        void plotModel(QImage* picture, char* model);
+        void plotModel(QImage* picture, QLabel *view, char* model);
         void createModel(QString model);
 
         inline vlbi_context getVLBIContext(int index = -1)

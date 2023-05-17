@@ -563,7 +563,14 @@ err_exit:
     {
         settings->setValue("Download", checked);
     });
-    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
+    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
+    {
+    });
+    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
+    {
+        getGraph()->paint();
+    });
+    connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
     {
         int y = 0;
         int off = 0;
@@ -644,18 +651,10 @@ err_exit:
                 break;
         }
         emit repaint();
-end_unlock:
+    end_unlock:
         thread->unlock();
     });
-    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
-    {
-        getGraph()->update(getGraph()->rect());
-    });
-    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
-    {
-        getGraph()->paint();
-    });
-    connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ](Thread * thread)
+    connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ] (Thread * thread)
     {
         for(int x = 0; x < Lines.count(); x++)
             Lines.at(x)->paint();
@@ -687,7 +686,7 @@ end_unlock:
         }
         thread->unlock();
     });
-    connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
+    connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
@@ -723,14 +722,12 @@ end_unlock:
                     if(vlbi_has_model(getVLBIContext(), "magnitude") && vlbi_has_model(getVLBIContext(), "phase"))
                         vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 }
-                if(vlbi_has_model(getVLBIContext(), "idft"))
-                    emit plotModels();
                 unlock_vlbi();
             }
         }
         thread->unlock();
     });
-    connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ](Thread * thread)
+    connect(motorThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
     {
         MainWindow* main = (MainWindow*)thread->getParent();
         int fd = -1;
@@ -744,19 +741,6 @@ end_unlock:
             }
         }
         thread->unlock();
-    });
-    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::plotModels), this, [ = ] () {
-        if(getGraph()->isTracking()) {
-            getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage_stack");
-            getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude_stack");
-            getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase_stack");
-            getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
-        } else {
-            getGraph()->plotModel(getGraph()->getCoverage(), (char*)"coverage");
-            getGraph()->plotModel(getGraph()->getMagnitude(), (char*)"magnitude");
-            getGraph()->plotModel(getGraph()->getPhase(), (char*)"phase");
-            getGraph()->plotModel(getGraph()->getIdft(), (char*)"idft");
-        }
     });
     resize(1280, 720);
 }

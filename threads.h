@@ -42,6 +42,7 @@ class Thread : public QThread
         int timer_ms;
         int loop_ms;
         QString Name;
+        bool running { false };
     public:
         Thread(QObject* p, int timer = 20, int loop = 20, QString n = "") : QThread()
         {
@@ -53,6 +54,7 @@ class Thread : public QThread
         }
         void run()
         {
+            running = true;
             lastPollTime = QDateTime::currentDateTimeUtc();
             while(!isInterruptionRequested())
             {
@@ -64,6 +66,7 @@ class Thread : public QThread
                     QThread::msleep(next_ms);
                 }
             }
+            running = false;
         }
         void stop()
         {
