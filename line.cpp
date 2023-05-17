@@ -327,7 +327,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
         emit scanActiveStateChanging(this);
-        emit scanActiveStateChanging(this);
+        emit scanActiveStateChanged(this);
     });
 }
 
@@ -478,19 +478,6 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
     default: break;
     case HolographIQ:
     case HolographII:
-    if(getVLBIContext() == nullptr) break;
-    if(MainWindow::lock_vlbi()) {
-        if(scanActive())
-        {
-            dsp_stream_p stream = getStream();
-            if(stream == nullptr) break;
-            stream->buf[stream->len - 1] = (double)packet->counts[getLineIndex()];
-            if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
-                addToVLBIContext();
-        } else if(vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
-            removeFromVLBIContext();
-        MainWindow::unlock_vlbi();
-    }
     break;
     case Counter:
     for (int z = 0; z < 2; z++)
@@ -856,6 +843,7 @@ void Line::setMode(Mode m)
         break;
     }
     emit scanActiveStateChanging(this);
+    emit scanActiveStateChanged(this);
     ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
 
@@ -876,14 +864,16 @@ void Line::paint()
 void Line::addToVLBIContext()
 {
     resetTimestamp();
-    vlbi_add_node(getVLBIContext(), getStream(), getName().toStdString().c_str(), false);
+    if(getMode() != HolographII && getMode() != HolographIQ) return;
+    if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
+        vlbi_add_node(getVLBIContext(), getStream(), getName().toStdString().c_str(), false);
 }
 
 void Line::removeFromVLBIContext()
 {
-    if(stream != nullptr)
+    if(stream != nullptr && vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
     {
-        vlbi_del_node(getVLBIContext(), getLastName().toStdString().c_str());
+        vlbi_del_node(getVLBIContext(), getName().toStdString().c_str());
     }
 }
 

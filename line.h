@@ -86,13 +86,9 @@ class Line : public QWidget
         bool showCrosscorrelations();
         void Initialize();
 
-        inline QString getName()
+        QString getName()
         {
             return name;
-        }
-        inline QString getLastName()
-        {
-            return name + "_" + QString::number(floor(vlbi_time_timespec_to_J2000time(getStream()->starttimeutc)));
         }
         void setMode(Mode m);
         Mode getMode()
@@ -491,6 +487,7 @@ class Line : public QWidget
 
     signals:
         void scanActiveStateChanging(Line*);
+        void scanActiveStateChanged(Line*);
         void activeStateChanging(Line*);
         void activeStateChanged(Line*);
         void updateBufferSizes();

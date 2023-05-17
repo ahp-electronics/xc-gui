@@ -128,7 +128,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     uiThread = new Thread(this, 10, 10, "uiThread");
     readThread = new Thread(this, 1, 1, "readThread");
-    vlbiThread = new Thread(this, 1000, 1000, "vlbiThread");
+    vlbiThread = new Thread(this, 100, 100, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
     int starty = 80;
@@ -377,6 +377,12 @@ MainWindow::MainWindow(QWidget *parent)
                             motorFD = ahp_gt_get_fd();
                         }
                     }
+                    ahp_xc_max_threads(QThread::idealThreadCount());
+                    vlbi_max_threads(QThread::idealThreadCount());
+
+                    for(int i = 0; i < vlbi_total_contexts; i++) {
+                        context[i] = vlbi_init();
+                    }
                     connected = true;
                     settings->setValue("xc_connection", xcport);
                     QString header = ahp_xc_get_header();
@@ -390,8 +396,6 @@ MainWindow::MainWindow(QWidget *parent)
                     }
                     settings->endGroup();
                     settings->beginGroup(header);
-                    for(int i = 0; i < vlbi_total_contexts; i++)
-                        context[i] = vlbi_init();
                     for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                     {
                         QString name = "Line " + QString::number(l + 1);
@@ -406,20 +410,30 @@ MainWindow::MainWindow(QWidget *parent)
                                 if(line->scanActive())
                                     max_order ++;
 
-                            while(lock_vlbi());
                             if(max_order >= 2) {
+                                Order = fmax(2, Order);
                                 ui->Order->blockSignals(true);
                                 ui->Order->setRange(2, fmax(2, max_order));
                                 ui->Order->setValue(Order);
+                                while(lock_vlbi());
                                 ahp_xc_set_correlation_order(fmin(Order, ui->Order->maximum()));
-                                vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
+                                unlock_vlbi();
                                 ui->Order->blockSignals(false);
+                                for(Line * line : Lines) {
+                                    line->resetTimestamp();
+                                    if(line->scanActive())
+                                        line->addToVLBIContext();
+                                }
+                                vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
+                                for(Baseline *line : Baselines)
+                                    line->setCorrelationOrder(fmin(Order, ui->Order->maximum()));
                                 enable_vlbi = true;
                             } else {
+                                for(Line *line : Lines)
+                                    line->removeFromVLBIContext();
                                 enable_vlbi = false;
                                 ui->Order->setRange(0, 0);
                             }
-                            unlock_vlbi();
                         });
                         connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                         {
@@ -486,12 +500,6 @@ MainWindow::MainWindow(QWidget *parent)
                             default: break;
                             }
                         });
-                    }
-                    ahp_xc_max_threads(QThread::idealThreadCount());
-                    vlbi_max_threads(1);
-
-                    for(int i = 0; i < vlbi_total_contexts; i++) {
-                        context[i] = vlbi_init();
                     }
 
                     getGraph()->loadSettings();

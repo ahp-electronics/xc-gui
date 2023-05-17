@@ -157,7 +157,7 @@ class Baseline : public QWidget
         }
         inline Line* getLine(int index)
         {
-            return lines[index];
+            return lines.at(index);
         }
         void setCorrelationOrder(int order);
         inline int getCorrelationOrder()
@@ -286,7 +286,7 @@ class Baseline : public QWidget
         QList<Line*> Nodes;
         double stack_index { 1.0 };
         int correlation_order {2};
-        Line** lines;
+        QList<Line*> lines;
 signals:
         void activeStateChanging(Baseline*);
         void activeStateChanged(Baseline*);

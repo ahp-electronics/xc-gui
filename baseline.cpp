@@ -23,6 +23,8 @@
    SOFTWARE.
 */
 
+#include <cstdio>
+#include <cstring>
 #include "baseline.h"
 #include "line.h"
 #include "graph.h"
@@ -38,8 +40,8 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     Nodes = nodes;
     localpercent = 0;
     localstop = 1;
+    mode = Counter;
     start = (int*)malloc(sizeof(int));
-    lines = (Line**)malloc(sizeof(Line*));
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     countStack = new QMap<double, double>();
@@ -60,12 +62,12 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     dsp_stream_alloc_buffer(stream, stream->len);
     stream->samplerate = 1.0/ahp_xc_get_packettime();
     connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
-    setCorrelationOrder(ahp_xc_get_correlation_order());
+    lines.clear();
     for(int x = 0; x < getCorrelationOrder(); x++) {
-        int idx = (x + (x / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
-        lines[x] = nodes[idx];
-        connect(lines[x], static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
-        connect(lines[x], static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
+        int idx = (index + x * (index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
+        lines.append(nodes[idx]);
+        connect(getLine(x), static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
+        connect(getLine(x), static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
                 [ = ]()
         {
             getMagnitudeStack()->clear();
@@ -77,7 +79,7 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
             getCounts()->clear();
             stack_index = 0.0;
         });
-        connect(lines[x], static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+        connect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
                 [ = ](Line * sender)
         {
             getCounts()->clear();
@@ -93,19 +95,6 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
                 emit activeStateChanging(this);
                 if(newstate)
                 {
-                    if(stream != nullptr)
-                    {
-                        while(!MainWindow::lock_vlbi());
-                        for(int y = 0; y < getCorrelationOrder(); y++) {
-                            if(y == x) continue;
-                            getLine(y)->resetTimestamp();
-                        }
-                        if(getMode() == HolographIQ)
-                            addToVLBIContext();
-                        else
-                            removeFromVLBIContext();
-                        MainWindow::unlock_vlbi();
-                    }
                     emit activeStateChanged(this);
                 }
             }
@@ -212,13 +201,12 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                         {
                             ahp_xc_set_channel_auto(getLine(x)->getLineIndex(), offset, 1, 0);
                         } else {
-                            stream->dft.complex[0].real = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
-                            stream->dft.complex[0].imaginary = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
+                            ahp_xc_set_channel_cross(getLine(x)->getLineIndex(), offset, 1, 0);
                         }
-                    } else {
-                        ahp_xc_set_channel_cross(getLine(x)->getLineIndex(), offset, 1, 0);
                     }
                 }
+                stream->dft.complex[0].real = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].real;
+                stream->dft.complex[0].imaginary = packet->crosscorrelations[Index].correlations[ahp_xc_get_crosscorrelator_lagsize() / 2].imaginary;
                 MainWindow::unlock_vlbi();
             }
         }
@@ -343,11 +331,16 @@ void Baseline::setCorrelationOrder(int order)
     while(!MainWindow::lock_vlbi());
     correlation_order = fmax(order, 2);
     start = (int*)realloc(start, sizeof(int) * correlation_order);
-    lines = (Line**)realloc(lines, sizeof(Line*) * correlation_order);
+    lines.clear();
     for(int x = 0; x < correlation_order; x++) {
         int idx = (Index + x * (Index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
-        lines[x] = Nodes[idx];
+        lines.append(Nodes.at(idx));
     }
+    const char** names = (const char**)malloc(sizeof(const char*)*getCorrelationOrder());
+    for(int x = 0; x < getCorrelationOrder(); x++)
+        names[x] = getLine(x)->getName().toStdString().c_str();
+    if(getMode() == HolographII || getMode() == HolographIQ)
+        vlbi_set_baseline_stream(getVLBIContext(), names, getStream());
     MainWindow::unlock_vlbi();
 }
 
@@ -388,10 +381,6 @@ void Baseline::addToVLBIContext(int index)
         index = getMode() - HolographIQ;
         if(index < 0) return;
     }
-    const char** names = (const char**)malloc(sizeof(const char*)*getCorrelationOrder());
-    for(int x = 0; x < getCorrelationOrder(); x++)
-        names[x] = getLine(x)->getLastName().toStdString().c_str();
-    vlbi_set_baseline_stream(getVLBIContext(), names, getStream());
 }
 
 void Baseline::removeFromVLBIContext(int index)
@@ -403,7 +392,7 @@ void Baseline::removeFromVLBIContext(int index)
     }
     const char** names = (const char**)malloc(sizeof(const char*)*getCorrelationOrder());
     for(int x = 0; x < getCorrelationOrder(); x++)
-        names[x] = getLine(x)->getLastName().toStdString().c_str();
+        names[x] = getLine(x)->getName().toStdString().c_str();
     vlbi_unlock_baseline(getVLBIContext(), names);
 }
 
