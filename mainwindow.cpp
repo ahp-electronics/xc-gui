@@ -210,7 +210,6 @@ MainWindow::MainWindow(QWidget *parent)
             getGraph()->removeSeries(line->getPhase());
             line->~Baseline();
         }
-        Baselines.clear();
         for(Line * line : Lines)
             line->setActive(false);
         for(Line * line : Lines)
@@ -222,6 +221,7 @@ MainWindow::MainWindow(QWidget *parent)
             getGraph()->removeSeries(line->getPhase());
             line->~Line();
         }
+        Baselines.clear();
         Lines.clear();
         ui->Lines->clear();
         freePacket();
