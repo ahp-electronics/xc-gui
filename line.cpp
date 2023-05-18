@@ -417,8 +417,8 @@ void Line::setLocation(int value)
             saveSetting("location_x", getLocation()->xyz.x);
             saveSetting("location_y", getLocation()->xyz.y);
             saveSetting("location_z", getLocation()->xyz.z);
-            MainWindow::unlock_vlbi();
         }
+        MainWindow::unlock_vlbi();
     }
 }
 

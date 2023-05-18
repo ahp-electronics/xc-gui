@@ -459,6 +459,11 @@ void Graph::clearSeries()
     chart->series().clear();
 }
 
+void Graph::setPixmap(QImage* picture, QLabel *view)
+{
+    view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
+}
+
 void Graph::plotModel(QImage* picture, QLabel *view, char* model)
 {
     lock();
@@ -470,7 +475,7 @@ void Graph::plotModel(QImage* picture, QLabel *view, char* model)
         dsp_buffer_copy(data->buf, pixels, data->len);
         dsp_stream_free_buffer(data);
         dsp_stream_free(data);
-        view->setPixmap(QPixmap::fromImage(picture->scaled(view->geometry().size())));
+        setPixmap(picture, view);
     }
     unlock();
 }
@@ -500,7 +505,8 @@ void Graph::paint()
             plotModel(getMagnitude(), getMagnitudeView(), (char*)"magnitude");
             plotModel(getPhase(), getPhaseView(), (char*)"phase");
         }
-        plotModel(getIdft(), getIdftView(), (char*)"idft");
+        if(vlbi_has_model(getVLBIContext(), "idft"))
+            plotModel(getIdft(), getIdftView(), (char*)"idft");
         updateInfo();
     }
     if(mode != HolographIQ && mode != HolographII)
@@ -611,15 +617,18 @@ void Graph::resizeEvent(QResizeEvent *event)
     int n = 0;
     coverageView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
     coverageLabel->setGeometry(coverageView->x(), y_offset, size, 30);
+    setPixmap(&coverage, coverageView);
     n++;
     magnitudeView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
     magnitudeLabel->setGeometry(magnitudeView->x(), y_offset, size, 30);
+    setPixmap(&magnitude, magnitudeView);
     n++;
     phaseView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
     phaseLabel->setGeometry(phaseView->x(), y_offset, size, 30);
+    setPixmap(&phase, phaseView);
     n++;
     idftView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
     idftLabel->setGeometry(idftView->x(), y_offset, size, 30);
+    setPixmap(&idft, idftView);
     n++;
-    y_offset = 40;
 }

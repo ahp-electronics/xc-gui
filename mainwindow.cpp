@@ -505,7 +505,6 @@ MainWindow::MainWindow(QWidget *parent)
                     getGraph()->loadSettings();
                     createPacket();
 
-                    ui->Order->setRange(0, 0);
                     Order = settings->value("Order", 2).toInt();
                     ui->Order->setEnabled(true);
                     ui->Connect->setEnabled(false);
@@ -658,7 +657,8 @@ err_exit:
                 }
                 break;
         }
-        emit repaint();
+        if(getMode() != HolographII && getMode() != HolographIQ)
+            emit repaint();
     end_unlock:
         thread->unlock();
     });
@@ -730,6 +730,7 @@ err_exit:
                     if(vlbi_has_model(getVLBIContext(), "magnitude") && vlbi_has_model(getVLBIContext(), "phase"))
                         vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 }
+                emit repaint();
                 unlock_vlbi();
             }
         }

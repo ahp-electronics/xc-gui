@@ -231,6 +231,7 @@ class Graph : public QWidget
         QString toDMS(double dms);
         double fromHMSorDMS(QString dms);
 
+        void setPixmap(QImage* picture, QLabel *view);
         void plotModel(QImage* picture, QLabel *view, char* model);
         void createModel(QString model);
 
