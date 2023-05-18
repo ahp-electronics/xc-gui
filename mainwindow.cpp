@@ -417,7 +417,6 @@ MainWindow::MainWindow(QWidget *parent)
                                 ui->Order->setValue(Order);
                                 while(lock_vlbi());
                                 ahp_xc_set_correlation_order(fmin(Order, ui->Order->maximum()));
-                                unlock_vlbi();
                                 ui->Order->blockSignals(false);
                                 for(Line * line : Lines) {
                                     line->resetTimestamp();
@@ -425,6 +424,7 @@ MainWindow::MainWindow(QWidget *parent)
                                         line->addToVLBIContext();
                                 }
                                 vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
+                                unlock_vlbi();
                                 for(Baseline *line : Baselines)
                                     line->setCorrelationOrder(fmin(Order, ui->Order->maximum()));
                                 enable_vlbi = true;
@@ -502,7 +502,6 @@ MainWindow::MainWindow(QWidget *parent)
                         });
                     }
 
-                    getGraph()->loadSettings();
                     createPacket();
 
                     Order = settings->value("Order", 2).toInt();
@@ -698,6 +697,8 @@ err_exit:
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
+            for(Line* line : Lines)
+                line->setLocation();
             double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance() };
             if(lock_vlbi() && enable_vlbi) {
                 vlbi_get_uv_plot(getVLBIContext(), "coverage",

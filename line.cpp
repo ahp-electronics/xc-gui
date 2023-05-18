@@ -408,18 +408,17 @@ void Line::updateLocation()
 void Line::setLocation(int value)
 {
     (void)value;
-    if(MainWindow::lock_vlbi()) {
-        if(stream != nullptr)
-        {
-            getLocation()->xyz.x = ui->x_location->value() / 1000;
-            getLocation()->xyz.y = ui->y_location->value() / 1000;
-            getLocation()->xyz.z = ui->z_location->value() / 1000;
-            saveSetting("location_x", getLocation()->xyz.x);
-            saveSetting("location_y", getLocation()->xyz.y);
-            saveSetting("location_z", getLocation()->xyz.z);
-        }
-        MainWindow::unlock_vlbi();
+    while(!MainWindow::lock_vlbi());
+    if(stream != nullptr)
+    {
+        getLocation()->xyz.x = ui->x_location->value() / 1000;
+        getLocation()->xyz.y = ui->y_location->value() / 1000;
+        getLocation()->xyz.z = ui->z_location->value() / 1000;
+        saveSetting("location_x", getLocation()->xyz.x);
+        saveSetting("location_y", getLocation()->xyz.y);
+        saveSetting("location_z", getLocation()->xyz.z);
     }
+    MainWindow::unlock_vlbi();
 }
 
 void Line::updateRa()
@@ -842,9 +841,9 @@ void Line::setMode(Mode m)
         ui->EndChannel->setEnabled(true);
         break;
     }
+    ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
     emit scanActiveStateChanging(this);
     emit scanActiveStateChanged(this);
-    ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
 
 void Line::paint()
