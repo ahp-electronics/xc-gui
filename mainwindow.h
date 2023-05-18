@@ -176,9 +176,9 @@ class MainWindow : public QMainWindow
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);
                 }
-                updateOrder();
                 createPacket();
                 startThreads();
+                updateOrder();
             }
         }
         void updateOrder();

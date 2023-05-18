@@ -403,8 +403,14 @@ MainWindow::MainWindow(QWidget *parent)
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         Lines[l]->setTimeRange(TimeRange);
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
-                                [ = ](Line* sender) {
-                            (void)sender;
+                                [ = ](Line* line) {
+                            if(line->scanActive())
+                                line->addToVLBIContext();
+                            else
+                                line->removeFromVLBIContext();
+                        });
+                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanged),
+                                [ = ](Line* line) {
                             updateOrder();
                         });
                         connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
@@ -805,31 +811,24 @@ void MainWindow::resetTimestamp()
 void MainWindow::updateOrder()
 {
     int max_order = 0;
-    for(Line *line : Lines)
-        if(line->scanActive())
+    for(int x = 0; x < Lines.count(); x++)
+        if(Lines[x]->scanActive())
             max_order ++;
 
     if(max_order >= 2) {
-        Order = fmax(2, Order);
-        ui->Order->blockSignals(true);
-        ui->Order->setRange(2, fmax(2, max_order));
-        ui->Order->setValue(Order);
-        while(lock_vlbi());
-        ahp_xc_set_correlation_order(fmin(Order, ui->Order->maximum()));
-        ui->Order->blockSignals(false);
-        for(Line * line : Lines) {
-            line->resetTimestamp();
-            if(line->scanActive())
-                line->addToVLBIContext();
-        }
-        vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
+        int order = fmax(2, fmin(max_order, Order));
+        while(!lock_vlbi());
+        ahp_xc_set_correlation_order(order);
+        vlbi_set_correlation_order(getVLBIContext(), order);
         unlock_vlbi();
-        for(Baseline *line : Baselines)
-            line->setCorrelationOrder(fmin(Order, ui->Order->maximum()));
+        for(int x = 0; x < Baselines.count(); x++)
+            Baselines[x]->setCorrelationOrder(order);
+        ui->Order->blockSignals(true);
+        ui->Order->setRange(2, max_order);
+        ui->Order->setValue(order);
+        ui->Order->blockSignals(false);
         enable_vlbi = true;
     } else {
-        for(Line *line : Lines)
-            line->removeFromVLBIContext();
         enable_vlbi = false;
         ui->Order->setRange(0, 0);
     }

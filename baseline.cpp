@@ -344,6 +344,7 @@ void Baseline::setCorrelationOrder(int order)
         names[x] = getLine(x)->getName().toStdString().c_str();
     if(getMode() == HolographII || getMode() == HolographIQ)
         vlbi_set_baseline_stream(getVLBIContext(), names, getStream());
+    free(names);
     MainWindow::unlock_vlbi();
 }
 

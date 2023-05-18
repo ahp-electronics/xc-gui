@@ -863,18 +863,19 @@ void Line::paint()
 
 void Line::addToVLBIContext()
 {
+    while(!MainWindow::lock_vlbi());
     resetTimestamp();
-    if(getMode() != HolographII && getMode() != HolographIQ) return;
-    if(!vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
-        vlbi_add_node(getVLBIContext(), getStream(), getName().toStdString().c_str(), false);
+    for(int x = 0; x < vlbi_total_contexts; x++)
+        vlbi_add_node(context[x], getStream(), getName().toStdString().c_str(), false);
+    MainWindow::unlock_vlbi();
 }
 
 void Line::removeFromVLBIContext()
 {
-    if(stream != nullptr && vlbi_has_node(getVLBIContext(), getName().toStdString().c_str()))
-    {
-        vlbi_del_node(getVLBIContext(), getName().toStdString().c_str());
-    }
+    while(!MainWindow::lock_vlbi());
+    for(int x = 0; x < vlbi_total_contexts; x++)
+        vlbi_del_node(context[x], getName().toStdString().c_str());
+    MainWindow::unlock_vlbi();
 }
 
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
