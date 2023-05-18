@@ -405,35 +405,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
                                 [ = ](Line* sender) {
                             (void)sender;
-                            int max_order = 0;
-                            for(Line *line : Lines)
-                                if(line->scanActive())
-                                    max_order ++;
-
-                            if(max_order >= 2) {
-                                Order = fmax(2, Order);
-                                ui->Order->blockSignals(true);
-                                ui->Order->setRange(2, fmax(2, max_order));
-                                ui->Order->setValue(Order);
-                                while(lock_vlbi());
-                                ahp_xc_set_correlation_order(fmin(Order, ui->Order->maximum()));
-                                ui->Order->blockSignals(false);
-                                for(Line * line : Lines) {
-                                    line->resetTimestamp();
-                                    if(line->scanActive())
-                                        line->addToVLBIContext();
-                                }
-                                vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
-                                unlock_vlbi();
-                                for(Baseline *line : Baselines)
-                                    line->setCorrelationOrder(fmin(Order, ui->Order->maximum()));
-                                enable_vlbi = true;
-                            } else {
-                                for(Line *line : Lines)
-                                    line->removeFromVLBIContext();
-                                enable_vlbi = false;
-                                ui->Order->setRange(0, 0);
-                            }
+                            updateOrder();
                         });
                         connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                         {
@@ -697,8 +669,6 @@ err_exit:
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
-            for(Line* line : Lines)
-                line->setLocation();
             double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance() };
             if(lock_vlbi() && enable_vlbi) {
                 vlbi_get_uv_plot(getVLBIContext(), "coverage",
@@ -830,6 +800,39 @@ void MainWindow::resetTimestamp()
                     Qt::DateFormat::ISODate).toStdString().c_str());
     J2000_starttime = vlbi_time_timespec_to_J2000time(starttime);
     lastpackettime = J2000_starttime;
+}
+
+void MainWindow::updateOrder()
+{
+    int max_order = 0;
+    for(Line *line : Lines)
+        if(line->scanActive())
+            max_order ++;
+
+    if(max_order >= 2) {
+        Order = fmax(2, Order);
+        ui->Order->blockSignals(true);
+        ui->Order->setRange(2, fmax(2, max_order));
+        ui->Order->setValue(Order);
+        while(lock_vlbi());
+        ahp_xc_set_correlation_order(fmin(Order, ui->Order->maximum()));
+        ui->Order->blockSignals(false);
+        for(Line * line : Lines) {
+            line->resetTimestamp();
+            if(line->scanActive())
+                line->addToVLBIContext();
+        }
+        vlbi_set_correlation_order(getVLBIContext(), fmin(Order, ui->Order->maximum()));
+        unlock_vlbi();
+        for(Baseline *line : Baselines)
+            line->setCorrelationOrder(fmin(Order, ui->Order->maximum()));
+        enable_vlbi = true;
+    } else {
+        for(Line *line : Lines)
+            line->removeFromVLBIContext();
+        enable_vlbi = false;
+        ui->Order->setRange(0, 0);
+    }
 }
 
 void MainWindow::setVoltage(int level)

@@ -393,6 +393,7 @@ void Graph::setMode(Mode m)
         correlator->setVisible(false);
         chart->setVisible(true);
     }
+    loadSettings();
     emit modeChanged(m);
 }
 

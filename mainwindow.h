@@ -176,11 +176,12 @@ class MainWindow : public QMainWindow
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);
                 }
-                getGraph()->loadSettings();
+                updateOrder();
                 createPacket();
                 startThreads();
             }
         }
+        void updateOrder();
         void runClicked(bool checked);
         void setVoltage(int level);
         void resetTimestamp();

@@ -370,6 +370,7 @@ void Line::Initialize()
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
     setActive(false);
+    setLocation();
 }
 
 void Line::UpdateBufferSizes()
@@ -841,9 +842,9 @@ void Line::setMode(Mode m)
         ui->EndChannel->setEnabled(true);
         break;
     }
-    ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
     emit scanActiveStateChanging(this);
     emit scanActiveStateChanged(this);
+    ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
 
 void Line::paint()
