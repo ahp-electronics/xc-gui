@@ -679,13 +679,13 @@ err_exit:
             if(lock_vlbi() && enable_vlbi) {
                 vlbi_get_uv_plot(getVLBIContext(), "coverage",
                                  getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, coverage_delegate, &threadsStopped);
+                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), 1, 0, coverage_delegate, &threadsStopped);
                 vlbi_get_uv_plot(getVLBIContext(), "magnitude",
                                  getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_magnitude_delegate, &threadsStopped);
+                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), 1, 0, vlbi_magnitude_delegate, &threadsStopped);
                 vlbi_get_uv_plot(getVLBIContext(), "phase",
                                  getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
-                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), true, false, vlbi_phase_delegate, &threadsStopped);
+                                 getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), 1, 0, vlbi_phase_delegate, &threadsStopped);
                 if(getGraph()->isTracking()) {
                     if(vlbi_has_model(getVLBIContext(), "coverage_stack"))
                         vlbi_stack_models(getVLBIContext(), "coverage_stack", "coverage_stack", "coverage");
@@ -817,12 +817,12 @@ void MainWindow::updateOrder()
 
     if(max_order >= 2) {
         int order = fmax(2, fmin(max_order, Order));
+        for(int x = 0; x < Baselines.count(); x++)
+            Baselines[x]->setCorrelationOrder(order);
         while(!lock_vlbi());
         ahp_xc_set_correlation_order(order);
         vlbi_set_correlation_order(getVLBIContext(), order);
         unlock_vlbi();
-        for(int x = 0; x < Baselines.count(); x++)
-            Baselines[x]->setCorrelationOrder(order);
         ui->Order->blockSignals(true);
         ui->Order->setRange(2, max_order);
         ui->Order->setValue(order);

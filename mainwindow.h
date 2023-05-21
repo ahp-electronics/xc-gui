@@ -165,6 +165,7 @@ class MainWindow : public QMainWindow
                 ahp_xc_set_capture_flags((xc_capture_flags)((cur & ~CAP_ENABLE) | CAP_RESET_TIMESTAMP));
                 resetTimestamp();
                 getGraph()->setMode(m);
+                createPacket();
                 for(int i = 0; i < Lines.count(); i++)
                 {
                     Lines[i]->setMode(mode);
@@ -176,9 +177,7 @@ class MainWindow : public QMainWindow
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);
                 }
-                createPacket();
                 startThreads();
-                updateOrder();
             }
         }
         void updateOrder();

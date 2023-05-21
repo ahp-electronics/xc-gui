@@ -864,9 +864,10 @@ void Line::paint()
 void Line::addToVLBIContext()
 {
     while(!MainWindow::lock_vlbi());
-    resetTimestamp();
-    for(int x = 0; x < vlbi_total_contexts; x++)
-        vlbi_add_node(context[x], getStream(), getName().toStdString().c_str(), false);
+    for(int x = 0; x < vlbi_total_contexts; x++) {
+        if(!vlbi_has_node(context[x], getName().toStdString().c_str()))
+            vlbi_add_node(context[x], getStream(), getName().toStdString().c_str(), 0);
+    }
     MainWindow::unlock_vlbi();
 }
 
