@@ -27,12 +27,26 @@
 #include "QMutex"
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include <urjtag.h>
+#include <dfu.h>
+
+
 vlbi_context context[vlbi_total_contexts];
 double coverage_delegate(double x, double y)
 {
     (void)x;
     (void)y;
     return 1.0;
+}
+
+static int32_t flash_svf(int32_t fd, const char *bsdl_path)
+{
+    return program_jtag(fd, "dirtyjtag", bsdl_path, 1000000);
+}
+
+static int32_t flash_dfu(int32_t fd, int32_t *progress, int32_t *finished)
+{
+    return dfu_flash(fd, progress, finished);
 }
 
 static char *strrand(int len)
@@ -329,7 +343,10 @@ MainWindow::MainWindow(QWidget *parent)
                             QString bsdl_path = homedir;
                             QFile file(svf_filename);
                             file.open(QIODevice::ReadOnly);
-                            int err = ahp_xc_flash_svf(file.handle(), bsdl_path.toStdString().c_str());
+                            int maxerr = 10;
+                            int err = 1;
+                            while (maxerr-- > 0 && err != 0)
+                                err = flash_svf(file.handle(), bsdl_path.toStdString().c_str());
                             file.close();
                             if (err) goto err_exit;
                         }

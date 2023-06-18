@@ -38,8 +38,18 @@ find_package(VLBI REQUIRED)
 find_package(DSP REQUIRED)
 find_package(FFTW3 REQUIRED)
 find_package(M REQUIRED)
+find_package(URJTAG REQUIRED)
+find_package(USB REQUIRED)
+find_package(USB1 REQUIRED)
+find_package(DFU REQUIRED)
+find_package(FTDI REQUIRED)
 
 include_directories(${CMAKE_INCLUDE_PATH})
+include_directories(${URJTAG_INCLUDE_DIR})
+include_directories(${USB_INCLUDE_DIR})
+include_directories(${USB1_INCLUDE_DIR})
+include_directories(${DFU_INCLUDE_DIR})
+include_directories(${FTDI_INCLUDE_DIR})
 include_directories(${DSP_INCLUDE_DIR})
 include_directories(${VLBI_INCLUDE_DIR})
 include_directories(${AHPGT_INCLUDE_DIR})
@@ -62,7 +72,7 @@ if(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/inputs.ui
         ${CMAKE_CURRENT_SOURCE_DIR}/elemental.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/elemental.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/types.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/structs.h
         ${CMAKE_CURRENT_SOURCE_DIR}/threads.h
     )
 else(ANDROID)
@@ -100,6 +110,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
 target_link_libraries(xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHPGT_LIBRARIES} ${AHPXC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${URJTAG_LIBRARIES})
+target_link_libraries(xc-gui PRIVATE ${USB_LIBRARIES})
+target_link_libraries(xc-gui PRIVATE ${USB1_LIBRARIES})
+target_link_libraries(xc-gui PRIVATE ${DFU_LIBRARIES})
+target_link_libraries(xc-gui PRIVATE ${FTDI_LIBRARIES})
+
 install(TARGETS xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
