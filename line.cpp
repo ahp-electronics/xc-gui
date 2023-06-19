@@ -561,8 +561,8 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
             if(active)
             {
                 if(Elements->lock()) {
-                    Elements->getStream()->buf[0] = getMinFrequency();
-                    Elements->getStream()->buf[1] = getMaxFrequency();
+                    Elements->getStream()->buf[0] = 0;
+                    Elements->getStream()->buf[1] = ahp_xc_get_frequency();
                     Elements->unlock();
                 }
                 Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
@@ -814,8 +814,8 @@ void Line::setMode(Mode m)
         ui->DFT->setEnabled(true);
         ui->AutoChannel->setEnabled(true);
         ui->CrossChannel->setEnabled(true);
-        ui->StartChannel->setEnabled(true);
-        ui->EndChannel->setEnabled(true);
+        ui->StartChannel->setEnabled(false);
+        ui->EndChannel->setEnabled(false);
         break;
     case Counter:
         ui->Counts->setEnabled(true);
