@@ -458,7 +458,6 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), Lines[l], &Line::startTracking);
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
-                        connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), Lines[l], &Line::runClicked);
                         Lines[l]->setGraph(getGraph());
                         Lines[l]->setStopPtr(&threadsStopped);
                         Lines[l]->Initialize();
@@ -636,8 +635,6 @@ err_exit:
                         y++;
                     }
                 }
-                if(indexes.count() > 0)
-                    emit scanFinished(true);
                 free(spectrum);
                 break;
             default:
