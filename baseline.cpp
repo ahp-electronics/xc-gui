@@ -549,7 +549,7 @@ void Baseline::stackCorrelations()
             if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = (double)correlation.magnitude / correlation.counts;
+                    magnitude_buf[lag] = (double)correlation.magnitude / sqrt(pow(correlation.real, 2) * pow(correlation.imaginary, 2));
                     phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
                     {

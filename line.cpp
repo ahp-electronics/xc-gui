@@ -566,12 +566,12 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                     Elements->unlock();
                 }
                 Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                stack_index ++;
                 int size = fmin(Elements->getStreamSize(), getResolution());
                 double *histo = Elements->histogram(size);
                 double mn = Elements->min(2, Elements->getStream()->len-2);
                 double mx = Elements->max(2, Elements->getStream()->len-2);
                 Counts->clear();
+                stack_index ++;
                 for (int x = 1; x < size; x++)
                 {
                     stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
@@ -881,13 +881,17 @@ void Line::removeFromVLBIContext()
 
 void Line::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
 {
-    if(y == 0.0) return;
+    if(y == 0.0) {
+        if(stacked->contains(x))
+            series->append(x, stacked->value(x));
+        return;
+    }
     y /= stack_index;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
     if(stacked->contains(x))
     {
-        y += stacked->value(x) * (stack_index-1) / stack_index;
+        y += stacked->value(x) * (stack_index-1.0) / stack_index;
     }
     stacked->insert(x, y);
     series->append(x, y);
@@ -1117,7 +1121,6 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     int npackets = getNumChannels();
     if(spectrum != nullptr && npackets > 0)
     {
-        stack_index ++;
         npackets--;
         npackets--;
         int lag = 1;
@@ -1132,7 +1135,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = (double)correlation.magnitude / correlation.counts;
+                    magnitude_buf[lag] = pow((double)correlation.magnitude / (fabs(correlation.real) * fabs(correlation.imaginary)), 1.0 / ui->Power->value());
                     phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {
@@ -1167,6 +1170,7 @@ void Line::plot(bool success, double o, double s)
     int x = 0;
     getMagnitude()->clear();
     getPhase()->clear();
+    stack_index ++;
     for (double t = offset + 1; x < elemental->getStreamSize(); t += timespan, x++)
     {
         stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);

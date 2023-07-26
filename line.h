@@ -118,7 +118,7 @@ class Line : public QWidget
         }
         inline void clearCounts()
         {
-            stack_index = 0;
+            stack_index = 1;
             getCounts()->clear();
             getMagnitudes()->clear();
             getPhases()->clear();

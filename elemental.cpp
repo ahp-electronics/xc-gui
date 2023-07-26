@@ -199,7 +199,6 @@ void Elemental::idft()
     while(!lock()) QThread::msleep(100);
     dsp_fourier_2complex_t(stream);
     dsp_fourier_idft(stream);
-    dsp_buffer_shift(stream);
     unlock();
 }
 
@@ -208,7 +207,6 @@ void Elemental::dft(int depth)
     while(!lock()) QThread::msleep(100);
     dsp_fourier_dft(stream, depth);
     dsp_fourier_2dsp(stream);
-    dsp_buffer_shift(stream);
     unlock();
 }
 
