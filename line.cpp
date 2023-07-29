@@ -121,10 +121,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         index.close();
         ui->Catalogs->setModel(model);
     }
-    double frequency = ahp_xc_get_frequency();
-    double delaysize = ahp_xc_get_delaysize();
-    int min_frequency = frequency / delaysize;
-    int max_frequency = frequency / 2 - 1;
+    int min_frequency = 1000000000.0 / ahp_xc_get_frequency();
+    int max_frequency = min_frequency * ahp_xc_get_delaysize();
     ui->EndChannel->setRange(min_frequency, max_frequency);
     ui->StartChannel->setRange(min_frequency, max_frequency - 2);
     ui->AutoChannel->setRange(min_frequency, max_frequency);
@@ -375,8 +373,8 @@ void Line::Initialize()
 
 void Line::UpdateBufferSizes()
 {
-    start = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->EndChannel->value(), 1));
-    end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/fmax(ui->StartChannel->value(), 1));
+    start = fmax(0, ahp_xc_get_frequency() * ui->StartChannel->value() / 1000000000.0);
+    end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency() * ui->EndChannel->value() / 1000000000.0);
     len = end-start;
     step = fmax(1, round((double)len / getResolution()));
     setMagnitudeSize(getNumChannels());
