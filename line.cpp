@@ -196,13 +196,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->AutoChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         AutoChannel = value;
-        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/2/fmax(AutoChannel, 1)), 1, 1);
+        ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), fmax(AutoChannel*1000000000.0/ahp_xc_get_frequency(), 0)), 1, 1);
         saveSetting("AutoChannel", AutoChannel);
     });
     connect(ui->CrossChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         CrossChannel = value;
-        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency()/2/fmax(CrossChannel, 1)), 1, 1);
+        ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), fmax(CrossChannel*1000000000.0/ahp_xc_get_frequency(), 0)), 1, 1);
         saveSetting("CrossChannel", CrossChannel);
     });
     connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
