@@ -231,7 +231,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->EndChannel->setValue(ui->StartChannel->value() + 2);
         }
-        setMinFrequency(ui->StartChannel->value());
+        start_lag = ui->EndChannel->value();
+        setMinFrequency(start_lag * 1000000000.0 / ahp_xc_get_frequency());
         saveSetting("StartChannel", ui->StartChannel->value());
     });
     connect(ui->EndChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -240,7 +241,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->StartChannel->setValue(ui->EndChannel->value() - 2);
         }
-        setMaxFrequency(ui->EndChannel->value());
+        end_lag = ui->EndChannel->value();
+        setMaxFrequency(end_lag * 1000000000.0 / ahp_xc_get_frequency());
         saveSetting("EndChannel", ui->EndChannel->value());
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -371,14 +373,14 @@ void Line::Initialize()
     setLocation();
 }
 
-void Line::UpdateBufferSizes()
+void Line::setBufferSizes()
 {
-    start = fmax(0, ahp_xc_get_frequency() * ui->StartChannel->value() / 1000000000.0);
-    end = fmin(ahp_xc_get_delaysize(), ahp_xc_get_frequency() * ui->EndChannel->value() / 1000000000.0);
+    start = ahp_xc_get_frequency() * start_lag / 1000000000.0;
+    end = ahp_xc_get_frequency() * end_lag / 1000000000.0;
     len = end-start;
-    step = fmax(1, round((double)len / getResolution()));
-    setMagnitudeSize(getNumChannels());
-    setPhaseSize(getNumChannels());
+    step = round((double)len / getResolution());
+    setMagnitudeSize(getResolution());
+    setPhaseSize(getResolution());
     emit updateBufferSizes();
 }
 
@@ -1133,7 +1135,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = pow((double)correlation.magnitude / (fabs(correlation.real) * fabs(correlation.imaginary)), 1.0 / ui->Power->value());
+                    magnitude_buf[lag] = pow((double)correlation.magnitude / correlation.counts, 1.0 / ui->Power->value());
                     phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {

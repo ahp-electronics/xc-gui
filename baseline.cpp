@@ -42,6 +42,10 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     localstop = 1;
     mode = Counter;
     start = (int*)malloc(sizeof(int));
+    end = (int*)malloc(sizeof(int));
+    len = (int*)malloc(sizeof(int));
+    step = (int*)malloc(sizeof(int));
+    size = (int*)malloc(sizeof(int));
     dark = new QMap<double, double>();
     magnitudeStack = new QMap<double, double>();
     countStack = new QMap<double, double>();
@@ -66,7 +70,7 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     for(int x = 0; x < getCorrelationOrder(); x++) {
         int idx = (index + x * (index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
         lines.append(nodes[idx]);
-        connect(getLine(x), static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::updateBufferSizes);
+        connect(getLine(x), static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::setBufferSizes);
         connect(getLine(x), static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
                 [ = ]()
         {
@@ -107,15 +111,22 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     }
 }
 
-void Baseline::updateBufferSizes()
+void Baseline::setBufferSizes()
 {
+    lock();
     for(int x = 0; x < getCorrelationOrder(); x++) {
         start[x] = getLine(x)->getStartChannel();
-        head_size = getLine(x)->getEndChannel();
+        end[x] = getLine(x)->getEndChannel();
+        len[x] = getLine(x)->getChannelBandwidth();
+        step[x] = getLine(x)->getScanStep();
+        size[x] = getLine(x)->getResolution();
     }
-    len = head_size + tail_size;
-    setMagnitudeSize(len);
-    setPhaseSize(len);
+    tail_size = len[0];
+    head_size = len[1];
+    size_2nd = (tail_size+head_size)*2/fmax(step[0], step[1])+1;
+    setMagnitudeSize(size_2nd);
+    setPhaseSize(size_2nd);
+    unlock();
 }
 
 bool Baseline::haveSetting(QString setting)
@@ -334,6 +345,10 @@ void Baseline::setCorrelationOrder(int order)
     while(!MainWindow::lock_vlbi());
     correlation_order = fmax(order, 2);
     start = (int*)realloc(start, sizeof(int) * correlation_order);
+    end = (int*)realloc(end, sizeof(int) * correlation_order);
+    len = (int*)realloc(len, sizeof(int) * correlation_order);
+    step = (int*)realloc(step, sizeof(int) * correlation_order);
+    size = (int*)realloc(size, sizeof(int) * correlation_order);
     lines.clear();
     for(int x = 0; x < correlation_order; x++) {
         int idx = (Index + x * (Index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
@@ -350,13 +365,17 @@ void Baseline::setCorrelationOrder(int order)
 
 void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
 {
-    if(y == 0.0) return;
-    y /= 2;
+    if(y == 0.0) {
+        if(stacked->contains(x))
+            series->append(x, stacked->value(x));
+        return;
+    }
+    y /= stack_index;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
     if(stacked->contains(x))
     {
-        y += stacked->value(x) / 2;
+        y += stacked->value(x) * (stack_index-1.0) / stack_index;
     }
     stacked->insert(x, y);
     series->append(x, y);
@@ -525,7 +544,8 @@ void Baseline::stackCorrelations()
 
     *stop = 0;
     int npackets = 0;
-    step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
+    setBufferSizes();
+    int step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
     npackets = ahp_xc_scan_crosscorrelations(getLine(0)->getLineIndex(), getLine(1)->getLineIndex(), &spectrum, start[0],
                head_size, start[1], tail_size, step, stop, percent);
     if(spectrum != nullptr && npackets > 0)
@@ -547,11 +567,11 @@ void Baseline::stackCorrelations()
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(correlation.magnitude > 0) {
-                if(lag < npackets && lag >= 0)
+                if(lag < npackets && lag >= -npackets)
                 {
-                    magnitude_buf[lag] = (double)correlation.magnitude / sqrt(pow(correlation.real, 2) * pow(correlation.imaginary, 2));
+                    magnitude_buf[lag] = (double)correlation.magnitude / correlation.counts;
                     phase_buf[lag] = (double)correlation.phase;
-                    for(int y = lag; y >= 0 && y < len; y += (!tail ? -1 : 1))
+                    for(int y = lag; y >= 0 && y < size_2nd; y += (!tail ? -1 : 1))
                     {
                         magnitude_buf[y] = magnitude_buf[lag];
                         phase_buf[y] = phase_buf[lag];
@@ -570,7 +590,7 @@ void Baseline::stackCorrelations()
         if(getLine(0)->Align() && getLine(1)->Align())
             elemental->run();
         else
-            elemental->finish(false, -head_size, step);
+            elemental->finish(false, -head_size * 1000000000.0 / ahp_xc_get_frequency(), step);
         free(spectrum);
     }
     getLine(0)->resetPercentPtr();
@@ -580,7 +600,8 @@ void Baseline::stackCorrelations()
 
 void Baseline::plot(bool success, double o, double s)
 {
-    double timespan = step;
+    int step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
+    double timespan = step * 1000000000.0 / ahp_xc_get_frequency();
     if(success)
         timespan = s;
     double offset = o;

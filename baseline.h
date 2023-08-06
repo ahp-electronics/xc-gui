@@ -69,6 +69,8 @@ class Baseline : public QWidget
         }
         inline void setMagnitudeSize(size_t size)
         {
+            if(magnitude_size == size) return;
+            magnitude_size = size;
             if(magnitude_buf != nullptr)
                 magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size + 1));
             else
@@ -76,6 +78,8 @@ class Baseline : public QWidget
         }
         inline void setPhaseSize(size_t size)
         {
+            if(phase_size == size) return;
+            phase_size = size;
             if(phase_buf != nullptr)
                 phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size + 1));
             else
@@ -236,7 +240,6 @@ class Baseline : public QWidget
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
         inline Graph *getGraph() { return graph; }
         inline void setGraph(Graph * g) { graph = g; }
-        inline void UpdateBufferSizes() { updateBufferSizes(); }
 
     private:
         int localstop { 0 };
@@ -249,19 +252,24 @@ class Baseline : public QWidget
         double packetTime { 0.0 };
         QMutex mutex;
         bool running { false };
-        void updateBufferSizes();
+        void setBufferSizes();
         void stretch(QLineSeries* series);
 
         dsp_stream_p stream { nullptr };
         fftw_plan plan;
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
+        size_t magnitude_size { 0 };
+        size_t phase_size { 0 };
         double offset { 0.0 };
         double timespan { 1.0 };
         int Index;
         int *start;
-        int len {1};
-        int step {1};
+        int *end;
+        int *len;
+        int *step;
+        int *size;
+        int size_2nd;
         int tail_size {1};
         int head_size {1};
         QSettings *settings;

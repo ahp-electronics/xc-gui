@@ -285,15 +285,15 @@ class Line : public QWidget
         }
         inline int getChannelBandwidth()
         {
-            return len_lag * ahp_xc_get_frequency() / 1000000000.0;
+            return len;
         }
         inline int getNumChannels()
         {
-            return len_lag;
+            return len / step;
         }
         inline int getScanStep()
         {
-            return step_lag;
+            return step;
         }
         inline int getScanStepNs()
         {
@@ -338,7 +338,7 @@ class Line : public QWidget
         void TakeDark(Line* sender);
         bool DarkTaken();
         void GetDark();
-        void UpdateBufferSizes();
+        void setBufferSizes();
         void runClicked(bool checked = false);
         void resetTimestamp();
         inline bool isForkMount() { return fork; }

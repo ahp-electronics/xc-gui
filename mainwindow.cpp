@@ -575,7 +575,7 @@ err_exit:
         int y = 0;
         int off = 0;
         ahp_xc_packet *packet;
-        QList<unsigned int> indexes;
+        QList<uint32_t> indexes;
         QList<off_t> starts;
         QList<size_t> sizes;
         QList<size_t> steps;
@@ -586,7 +586,7 @@ err_exit:
             goto end_unlock;
         for(Line *line : Lines)
             if(line->scanActive())
-                line->UpdateBufferSizes();
+                line->setBufferSizes();
         switch (getMode())
         {
             case CrosscorrelatorII:
@@ -615,7 +615,7 @@ err_exit:
                     {
                         indexes.append(line->getLineIndex());
                         starts.append(line->getStartChannel());
-                        sizes.append(line->getChannelBandwidth());
+                        sizes.append(line->getResolution() * line->getScanStep());
                         steps.append(line->getScanStep());
                         line->setPercentPtr(&percent);
                     } else {
