@@ -267,7 +267,14 @@ class Line : public QWidget
         {
             return RailMotorIndex;
         }
-
+        inline int getStartLag()
+        {
+            return start_lag;
+        }
+        inline int getEndLag()
+        {
+            return end_lag;
+        }
         inline int getStartChannel()
         {
             return start;
@@ -278,13 +285,17 @@ class Line : public QWidget
         }
         inline int getChannelBandwidth()
         {
-            return len;
+            return len_lag * ahp_xc_get_frequency() / 1000000000.0;
         }
         inline int getNumChannels()
         {
-            return len / step;
+            return len_lag;
         }
         inline int getScanStep()
+        {
+            return step_lag;
+        }
+        inline int getScanStepNs()
         {
             return step;
         }
@@ -455,13 +466,17 @@ class Line : public QWidget
         Graph* graph;
         unsigned int line { 0 };
         int flags { 0x8 };
-        off_t start { 0 };
-        off_t end { 1 };
-        size_t len { 1 };
-        size_t step {1};
-        int Resolution { 1024 };
-        int AutoChannel { 1 };
-        int CrossChannel { 0 };
+        double start_lag { 0 };
+        double end_lag { 1 };
+        double start { 0 };
+        double end { 1 };
+        double len { 1 };
+        double len_lag { 1 };
+        double step_lag { 1 };
+        double step;
+        double Resolution { 1024 };
+        double AutoChannel { 1 };
+        double CrossChannel { 0 };
         double base_x;
         double base_y;
         double maxfreq { 100000000 };

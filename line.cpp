@@ -320,7 +320,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->Smooth, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         _smooth = Resolution * value / 25;
-        saveSetting("Smooth", _smooth);
+        saveSetting("Smooth", value);
     });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
@@ -342,7 +342,7 @@ void Line::Initialize()
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
-    ui->Smooth->setValue(readInt("Smooth", 5));
+    ui->Smooth->setValue(readInt("Smooth", 0));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
     if(ahp_xc_get_delaysize() <= 4)
         ui->Resolution->setRange(1, 1048576);
@@ -1152,7 +1152,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         if(Align())
             elemental->run();
         else
-            elemental->finish(false, start, step);
+            elemental->finish(false, start, step * ahp_xc_get_frequency() / 1000000000.0);
     }
     resetPercentPtr();
     resetStopPtr();
@@ -1161,7 +1161,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
 
 void Line::plot(bool success, double o, double s)
 {
-    double timespan = step;
+    double timespan = step * ahp_xc_get_frequency() / 1000000000.0;
     if(success)
         timespan = s;
     double offset = o;
