@@ -566,9 +566,9 @@
     <property name="geometry">
      <rect>
       <x>430</x>
-      <y>120</y>
-      <width>81</width>
-      <height>10</height>
+      <y>116</y>
+      <width>281</width>
+      <height>16</height>
      </rect>
     </property>
     <property name="value">
@@ -720,13 +720,13 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>70</y>
-      <width>131</width>
-      <height>16</height>
+      <y>86</y>
+      <width>141</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="text">
-     <string>X axis log.</string>
+     <string>X axis logarithmic</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="RadixY">
@@ -736,13 +736,13 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>90</y>
-      <width>131</width>
-      <height>16</height>
+      <y>105</y>
+      <width>141</width>
+      <height>21</height>
      </rect>
     </property>
     <property name="text">
-     <string>Y axis log.</string>
+     <string>Y axis logarithmic</string>
     </property>
    </widget>
    <widget class="QPushButton" name="position_chart">
