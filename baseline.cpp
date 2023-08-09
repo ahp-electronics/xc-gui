@@ -300,33 +300,27 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                 if(show_correlations)
                 {
                     Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
+                    int resolution = INT32_MAX;
+                    int size = fmin(Elements->getStreamSize(), resolution);
                     if(Elements->lock()) {
-                        Elements->getStream()->buf[Elements->getStreamSize()-1] = mag;
-                        double mn = DBL_MAX;
-                        double mx = DBL_MIN;
+                        Elements->getStream()->buf[0] = 0;
+                        Elements->getStream()->buf[1] = ahp_xc_get_frequency();
                         for(int x = 0; x < getCorrelationOrder(); x++) {
-                            mn = fmin(getLine(x)->getMinFrequency(), mn);
-                            mx = fmax(getLine(x)->getMinFrequency(), mx);
+                            resolution = fmin(getLine(x)->getResolution(), resolution);
                         }
-                        Elements->getStream()->buf[0] = mn;
-                        Elements->getStream()->buf[1] = mx;
                         Elements->unlock();
                     }
-                    Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
-                    stack_index ++;
-                    int size = INT32_MAX;
-                    for(int x = 0; x < getCorrelationOrder(); x++)
-                        fmin(Elements->getStreamSize(), fmax(getLine(x)->getResolution(), size));
-                    double *histo = Elements->histogram(size);
+                    if(size < resolution) break;
+                    dsp_stream_p histo = Elements->histogram(size);
                     double mn = Elements->min(2, Elements->getStream()->len-2);
                     double mx = Elements->max(2, Elements->getStream()->len-2);
                     Counts->clear();
+                    stack_index ++;
                     for (int x = 1; x < size; x++)
                     {
-                        stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
+                        stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo->buf[x]);
                     }
                     smoothBuffer(Counts, 0, Counts->count());
-                    free(histo);
                 }
             }
             else

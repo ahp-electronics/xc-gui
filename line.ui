@@ -749,7 +749,7 @@
      <string>Filter %</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="Smooth">
+   <widget class="QSpinBox" name="LoPass">
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -765,7 +765,7 @@
      <number>5</number>
     </property>
    </widget>
-   <widget class="QSpinBox" name="Power">
+   <widget class="QSpinBox" name="Duration">
     <property name="geometry">
      <rect>
       <x>230</x>
@@ -778,16 +778,51 @@
      <number>1</number>
     </property>
     <property name="maximum">
-     <number>8</number>
+     <number>3600</number>
     </property>
     <property name="singleStep">
      <number>1</number>
     </property>
     <property name="value">
-     <number>1</number>
+     <number>240</number>
     </property>
    </widget>
-   <widget class="QLabel" name="label_18">
+   <widget class="QSpinBox" name="MaxChannel">
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>70</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>10000</number>
+    </property>
+    <property name="singleStep">
+     <number>1</number>
+    </property>
+    <property name="value">
+     <number>10000</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_20">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>70</y>
+      <width>61</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Max ch.</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_21">
     <property name="geometry">
      <rect>
       <x>170</x>
@@ -797,7 +832,39 @@
      </rect>
     </property>
     <property name="text">
-     <string>Power</string>
+     <string>Time(s)</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="RadixX">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>90</y>
+      <width>131</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>X axis log.</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="RadixY">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>110</y>
+      <width>131</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Y axis log.</string>
     </property>
    </widget>
   </widget>

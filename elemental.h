@@ -14,6 +14,7 @@ class Elemental : public QObject
         QMutex mutex;
         int matches;
         Thread *scanThread;
+        dsp_stream_p histo;
         dsp_stream_p stream;
         bool success { false };
         double offset { 0.0 };
@@ -96,7 +97,8 @@ class Elemental : public QObject
         double min(off_t offset, size_t len);
         double max(off_t offset, size_t len);
         void normalize(double min, double max);
-        double *histogram(int size, dsp_stream_p stream = nullptr);
+        void stretch(double min, double max);
+        dsp_stream_p histogram(int size, dsp_stream_p stream = nullptr);
         inline dsp_stream_p getStream()
         {
             return stream;

@@ -27,6 +27,9 @@
 
 Elemental::Elemental(QObject *parent) : QObject(parent)
 {
+    histo = dsp_stream_new();
+    dsp_stream_add_dim(histo, 1);
+    dsp_stream_alloc_buffer(histo, histo->len);
     stream = dsp_stream_new();
     stream->magnitude = dsp_stream_new();
     stream->phase = dsp_stream_new();
@@ -66,6 +69,8 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
 Elemental::~Elemental()
 {
     scanThread->~Thread();
+    dsp_stream_free_buffer(histo);
+    dsp_stream_free(histo);
     dsp_stream_free_buffer(stream);
     dsp_stream_free(stream);
 }
@@ -241,19 +246,31 @@ void Elemental::normalize(double min, double max)
     unlock();
 }
 
-double *Elemental::histogram(int size, dsp_stream_p str)
+void Elemental::stretch(double min, double max)
+{
+    while(!lock()) QThread::msleep(100);
+    dsp_buffer_stretch(getStream()->buf, getStreamSize(), min, max);
+    unlock();
+}
+
+dsp_stream_p Elemental::histogram(int size, dsp_stream_p str)
 {
     while(!lock()) QThread::msleep(100);
     if(str == nullptr)
         str = getStream();
     dsp_stream_p tmp = dsp_stream_copy(str);
     dsp_t *buf = tmp->buf;
-    dsp_buffer_stretch(tmp->buf, tmp->len, 0.0, size);
+    dsp_buffer_stretch(buf, tmp->len, 0.0, size);
     dsp_stream_set_buffer(tmp, &buf[2], tmp->len-2);
-    double *histo = dsp_stats_histogram(tmp, size);
-    dsp_stream_set_buffer(tmp, buf, tmp->len+2);
+    dsp_stream_set_dim(histo, 0, size);
+    if(histo->len != size)
+        dsp_stream_alloc_buffer(histo, histo->len);
+    double* tmphisto = dsp_stats_histogram(tmp, size);
+    dsp_stream_set_buffer(histo, tmphisto, size);
+    dsp_stream_set_buffer(tmp, buf, tmp->len);
     dsp_stream_free_buffer(tmp);
     dsp_stream_free(tmp);
+    free(tmphisto);
     unlock();
     return histo;
 }

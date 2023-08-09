@@ -123,6 +123,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     }
     int min_frequency = 1000000000.0 / ahp_xc_get_frequency();
     int max_frequency = min_frequency * ahp_xc_get_delaysize();
+    ui->MaxChannel->setRange(ahp_xc_get_frequency() * ahp_xc_get_packettime(), ahp_xc_get_frequency());
     ui->EndChannel->setRange(min_frequency, max_frequency);
     ui->StartChannel->setRange(min_frequency, max_frequency - 2);
     ui->AutoChannel->setRange(min_frequency, max_frequency);
@@ -245,12 +246,29 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         setMaxFrequency(end_lag * 1000000000.0 / ahp_xc_get_frequency());
         saveSetting("EndChannel", ui->EndChannel->value());
     });
+    connect(ui->MaxChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    {
+        max_channel = ui->MaxChannel->value();
+        saveSetting("MaxChannel", max_channel);
+    });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         emit clearCrosscorrelations();
 
         clearCorrelations();
         clearCounts();
+    });
+    connect(ui->RadixY, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
+    {
+        radix_y = checked;
+        getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0);
+        saveSetting("RadixY", radix_y);
+    });
+    connect(ui->RadixX, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
+    {
+        radix_x = checked;
+        getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0);
+        saveSetting("RadixX", ui->Counts->isChecked());
     });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -319,10 +337,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         setLocation();
         saveSetting("location_z", getLocation()->xyz.z);
     });
-    connect(ui->Smooth, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
+    connect(ui->LoPass, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         _smooth = Resolution * value / 25;
-        saveSetting("Smooth", value);
+        saveSetting("LoPass", value);
     });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
@@ -344,7 +362,7 @@ void Line::Initialize()
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
-    ui->Smooth->setValue(readInt("Smooth", 0));
+    ui->LoPass->setValue(readInt("LoPass", 0));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
     if(ahp_xc_get_delaysize() <= 4)
         ui->Resolution->setRange(1, 1048576);
@@ -377,8 +395,8 @@ void Line::setBufferSizes()
 {
     start = ahp_xc_get_frequency() * start_lag / 1000000000.0;
     end = ahp_xc_get_frequency() * end_lag / 1000000000.0;
-    len = end-start;
-    step = round((double)len / getResolution());
+    len = fmin(ahp_xc_get_delaysize(), end-start);
+    step = fmax(1, round((double)len / getResolution()));
     setMagnitudeSize(getResolution());
     setPhaseSize(getResolution());
     emit updateBufferSizes();
@@ -517,6 +535,11 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
     }
     break;
     case Spectrograph:
+        timespec ts_now = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(
+                        Qt::DateFormat::ISODate).toStdString().c_str());
+        double now = vlbi_time_timespec_to_J2000time(ts_now);
+        if((now - starttime) > ui->Duration->value())
+            break;
         for (int z = 0; z < 3; z++)
         {
             QLineSeries *Counts = counts[z];
@@ -565,19 +588,19 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                     Elements->getStream()->buf[1] = ahp_xc_get_frequency();
                     Elements->unlock();
                 }
-                Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
                 int size = fmin(Elements->getStreamSize(), getResolution());
-                double *histo = Elements->histogram(size);
+                if(size < getResolution()) break;
+                dsp_stream_p histo = Elements->histogram(size);
+                Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
                 double mn = Elements->min(2, Elements->getStream()->len-2);
                 double mx = Elements->max(2, Elements->getStream()->len-2);
                 Counts->clear();
                 stack_index ++;
                 for (int x = 1; x < size; x++)
                 {
-                    stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo[x]);
+                    stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo->buf[x]);
                 }
                 smoothBuffer(Counts, 0, Counts->count());
-                free(histo);
             }
         }
     }
@@ -1127,7 +1150,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         int _lag = lag;
         dsp_buffer_set(magnitude_buf, npackets, 0);
         dsp_buffer_set(phase_buf, npackets, 0);
-        for (int x = 0, z = 2; x < npackets; x++, z++)
+        for (int x = 0, z = 2; z < getChannelBandwidth() && x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             ahp_xc_correlation correlation;
@@ -1135,7 +1158,6 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    magnitude_buf[lag] = pow((double)correlation.magnitude / correlation.counts, 1.0 / ui->Power->value());
                     phase_buf[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {
@@ -1171,9 +1193,11 @@ void Line::plot(bool success, double o, double s)
     getMagnitude()->clear();
     getPhase()->clear();
     stack_index ++;
+    elemental->stretch(0.0, 2.0);
     for (double t = offset + 1; x < elemental->getStreamSize(); t += timespan, x++)
     {
         stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getBuffer()[x]);
+        stackValue(getPhase(), getPhaseStack(), ahp_xc_get_sampletime() * t, elemental->getPhase()[x]);
     }
     smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
     smoothBuffer(getPhase(), 0, getPhase()->count());

@@ -642,8 +642,10 @@ err_exit:
                     packet = ahp_xc_copy_packet(getPacket());
                     double diff = packet->timestamp - lastpackettime;
                     lastpackettime = packet->timestamp;
+                    lock();
                     if(diff < TimeRange)
                         emit newPacket(packet);
+                    unlock();
                     ahp_xc_free_packet(packet);
                 }
                 break;
@@ -780,6 +782,7 @@ void MainWindow::runClicked(bool checked)
     if(ui->Run->text() == "Run")
     {
         ui->Run->setText("Stop");
+        resetTimestamp();
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
@@ -794,7 +797,6 @@ void MainWindow::runClicked(bool checked)
         if(nlines > 0 && getMode() == Autocorrelator)
             emit scanStarted();
         threadsStopped = false;
-        resetTimestamp();
     }
     else
     {

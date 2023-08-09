@@ -466,8 +466,11 @@ class Line : public QWidget
         Graph* graph;
         unsigned int line { 0 };
         int flags { 0x8 };
+        bool radix_x { false };
+        bool radix_y { false };
         double start_lag { 0 };
         double end_lag { 1 };
+        double max_channel { 10000 };
         double start { 0 };
         double end { 1 };
         double len { 1 };
