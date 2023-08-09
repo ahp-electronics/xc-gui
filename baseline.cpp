@@ -529,6 +529,8 @@ void Baseline::smoothBuffer(double* buf, int len)
 
 void Baseline::stackCorrelations()
 {
+    getLine(0)->setLocation();
+    getLine(1)->setLocation();
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
     getLine(0)->setPercentPtr(percent);

@@ -462,6 +462,8 @@ class Line : public QWidget
         QLineSeries* phases { nullptr };
         QLineSeries* counts { nullptr };
         QChar dir_separator { '/' };
+        QList <dsp_location> xyz_locations;
+        int current_location { 0 };
         double stack_index { 1.0 };
         Graph* graph;
         unsigned int line { 0 };
@@ -502,6 +504,7 @@ class Line : public QWidget
         void getMinMax();
         void plot(bool success, double o, double s);
         void SavePlot();
+        void LoadPositionChart();
 
     signals:
         void scanActiveStateChanging(Line*);
@@ -510,6 +513,7 @@ class Line : public QWidget
         void activeStateChanged(Line*);
         void updateBufferSizes();
         void savePlot();
+        void loadPositionChart();
         void takeDark(Line* sender);
         void clearCrosscorrelations();
 };

@@ -123,7 +123,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     }
     int min_frequency = 1000000000.0 / ahp_xc_get_frequency();
     int max_frequency = min_frequency * ahp_xc_get_delaysize();
-    ui->MaxChannel->setRange(ahp_xc_get_frequency() * ahp_xc_get_packettime(), ahp_xc_get_frequency());
     ui->EndChannel->setRange(min_frequency, max_frequency);
     ui->StartChannel->setRange(min_frequency, max_frequency - 2);
     ui->AutoChannel->setRange(min_frequency, max_frequency);
@@ -168,6 +167,10 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags |= checked << 4;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), checked);
+    });
+    connect(ui->position_chart, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
+    {
+        emit loadPositionChart();
     });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
@@ -246,11 +249,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         setMaxFrequency(end_lag * 1000000000.0 / ahp_xc_get_frequency());
         saveSetting("EndChannel", ui->EndChannel->value());
     });
-    connect(ui->MaxChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        max_channel = ui->MaxChannel->value();
-        saveSetting("MaxChannel", max_channel);
-    });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         emit clearCrosscorrelations();
@@ -310,33 +308,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         }
         saveSetting("RailMotorIndex", value);
     });
-    connect(ui->x_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        setLocation();
-        saveSetting("location_x", getLocation()->xyz.x);
-        if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getRailIndex())) {
-                ahp_gt_select_device(getRailIndex());
-                ahp_gt_goto_absolute(0, value*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
-            }
-        }
-    });
-    connect(ui->y_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        setLocation();
-        saveSetting("location_y", getLocation()->xyz.y);
-        if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getRailIndex())) {
-                ahp_gt_select_device(getRailIndex());
-                ahp_gt_goto_absolute(1, value*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
-            }
-        }
-    });
-    connect(ui->z_location, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        setLocation();
-        saveSetting("location_z", getLocation()->xyz.z);
-    });
     connect(ui->LoPass, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         _smooth = Resolution * value / 25;
@@ -347,6 +318,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         emit scanActiveStateChanging(this);
         emit scanActiveStateChanged(this);
     });
+    Initialize();
 }
 
 void Line::Initialize()
@@ -356,8 +328,6 @@ void Line::Initialize()
     ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
 
     ui->Active->setChecked(readBool("scan", false));
-    ui->x_location->setValue(readDouble("location_x", 0.0) * 1000);
-    ui->y_location->setValue(readDouble("location_y", 0.0) * 1000);
     ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
@@ -404,6 +374,7 @@ void Line::setBufferSizes()
 
 void Line::runClicked(bool checked)
 {
+    current_location = 0;
 }
 
 void Line::updateLocation()
@@ -430,12 +401,28 @@ void Line::setLocation(int value)
     while(!MainWindow::lock_vlbi());
     if(stream != nullptr)
     {
-        getLocation()->xyz.x = ui->x_location->value() / 1000;
-        getLocation()->xyz.y = ui->y_location->value() / 1000;
-        getLocation()->xyz.z = ui->z_location->value() / 1000;
-        saveSetting("location_x", getLocation()->xyz.x);
-        saveSetting("location_y", getLocation()->xyz.y);
-        saveSetting("location_z", getLocation()->xyz.z);
+        if(xyz_locations.length() > current_location) {
+            bool update_location = false;
+            update_location |= (getLocation()->xyz.x != xyz_locations[current_location].xyz.x);
+            update_location |= (getLocation()->xyz.y != xyz_locations[current_location].xyz.y);
+            getLocation()->xyz.x = xyz_locations[current_location].xyz.x;
+            getLocation()->xyz.y = xyz_locations[current_location].xyz.y;
+            getLocation()->xyz.z = ui->z_location->value() / 1000;
+            if(update_location) {
+                if(ahp_gt_is_connected()) {
+                    if(ahp_gt_is_detected(getRailIndex())) {
+                        ahp_gt_select_device(getRailIndex());
+                        ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
+                        ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
+                    }
+                }
+            }
+            current_location++;
+        } else {
+            getLocation()->xyz.x = 0.0;
+            getLocation()->xyz.y = 0.0;
+            getLocation()->xyz.z = 0.0;
+        }
     }
     MainWindow::unlock_vlbi();
 }
@@ -474,6 +461,7 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
 {
     if(packet == nullptr)
         packet = getPacket();
+    setLocation();
     QLineSeries *counts[3] =
     {
         getCounts(),
@@ -798,6 +786,7 @@ void Line::setMode(Mode m)
     getCountStack()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
+    connect(this, static_cast<void (Line::*)()>(&Line::loadPositionChart), this, &Line::LoadPositionChart);
     if(m == Autocorrelator)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
@@ -936,12 +925,43 @@ void Line::stretch(QLineSeries* series)
     }
 }
 
+void Line::LoadPositionChart()
+{
+    QString filename = QFileDialog::getOpenFileName(this, "Load rail position file", ".",
+                       "CSV files (*.csv)", 0, 0);
+    QFile data(filename);
+    if(data.open(QFile::ReadOnly))
+    {
+        QString csv = data.readAll();
+        saveSetting("location_chart", csv);
+        QStringList locations = csv.split("\n");
+        if(locations.length() > 0) {
+            xyz_locations.clear();
+            for(QString location : locations) {
+                QStringList xyz = location.split(",");
+                if(xyz.length() > 1) {
+                    double x = atof(xyz[0].toStdString().c_str());
+                    double y = atof(xyz[1].toStdString().c_str());
+                    double z = (double)ui->z_location->value() / 1000.0;
+                    if(xyz.length() > 2)
+                        z = atof(xyz[2].toStdString().c_str());
+                    dsp_location dsp_xyz;
+                    dsp_xyz.xyz.x = x;
+                    dsp_xyz.xyz.y = y;
+                    dsp_xyz.xyz.z = z;
+                    xyz_locations.append(dsp_xyz);
+                }
+            }
+        }
+    }
+}
+
 void Line::SavePlot()
 {
     if(!isActive())
         return;
-    QString filename = QFileDialog::getSaveFileName(this, "DialogTitle", "filename.csv",
-                       "CSV files (.csv);Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)
+    QString filename = QFileDialog::getSaveFileName(this, "Save plot into file", "filename.csv",
+                       "CSV files (*.csv)", 0, 0);
     QFile data(filename);
     if(data.open(QFile::WriteOnly | QFile::Truncate))
     {
@@ -1138,6 +1158,7 @@ void Line::smoothBuffer(double* buf, int len)
 
 void Line::stackCorrelations(ahp_xc_sample *spectrum)
 {
+    setLocation();
     scanning = true;
     *stop = 0;
     *percent = 0;

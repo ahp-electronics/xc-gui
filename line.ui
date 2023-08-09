@@ -583,7 +583,7 @@
      <rect>
       <x>520</x>
       <y>30</y>
-      <width>101</width>
+      <width>111</width>
       <height>21</height>
      </rect>
     </property>
@@ -596,51 +596,12 @@
      <rect>
       <x>520</x>
       <y>50</y>
-      <width>101</width>
+      <width>111</width>
       <height>21</height>
      </rect>
     </property>
     <property name="text">
      <string>Rail index:</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_9">
-    <property name="geometry">
-     <rect>
-      <x>520</x>
-      <y>70</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>X offset (mm):</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_10">
-    <property name="geometry">
-     <rect>
-      <x>520</x>
-      <y>90</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Y offset (mm):</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_11">
-    <property name="geometry">
-     <rect>
-      <x>520</x>
-      <y>110</y>
-      <width>101</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Z offset (mm):</string>
     </property>
    </widget>
    <widget class="QSpinBox" name="MountMotorIndex">
@@ -673,54 +634,6 @@
     </property>
     <property name="maximum">
      <number>256</number>
-    </property>
-   </widget>
-   <widget class="QSpinBox" name="x_location">
-    <property name="geometry">
-     <rect>
-      <x>630</x>
-      <y>70</y>
-      <width>81</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>-10000000</number>
-    </property>
-    <property name="maximum">
-     <number>10000000</number>
-    </property>
-   </widget>
-   <widget class="QSpinBox" name="y_location">
-    <property name="geometry">
-     <rect>
-      <x>630</x>
-      <y>90</y>
-      <width>81</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>-10000000</number>
-    </property>
-    <property name="maximum">
-     <number>10000000</number>
-    </property>
-   </widget>
-   <widget class="QSpinBox" name="z_location">
-    <property name="geometry">
-     <rect>
-      <x>630</x>
-      <y>110</y>
-      <width>81</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>-10000000</number>
-    </property>
-    <property name="maximum">
-     <number>10000000</number>
     </property>
    </widget>
    <widget class="QPushButton" name="Save">
@@ -787,41 +700,6 @@
      <number>240</number>
     </property>
    </widget>
-   <widget class="QSpinBox" name="MaxChannel">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>70</y>
-      <width>81</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>1</number>
-    </property>
-    <property name="maximum">
-     <number>10000</number>
-    </property>
-    <property name="singleStep">
-     <number>1</number>
-    </property>
-    <property name="value">
-     <number>10000</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_20">
-    <property name="geometry">
-     <rect>
-      <x>170</x>
-      <y>70</y>
-      <width>61</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Max ch.</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_21">
     <property name="geometry">
      <rect>
@@ -842,7 +720,7 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>90</y>
+      <y>70</y>
       <width>131</width>
       <height>16</height>
      </rect>
@@ -858,13 +736,58 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>110</y>
+      <y>90</y>
       <width>131</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
      <string>Y axis log.</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="position_chart">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>90</y>
+      <width>191</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Load position chart</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_18">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>70</y>
+      <width>111</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Z location (mm):</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="z_location">
+    <property name="geometry">
+     <rect>
+      <x>630</x>
+      <y>70</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>1000000</number>
+    </property>
+    <property name="value">
+     <number>1000</number>
     </property>
    </widget>
   </widget>

@@ -814,6 +814,8 @@ void MainWindow::runClicked(bool checked)
         if(getMode() == Autocorrelator)
             emit scanFinished(false);
     }
+    for(int x = 0; x < Lines.count(); x++)
+        Lines[x]->runClicked(ui->Run->text() == "Stop");
 }
 
 void MainWindow::resetTimestamp()
