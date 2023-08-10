@@ -69,8 +69,6 @@ Elemental::Elemental(QObject *parent) : QObject(parent)
 Elemental::~Elemental()
 {
     scanThread->~Thread();
-    dsp_stream_free_buffer(histo);
-    dsp_stream_free(histo);
     dsp_stream_free_buffer(stream);
     dsp_stream_free(stream);
 }

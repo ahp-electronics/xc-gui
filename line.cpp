@@ -168,10 +168,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), checked);
     });
-    connect(ui->position_chart, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
-    {
-        emit loadPositionChart();
-    });
+    connect(ui->loadRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::loadPositionChart);
+    connect(ui->clearRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::unloadPositionChart);
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         emit savePlot();
@@ -577,7 +575,6 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                     Elements->unlock();
                 }
                 int size = fmin(Elements->getStreamSize(), getResolution());
-                if(size < getResolution()) break;
                 dsp_stream_p histo = Elements->histogram(size);
                 Elements->normalize(Elements->getStream()->buf[0], Elements->getStream()->buf[1]);
                 double mn = Elements->min(2, Elements->getStream()->len-2);
@@ -786,7 +783,6 @@ void Line::setMode(Mode m)
     getCountStack()->clear();
     getMagnitudeStack()->clear();
     getPhaseStack()->clear();
-    connect(this, static_cast<void (Line::*)()>(&Line::loadPositionChart), this, &Line::LoadPositionChart);
     if(m == Autocorrelator)
     {
         connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
@@ -925,7 +921,12 @@ void Line::stretch(QLineSeries* series)
     }
 }
 
-void Line::LoadPositionChart()
+void Line::unloadPositionChart(bool checked)
+{
+    xyz_locations.clear();
+}
+
+void Line::loadPositionChart(bool checked)
 {
     QString filename = QFileDialog::getOpenFileName(this, "Load rail position file", ".",
                        "CSV files (*.csv)", 0, 0);

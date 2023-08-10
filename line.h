@@ -421,6 +421,8 @@ class Line : public QWidget
         inline void setTimeRange(double range) { timeRange = range; }
         inline ahp_xc_packet* getPacket() { return packet; }
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
+        void unloadPositionChart(bool checked);
+        void loadPositionChart(bool checked);
     private:
         QWidget *parent;
         ahp_xc_packet* packet;
@@ -504,7 +506,6 @@ class Line : public QWidget
         void getMinMax();
         void plot(bool success, double o, double s);
         void SavePlot();
-        void LoadPositionChart();
 
     signals:
         void scanActiveStateChanging(Line*);
@@ -513,7 +514,6 @@ class Line : public QWidget
         void activeStateChanged(Line*);
         void updateBufferSizes();
         void savePlot();
-        void loadPositionChart();
         void takeDark(Line* sender);
         void clearCrosscorrelations();
 };

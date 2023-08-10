@@ -692,7 +692,7 @@ err_exit:
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
             double radec[] = { getGraph()->getRa(), getGraph()->getDec(), getGraph()->getDistance() };
-            if(lock_vlbi() && enable_vlbi) {
+            if(enable_vlbi) {
                 vlbi_get_uv_plot(getVLBIContext(), "coverage",
                                  getGraph()->getPlotSize(), getGraph()->getPlotSize(), radec,
                                  getGraph()->getFrequency(), 1.0 / ahp_xc_get_packettime(), 1, 0, coverage_delegate, &threadsStopped);
@@ -724,7 +724,6 @@ err_exit:
                         vlbi_get_ifft(getVLBIContext(), "idft", "magnitude", "phase");
                 }
                 emit repaint();
-                unlock_vlbi();
             }
         }
         thread->unlock();

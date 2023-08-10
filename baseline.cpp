@@ -310,7 +310,6 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                         }
                         Elements->unlock();
                     }
-                    if(size < resolution) break;
                     dsp_stream_p histo = Elements->histogram(size);
                     double mn = Elements->min(2, Elements->getStream()->len-2);
                     double mx = Elements->max(2, Elements->getStream()->len-2);
