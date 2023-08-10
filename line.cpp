@@ -380,17 +380,25 @@ void Line::updateLocation()
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getRailIndex())) {
             ahp_gt_select_device(getRailIndex());
-            double x = ahp_gt_get_position(0, nullptr);
-            x *= ahp_gt_get_totalsteps(0);
-            x /= M_PI / 2;
-            x /= 1000.0;
-            double y = ahp_gt_get_position(1, nullptr);
-            y *= ahp_gt_get_totalsteps(1);
-            y /= M_PI / 2;
-            y /= 1000.0;
+            if(ahp_gt_is_axis_moving(0)) {
+                double x = ahp_gt_get_position(0, nullptr);
+                x *= ahp_gt_get_totalsteps(0);
+                x /= M_PI * 2;
+                x /= 1000.0;
+                getLocation()->xyz.x = x;
+            } else
+                getLocation()->xyz.x = xyz_locations[current_location].xyz.x;
+            if(ahp_gt_is_axis_moving(1)) {
+                double y = ahp_gt_get_position(1, nullptr);
+                y *= ahp_gt_get_totalsteps(1);
+                y /= M_PI * 2;
+                y /= 1000.0;
+                getLocation()->xyz.y = y;
+            } else
+                getLocation()->xyz.y = xyz_locations[current_location].xyz.y;
         }
-    }
-    setLocation();
+    } else
+        dsp_buffer_copy(xyz_locations[current_location].coordinates, getLocation()->coordinates, 3);
 }
 
 void Line::setLocation(int value)
@@ -401,25 +409,23 @@ void Line::setLocation(int value)
     {
         if(xyz_locations.length() > current_location) {
             bool update_location = false;
-            update_location |= (getLocation()->xyz.x != xyz_locations[current_location].xyz.x);
-            update_location |= (getLocation()->xyz.y != xyz_locations[current_location].xyz.y);
-            getLocation()->xyz.x = xyz_locations[current_location].xyz.x;
-            getLocation()->xyz.y = xyz_locations[current_location].xyz.y;
-            getLocation()->xyz.z = ui->z_location->value() / 1000;
+            update_location |= (targetLocation()->xyz.x != xyz_locations[current_location].xyz.x);
+            update_location |= (targetLocation()->xyz.y != xyz_locations[current_location].xyz.y);
+            update_location |= (targetLocation()->xyz.x == getLocation()->xyz.x);
+            update_location |= (targetLocation()->xyz.y == getLocation()->xyz.y);
+            targetLocation()->xyz.x = xyz_locations[current_location].xyz.x;
+            targetLocation()->xyz.y = xyz_locations[current_location].xyz.y;
+            targetLocation()->xyz.z = (double)ui->z_location->value() / 1000.0;
             if(update_location) {
                 if(ahp_gt_is_connected()) {
                     if(ahp_gt_is_detected(getRailIndex())) {
                         ahp_gt_select_device(getRailIndex());
-                        ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*M_PI*2.0/ahp_gt_get_totalsteps(0), 800.0);
-                        ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*M_PI*2.0/ahp_gt_get_totalsteps(1), 800.0);
+                        ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(0), 800.0);
+                        ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(1), 800.0);
                     }
                 }
             }
             current_location++;
-        } else {
-            getLocation()->xyz.x = 0.0;
-            getLocation()->xyz.y = 0.0;
-            getLocation()->xyz.z = 0.0;
         }
     }
     MainWindow::unlock_vlbi();

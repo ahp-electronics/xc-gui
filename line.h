@@ -233,6 +233,10 @@ class Line : public QWidget
         {
             return getStream()->location;
         }
+        inline dsp_location *targetLocation()
+        {
+            return &target_location;
+        }
         void setLocation(int value = 0);
 
         void updateLocation();
@@ -465,6 +469,7 @@ class Line : public QWidget
         QLineSeries* counts { nullptr };
         QChar dir_separator { '/' };
         QList <dsp_location> xyz_locations;
+        dsp_location target_location;
         int current_location { 0 };
         double stack_index { 1.0 };
         Graph* graph;

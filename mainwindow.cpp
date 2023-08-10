@@ -738,7 +738,9 @@ err_exit:
         {
             if(ahp_gt_is_connected())
             {
-                ///TODO
+                for (Line *line : Lines) {
+                    line->updateLocation();
+                }
             }
         }
         thread->unlock();
