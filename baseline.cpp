@@ -434,6 +434,21 @@ bool Baseline::scanActive(bool atleast1)
     return active;
 }
 
+void Baseline::TakeMeanValue(Line *sender)
+{
+    if(sender->DarkTaken())
+    {
+        MinValue = 0;
+    } else {
+        double min = DBL_MAX;
+        for(int d = 0; d < counts->count(); d++)
+        {
+            min = fmin(min, counts->at(d).y());
+        }
+        MinValue = min;
+    }
+}
+
 void Baseline::TakeDark(Line* sender)
 {
     if(sender->DarkTaken())

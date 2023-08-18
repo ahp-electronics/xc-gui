@@ -175,6 +175,7 @@ class Baseline : public QWidget
         void stackCorrelations();
         void plot(bool success, double o, double s);
         void SavePlot();
+        void TakeMeanValue(Line *sender);
         void TakeDark(Line* sender);
         bool haveSetting(QString setting);
         void removeSetting(QString setting);
@@ -257,6 +258,7 @@ class Baseline : public QWidget
 
         dsp_stream_p stream { nullptr };
         fftw_plan plan;
+        double MinValue { 0.0 };
         double *magnitude_buf { nullptr };
         double *phase_buf { nullptr };
         size_t magnitude_size { 0 };

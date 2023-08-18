@@ -615,7 +615,7 @@ err_exit:
                     {
                         indexes.append(line->getLineIndex());
                         starts.append(line->getStartChannel());
-                        sizes.append(line->getResolution() * line->getScanStep());
+                        sizes.append(line->getChannelBandwidth());
                         steps.append(line->getScanStep());
                         line->setPercentPtr(&percent);
                     } else {

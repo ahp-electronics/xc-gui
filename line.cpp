@@ -233,8 +233,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->EndChannel->setValue(ui->StartChannel->value() + 2);
         }
-        start_lag = ui->EndChannel->value();
-        setMinFrequency(start_lag * 1000000000.0 / ahp_xc_get_frequency());
+        start_lag = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->StartChannel->value());
+        setMaxFrequency(start_lag * ahp_xc_get_sampletime() / ahp_xc_get_frequency());
+        setBufferSizes();
         saveSetting("StartChannel", ui->StartChannel->value());
     });
     connect(ui->EndChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
@@ -243,8 +244,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->StartChannel->setValue(ui->EndChannel->value() - 2);
         }
-        end_lag = ui->EndChannel->value();
-        setMaxFrequency(end_lag * 1000000000.0 / ahp_xc_get_frequency());
+        end_lag = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->EndChannel->value());
+        setMinFrequency(end_lag * ahp_xc_get_sampletime() / ahp_xc_get_frequency());
+        setBufferSizes();
         saveSetting("EndChannel", ui->EndChannel->value());
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
@@ -332,10 +334,7 @@ void Line::Initialize()
     ui->MaxDots->setValue(readInt("MaxDots", 10));
     ui->LoPass->setValue(readInt("LoPass", 0));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
-    if(ahp_xc_get_delaysize() <= 4)
-        ui->Resolution->setRange(1, 1048576);
-    else
-        ui->Resolution->setRange(1, ahp_xc_get_delaysize());
+    ui->Resolution->setRange(1000000000.0 * ahp_xc_get_sampletime(), ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime());
     ui->Resolution->setValue(readInt("Resolution", 100));
     ui->AutoChannel->setValue(readInt("AutoChannel", ui->AutoChannel->maximum()));
     ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
@@ -361,10 +360,12 @@ void Line::Initialize()
 
 void Line::setBufferSizes()
 {
-    start = ahp_xc_get_frequency() * start_lag / 1000000000.0;
-    end = ahp_xc_get_frequency() * end_lag / 1000000000.0;
-    len = fmin(ahp_xc_get_delaysize(), end-start);
-    step = fmax(1, round((double)len / getResolution()));
+    len_lag = end_lag - start_lag;
+    step_lag = fmax(1, len_lag / getResolution());
+    start_channel = start_lag / ahp_xc_get_sampletime() / 1000000000.0;
+    end_channel = end_lag / ahp_xc_get_sampletime() / 1000000000.0;
+    len_channel = len_lag / ahp_xc_get_sampletime() / 1000000000.0;
+    step_channel = fmax(1, step_lag / ahp_xc_get_sampletime() / 1000000000.0);
     setMagnitudeSize(getResolution());
     setPhaseSize(getResolution());
     emit updateBufferSizes();
@@ -499,15 +500,33 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
             {
                 for(int d = Counts->count() - 1; d >= 0; d--)
                 {
-                    if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange())
+                    if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange()) {
                         Counts->remove(d);
+                    }
+                }
+                for(int d = list.length() - 1; d >= 0; d--)
+                {
+                    if(d < list.length() - fmin(list.length(), ui->MinValue->value())) {
+                        list.removeAt(d);
+                    }
                 }
             }
             switch (z)
             {
                 case 0:
                     if(showCounts()) {
-                        Counts->append(packet->timestamp + starttime, (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
+                        int nsamples = fmin(list.length(), ui->MinValue->value());
+                        if(nsamples > 0) {
+                            if(list.count() > 3)
+                            {
+                                MinValue = 0;
+                                for(int x = list.length() - 1; x >= list.length()-nsamples; x--)
+                                    MinValue += list.at(x);
+                                MinValue /= nsamples;
+                            }
+                        } else MinValue = 0;
+                        list.append((double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
+                        Counts->append(packet->timestamp + starttime, fmax(0, (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime()));
                     }
                     break;
                 case 1:
@@ -546,7 +565,24 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                     {
                         case 0:
                             if(showCounts()) {
-                                Elements->getStream()->buf[Elements->getStreamSize()-1] = (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime();
+                                for(int d = list.length() - 1; d >= 0; d--)
+                                {
+                                    if(d < list.length() - fmin(list.length(), ui->MinValue->value())) {
+                                        list.removeAt(d);
+                                    }
+                                }
+                                int nsamples = fmin(list.length(), ui->MinValue->value());
+                                if(nsamples > 0) {
+                                    if(list.count() > 3)
+                                    {
+                                        MinValue = 0;
+                                        for(int x = list.length() - 1; x >= list.length()-nsamples; x--)
+                                            MinValue += list.at(x);
+                                        MinValue /= nsamples;
+                                    }
+                                } else MinValue = 0;
+                                list.append((double)packet->counts[getLineIndex()] / ahp_xc_get_packettime());
+                                Elements->getStream()->buf[Elements->getStreamSize()-1] = fmax((double)packet->counts[getLineIndex()] / ahp_xc_get_packettime() - MinValue, 0);
                                 active = true;
                             }
                             break;
@@ -1169,7 +1205,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     scanning = true;
     *stop = 0;
     *percent = 0;
-    int npackets = getNumChannels();
+    int npackets = getResolution();
     if(spectrum != nullptr && npackets > 0)
     {
         npackets--;
@@ -1178,7 +1214,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         int _lag = lag;
         dsp_buffer_set(magnitude_buf, npackets, 0);
         dsp_buffer_set(phase_buf, npackets, 0);
-        for (int x = 0, z = 2; z < getChannelBandwidth() && x < npackets; x++, z++)
+        for (int x = 0, z = 2; z < getResolution() && x < npackets; x++, z++)
         {
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             ahp_xc_correlation correlation;
@@ -1204,7 +1240,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         if(Align())
             elemental->run();
         else
-            elemental->finish(false, start, step * ahp_xc_get_frequency() / 1000000000.0);
+            elemental->finish(false, getStartLag(), getLagStep());
     }
     resetPercentPtr();
     resetStopPtr();
@@ -1213,7 +1249,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
 
 void Line::plot(bool success, double o, double s)
 {
-    double timespan = step * ahp_xc_get_frequency() / 1000000000.0;
+    double timespan = getLagStep();
     if(success)
         timespan = s;
     double offset = o;

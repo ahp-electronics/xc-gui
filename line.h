@@ -271,6 +271,22 @@ class Line : public QWidget
         {
             return RailMotorIndex;
         }
+        inline int getStartChannel()
+        {
+            return start_channel;
+        }
+        inline int getEndChannel()
+        {
+            return end_channel;
+        }
+        inline int getChannelBandwidth()
+        {
+            return len_channel;
+        }
+        inline int getScanStep()
+        {
+            return step_channel;
+        }
         inline int getStartLag()
         {
             return start_lag;
@@ -279,29 +295,13 @@ class Line : public QWidget
         {
             return end_lag;
         }
-        inline int getStartChannel()
+        inline int getLagBandwidth()
         {
-            return start;
+            return len_lag;
         }
-        inline int getEndChannel()
+        inline int getLagStep()
         {
-            return end;
-        }
-        inline int getChannelBandwidth()
-        {
-            return len;
-        }
-        inline int getNumChannels()
-        {
-            return len / step;
-        }
-        inline int getScanStep()
-        {
-            return step;
-        }
-        inline int getScanStepNs()
-        {
-            return step;
+            return step_lag;
         }
         inline double getLatitude()
         {
@@ -467,6 +467,7 @@ class Line : public QWidget
         QLineSeries* magnitudes { nullptr };
         QLineSeries* phases { nullptr };
         QLineSeries* counts { nullptr };
+        QList<double> list;
         QChar dir_separator { '/' };
         QList <dsp_location> xyz_locations;
         dsp_location target_location;
@@ -479,13 +480,13 @@ class Line : public QWidget
         bool radix_y { false };
         double start_lag { 0 };
         double end_lag { 1 };
-        double max_channel { 10000 };
-        double start { 0 };
-        double end { 1 };
-        double len { 1 };
         double len_lag { 1 };
         double step_lag { 1 };
-        double step;
+        double max_channel { 10000 };
+        double start_channel { 0 };
+        double end_channel { 1 };
+        double len_channel { 1 };
+        double step_channel { 1 };
         double Resolution { 1024 };
         double AutoChannel { 1 };
         double CrossChannel { 0 };
@@ -500,6 +501,7 @@ class Line : public QWidget
         double Latitude { 0.0 };
         double Longitude { 0.0 };
         double Elevation { 0.0 };
+        double MinValue { 0.0 };
         timespec starttime { 0 };
         bool applysigmaclipping { false };
         bool applymedian { false };
