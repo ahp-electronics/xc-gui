@@ -215,10 +215,7 @@ void Elemental::dft(int depth)
 
 void Elemental::clear()
 {
-    while(!lock()) QThread::msleep(100);
-    dsp_stream_set_dim(stream, 0, 1);
-    dsp_stream_alloc_buffer(stream, stream->len);
-    unlock();
+    setStreamSize(0);
 }
 
 double Elemental::min(off_t offset, size_t len)

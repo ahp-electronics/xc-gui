@@ -72,6 +72,8 @@ if(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/inputs.ui
         ${CMAKE_CURRENT_SOURCE_DIR}/elemental.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/elemental.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/series.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/series.h
         ${CMAKE_CURRENT_SOURCE_DIR}/structs.h
         ${CMAKE_CURRENT_SOURCE_DIR}/threads.h
     )
@@ -91,6 +93,8 @@ else(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/inputs.ui
         ${CMAKE_CURRENT_SOURCE_DIR}/elemental.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/elemental.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/series.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/series.h
         ${CMAKE_CURRENT_SOURCE_DIR}/types.h
         ${CMAKE_CURRENT_SOURCE_DIR}/threads.h
         ${CMAKE_CURRENT_SOURCE_DIR}/resource.qrc

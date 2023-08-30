@@ -132,6 +132,10 @@ class MainWindow : public QMainWindow
         {
             return graph;
         }
+        inline Graph *getHistogram()
+        {
+            return histogram;
+        }
         inline Mode getMode()
         {
             return mode;
@@ -290,6 +294,7 @@ signals:
         double TimeRange;
         int Order;
         Graph *graph;
+        Graph *histogram;
         Ui::MainWindow *ui;
         double J2000_starttime;
         timespec starttime;

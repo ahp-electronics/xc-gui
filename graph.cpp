@@ -374,9 +374,6 @@ void Graph::setMode(Mode m)
     else
     {
         switch(mode) {
-        case Spectrograph:
-            setupAxes(1.0, 1.0, "Channel", "Energy", "%g", "%g", 10, 10);
-            break;
         case Autocorrelator:
             setupAxes(1.0, 1.0, "Lag (s)", "Magnitude (counts)", "%g", "%g", 10, 10);
             break;

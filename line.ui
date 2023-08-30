@@ -429,7 +429,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Density (n)</string>
+     <string>Density (ch)</string>
     </property>
    </widget>
    <widget class="Line" name="line_2">

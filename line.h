@@ -42,6 +42,7 @@
 #include "types.h"
 #include "baseline.h"
 #include "elemental.h"
+#include "series.h"
 
 using namespace QtCharts;
 
@@ -80,6 +81,8 @@ class Line : public QWidget
         void setFlag(int flag, bool value);
         inline Graph* getGraph() { return graph; }
         inline void setGraph(Graph* g) { graph = g; }
+        inline Graph* gethistogram() { return histogram; }
+        inline void sethistogram(Graph* h) { histogram = h; }
         bool getFlag(int flag);
         bool showCounts();
         bool showAutocorrelations();
@@ -107,21 +110,12 @@ class Line : public QWidget
         }
         inline void clearCorrelations()
         {
-            getMagnitude()->clear();
-            getPhase()->clear();
-            getMagnitudeStack()->clear();
-            getPhaseStack()->clear();
-            getCountStack()->clear();
-            getMagnitudeElemental()->clear();
-            getPhaseElemental()->clear();
-            getCountElemental()->clear();
+            stack_index = 1;
+            getSpectrum()->clear();
         }
         inline void clearCounts()
         {
-            stack_index = 1;
             getCounts()->clear();
-            getMagnitudes()->clear();
-            getPhases()->clear();
         }
         inline double getPercent()
         {
@@ -187,31 +181,21 @@ class Line : public QWidget
         {
             return running;
         }
-        inline void setMagnitudeSize(size_t size)
+        inline void setSpectrumSize(size_t size)
         {
-            if(magnitude_buf != nullptr)
-                magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size + 1));
-            else
-                magnitude_buf = (double*)malloc(sizeof(double) * (size + 1));
+            getSpectrum()->getElemental()->setStreamSize(size);
         }
-        inline void setPhaseSize(size_t size)
+        inline size_t getSpectrumSize()
         {
-            if(phase_buf != nullptr)
-                phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size + 1));
-            else
-                phase_buf = (double*)malloc(sizeof(double) * (size + 1));
+            return getSpectrum()->getElemental()->getStreamSize();
         }
-        inline QLineSeries* getMagnitude()
+        inline Series* getSpectrum()
         {
-            return magnitude;
-        }
-        inline QLineSeries* getPhase()
-        {
-            return phase;
+            return spectrum;
         }
         inline QMap<double, double>* getDark()
         {
-            return dark;
+            return getSpectrum()->getDark();
         }
         inline int smooth()
         {
@@ -247,7 +231,7 @@ class Line : public QWidget
         double *percent;
         double localpercent;
         void setPercent();
-        void smoothBuffer(QLineSeries* buf, int offset, int len);
+        void smoothBuffer(QXYSeries* buf, QList<double>* raw, int offset, int len);
         void smoothBuffer(double* buf, int len);
         void addToVLBIContext();
         void removeFromVLBIContext();
@@ -301,7 +285,7 @@ class Line : public QWidget
         }
         inline int getLagStep()
         {
-            return step_lag;
+            return step_channel;
         }
         inline double getLatitude()
         {
@@ -377,47 +361,14 @@ class Line : public QWidget
         void setRa(double ra) { Ra = ra; }
         void setDec(double dec) { Dec = dec; }
 
-        inline Elemental *getElemental() {
-            return elemental;
-        }
-        inline QLineSeries* getCounts()
+        inline Series* getCounts()
         {
             return counts;
-        }
-        inline QMap<double, double>* getCountStack()
-        {
-            return countStack;
-        }
-        inline Elemental *getCountElemental() {
-            return elementalCounts;
-        }
-        inline QLineSeries* getPhases()
-        {
-            return phases;
-        }
-        inline QMap<double, double>* getPhaseStack()
-        {
-            return phaseStack;
-        }
-        inline Elemental *getPhaseElemental() {
-            return elementalPhase;
-        }
-        inline QLineSeries* getMagnitudes()
-        {
-            return magnitudes;
-        }
-        inline QMap<double, double>* getMagnitudeStack()
-        {
-            return magnitudeStack;
-        }
-        inline Elemental *getMagnitudeElemental() {
-            return elementalMagnitude;
         }
         inline int getResolution()
         {
             return Resolution;
         }
-        void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
 
         inline double getPacketTime() { return packetTime; }
         void addCount(double starttime, ahp_xc_packet *packet = nullptr);
@@ -439,16 +390,11 @@ class Line : public QWidget
         void stretch(QLineSeries* series);
 
         fftw_plan plan { 0 };
-        double *magnitude_buf { nullptr };
-        double *phase_buf { nullptr };
-        Elemental *elemental { nullptr };
-        Elemental *elementalCounts { nullptr };
-        Elemental *elementalPhase { nullptr };
-        Elemental *elementalMagnitude { nullptr };
         QList<int> Motors;
         Ui::Line *ui { nullptr };
         dsp_stream_p stream { nullptr };
         QString name;
+        int nsamples { 0 };
         int _smooth { 5 };
         int *stop;
         int localstop { 1 };
@@ -458,22 +404,15 @@ class Line : public QWidget
         QSettings *settings { nullptr };
         QList<Line*> *parents { nullptr };
         QList<Baseline*> nodes { nullptr };
-        QMap<double, double>* dark { nullptr };
-        QMap<double, double>* countStack { nullptr };
-        QMap<double, double>* magnitudeStack { nullptr };
-        QMap<double, double>* phaseStack { nullptr };
-        QLineSeries* magnitude { nullptr };
-        QLineSeries* phase { nullptr };
-        QLineSeries* magnitudes { nullptr };
-        QLineSeries* phases { nullptr };
-        QLineSeries* counts { nullptr };
-        QList<double> list;
+        Series* spectrum { nullptr };
+        Series* counts { nullptr };
         QChar dir_separator { '/' };
         QList <dsp_location> xyz_locations;
         dsp_location target_location;
         int current_location { 0 };
         double stack_index { 1.0 };
         Graph* graph;
+        Graph* histogram;
         unsigned int line { 0 };
         int flags { 0x8 };
         bool radix_x { false };
@@ -522,7 +461,7 @@ class Line : public QWidget
         void updateBufferSizes();
         void savePlot();
         void takeDark(Line* sender);
-        void clearCrosscorrelations();
+        void clear();
 };
 
 #endif // LINE_H

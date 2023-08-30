@@ -46,69 +46,15 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     len = (int*)malloc(sizeof(int));
     step = (int*)malloc(sizeof(int));
     size = (int*)malloc(sizeof(int));
-    dark = new QMap<double, double>();
-    magnitudeStack = new QMap<double, double>();
-    countStack = new QMap<double, double>();
-    phaseStack = new QMap<double, double>();
-    magnitude = new QLineSeries();
-    phase = new QLineSeries();
-    magnitudes = new QLineSeries();
-    phases = new QLineSeries();
-    counts = new QLineSeries();
-    elemental = new Elemental(this);
-    elementalCounts = new Elemental(this);
-    elementalPhase = new Elemental(this);
-    elementalMagnitude = new Elemental(this);
+    spectrum = new Series();
+    counts = new Series();
     resetPercentPtr();
     resetStopPtr();
     stream = dsp_stream_new();
     dsp_stream_add_dim(stream, 1);
     dsp_stream_alloc_buffer(stream, stream->len);
     stream->samplerate = 1.0/ahp_xc_get_packettime();
-    connect(elemental, static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
-    lines.clear();
-    for(int x = 0; x < getCorrelationOrder(); x++) {
-        int idx = (index + x * (index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
-        lines.append(nodes[idx]);
-        connect(getLine(x), static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::setBufferSizes);
-        connect(getLine(x), static_cast<void (Line::*)()>(&Line::clearCrosscorrelations),
-                [ = ]()
-        {
-            getMagnitudeStack()->clear();
-            getPhaseStack()->clear();
-            getMagnitude()->clear();
-            getPhase()->clear();
-            getMagnitudes()->clear();
-            getPhases()->clear();
-            getCounts()->clear();
-            stack_index = 0.0;
-        });
-        connect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
-                [ = ](Line * sender)
-        {
-            getCounts()->clear();
-            Line* line = getLine(x);
-            bool newstate = line->showCrosscorrelations();
-            *stop = !line->isActive();
-            for(int y = 0; y < getCorrelationOrder(); y++) {
-                if(y == x) continue;
-                line = getLine(y);
-                newstate = newstate && line->showCrosscorrelations();
-                if(line != nullptr)
-                *stop = !(*stop && line->isActive());
-            }
-            if(oldstate != newstate)
-            {
-                emit activeStateChanging(this);
-                if(newstate)
-                {
-                    emit activeStateChanged(this);
-                }
-            }
-            running = newstate;
-            oldstate = newstate;
-        });
-    }
+    connect(getSpectrum()->getElemental(), static_cast<void (Elemental::*)(bool, double, double)>(&Elemental::scanFinished), this, &Baseline::plot);
 }
 
 void Baseline::setBufferSizes()
@@ -119,13 +65,12 @@ void Baseline::setBufferSizes()
         end[x] = getLine(x)->getEndChannel();
         len[x] = getLine(x)->getChannelBandwidth();
         step[x] = getLine(x)->getScanStep();
-        size[x] = getLine(x)->getResolution();
+        size[x] = getLine(x)->getResolution() / 1000000000 / ahp_xc_get_sampletime();
     }
-    tail_size = len[0];
-    head_size = len[1];
-    size_2nd = (tail_size+head_size)*2/fmax(step[0], step[1])+1;
-    setMagnitudeSize(size_2nd);
-    setPhaseSize(size_2nd);
+    tail_size = len[1];
+    head_size = len[0];
+    size_2nd = (tail_size/step[1]+head_size/step[0])+1;
+    setSpectrumSize(size_2nd);
     unlock();
 }
 
@@ -163,17 +108,11 @@ void Baseline::setMode(Mode m)
 {
     mode = m;
     getDark()->clear();
-    getMagnitude()->clear();
-    getPhase()->clear();
     getCounts()->clear();
-    getMagnitudes()->clear();
-    getPhases()->clear();
-    getCountStack()->clear();
-    getMagnitudeStack()->clear();
-    getPhaseStack()->clear();
+    getSpectrum()->clear();
     if(mode == CrosscorrelatorIQ || mode == CrosscorrelatorII)
     {
-        for(int x = 0; x < getCorrelationOrder(); x++) {
+        for(int x = 0; x < getLines().count(); x++) {
             connect(getLine(x), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
             connect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
         }
@@ -181,7 +120,7 @@ void Baseline::setMode(Mode m)
     else
     {
         *stop = 1;
-        for(int x = 0; x < getCorrelationOrder(); x++) {
+        for(int x = 0; x < getLines().count(); x++) {
             disconnect(getLine(x), static_cast<void (Line::*)()>(&Line::savePlot), this, &Baseline::SavePlot);
             disconnect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Baseline::TakeDark);
         }
@@ -192,7 +131,6 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
 {
     if(packet == nullptr)
         packet = getPacket();
-    QLineSeries *Counts = getMagnitudes();
     bool active = false;
     switch(getMode()) {
     default: break;
@@ -228,105 +166,28 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
     case Counter:
         if(isActive())
         {
-            for(int x = 0; x < getCorrelationOrder(); x++) {
-                if(getLine(x)->showCrosscorrelations())
-                {
-                    if(Counts->count() > 0)
-                    {
-                        for(int d = Counts->count() - 1; d >= 0; d--)
-                        {
-                            if(Counts->at(d).x() < packet->timestamp + starttime - getTimeRange())
-                                Counts->remove(d);
-                        }
-                    }
-                    double mag = 0.0;
-                    if(ahp_xc_intensity_crosscorrelator_enabled())
-                        for(int x = 0; x < getCorrelationOrder(); x++) {
-                            mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
-                        mag = (double)sqrt(mag) / ahp_xc_get_packettime();
-                    } else
-                        mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude / ahp_xc_get_packettime();
-                    if(mag > 0)
-                        Counts->append(packet->timestamp + starttime, mag);
-                    active = true;
-                    smoothBuffer(Counts, Counts->count()-1, 1);
-                }
-            }
-        }
-        if(!active)
-        {
-            Counts->clear();
-        }
-        break;
-    case Spectrograph:
-        QLineSeries *counts[2] =
-        {
-            getMagnitudes(),
-            getPhases(),
-        };
-        QMap<double, double>*stacks[2] =
-        {
-            getMagnitudeStack(),
-            getPhaseStack(),
-        };
-        Elemental *elementals[2] =
-        {
-            getMagnitudeElemental(),
-            getPhaseElemental(),
-        };
-        double mag = 0.0;
-        double rad = 0.0;
-        if(ahp_xc_intensity_crosscorrelator_enabled()) {
-            double mag = 0.0;
+            int index = ahp_xc_get_crosscorrelation_index(indexes.toVector().toStdVector().data(), indexes.count());
+            active = index == Index;
             for(int x = 0; x < getCorrelationOrder(); x++)
-                mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
-            mag = (double)sqrt(mag) / ahp_xc_get_packettime();
-        }
-        else
-        {
-            mag = (double)packet->crosscorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime();
-            rad = (double)packet->crosscorrelations[getLineIndex()].correlations[0].phase;
-        }
-        for (int z = 0; z < 2; z++)
-        {
-            QLineSeries *Counts = counts[z];
-            QMap<double, double> *Stack = stacks[z];
-            Elemental *Elements = elementals[z];
-            if(isActive())
-            {
-                bool show_correlations = false;
-                for(int x = 0; x < getCorrelationOrder(); x++)
-                    show_correlations |= getLine(x)->showCrosscorrelations();
-                if(show_correlations)
-                {
-                    Elements->setStreamSize(fmax(2, Elements->getStreamSize()+1));
-                    int resolution = INT32_MAX;
-                    int size = fmin(Elements->getStreamSize(), resolution);
-                    if(Elements->lock()) {
-                        Elements->getStream()->buf[0] = 0;
-                        Elements->getStream()->buf[1] = ahp_xc_get_frequency();
-                        for(int x = 0; x < getCorrelationOrder(); x++) {
-                            resolution = fmin(getLine(x)->getResolution(), resolution);
-                        }
-                        Elements->unlock();
-                    }
-                    dsp_stream_p histo = Elements->histogram(size);
-                    double mn = Elements->min(2, Elements->getStream()->len-2);
-                    double mx = Elements->max(2, Elements->getStream()->len-2);
-                    Counts->clear();
-                    stack_index ++;
-                    for (int x = 1; x < size; x++)
-                    {
-                        stackValue(Counts, Stack, x * (mx-mn) / size + mn, histo->buf[x]);
-                    }
-                    smoothBuffer(Counts, 0, Counts->count());
-                }
+                if(!getLine(x)->showCrosscorrelations())
+                    active &= false;
+            if(active) {
+                double mag = -1.0;
+                double phi = -1.0;
+                if(ahp_xc_intensity_crosscorrelator_enabled())
+                    for(int x = 0; x < getCorrelationOrder(); x++) {
+                        mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
+                    mag = (double)sqrt(mag) / ahp_xc_get_packettime();
+                } else
+                    mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude / (double)packet->crosscorrelations[Index].correlations[0].counts;
+                getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, packet->crosscorrelations[Index].correlations[0].counts / ahp_xc_get_packettime(), mag, phi);
+                getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100);
+                getGraph()->paint();
+                gethistogram()->paint();
             }
             else
             {
-                Counts->clear();
-                Stack->clear();
-                Elements->setStreamSize(2);
+                getCounts()->clear();
             }
         }
         break;
@@ -343,9 +204,11 @@ void Baseline::setCorrelationOrder(int order)
     step = (int*)realloc(step, sizeof(int) * correlation_order);
     size = (int*)realloc(size, sizeof(int) * correlation_order);
     lines.clear();
+    indexes.clear();
     for(int x = 0; x < correlation_order; x++) {
-        int idx = (Index + x * (Index / ahp_xc_get_nlines() + 1)) % ahp_xc_get_nlines();
+        int idx = ahp_xc_get_line_index(Index, x);
         lines.append(Nodes.at(idx));
+        indexes.append(idx);
     }
     const char** names = (const char**)malloc(sizeof(const char*)*getCorrelationOrder());
     for(int x = 0; x < getCorrelationOrder(); x++)
@@ -353,41 +216,46 @@ void Baseline::setCorrelationOrder(int order)
     if(getMode() == HolographII || getMode() == HolographIQ)
         vlbi_set_baseline_stream(getVLBIContext(), names, getStream());
     free(names);
+    lines.clear();
+    indexes.clear();
+    for(int x = 0; x < getCorrelationOrder(); x++) {
+        int idx = ahp_xc_get_line_index(Index, x);
+        lines.append(Nodes[idx]);
+        indexes.append(idx);
+        connect(getLine(x), static_cast<void (Line::*)()>(&Line::updateBufferSizes), this, &Baseline::setBufferSizes);
+        connect(getLine(x), static_cast<void (Line::*)()>(&Line::clear),
+                [ = ]()
+        {
+            getCounts()->clear();
+            getSpectrum()->clear();
+        });
+        connect(getLine(x), static_cast<void (Line::*)(Line*)>(&Line::activeStateChanged),
+                [ = ](Line * line)
+        {
+            getCounts()->clear();
+            bool newstate = line->showCrosscorrelations();
+            *stop = !line->isActive();
+            for(int y = 0; y < getLines().count(); y++) {
+                if(y == x) continue;
+                line = getLine(y);
+                newstate &= line->showCrosscorrelations();
+                if(line != nullptr)
+                *stop = !(*stop && line->isActive());
+            }
+            if(oldstate != newstate)
+            {
+                emit activeStateChanging(this);
+                if(newstate)
+                {
+                    emit activeStateChanged(this);
+                }
+            }
+            running = newstate;
+            oldstate = newstate;
+        });
+        getLine(x)->setActive(getLine(x)->isActive());
+    }
     MainWindow::unlock_vlbi();
-}
-
-void Baseline::stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y)
-{
-    if(y == 0.0) {
-        if(stacked->contains(x))
-            series->append(x, stacked->value(x));
-        return;
-    }
-    y /= stack_index;
-    if(getDark()->contains(x))
-        y -= getDark()->value(x);
-    if(stacked->contains(x))
-    {
-        y += stacked->value(x) * (stack_index-1.0) / stack_index;
-    }
-    stacked->insert(x, y);
-    series->append(x, y);
-}
-
-void Baseline::stretch(QLineSeries* series)
-{
-    double mx = DBL_MIN;
-    double mn = DBL_MAX;
-    for (int x = 0; x < series->count(); x++)
-    {
-        mn = fmin(series->at(x).y(), mn);
-        mx = fmax(series->at(x).y(), mx);
-    }
-    for (int x = 0; x < series->count(); x++)
-    {
-        QPointF p = series->at(x);
-        series->replace(x, p.x(), (p.y() - mn) * M_PI * 2.0 / (mx - mn));
-    }
 }
 
 void Baseline::addToVLBIContext(int index)
@@ -414,8 +282,8 @@ void Baseline::removeFromVLBIContext(int index)
 
 bool Baseline::isActive(bool atleast1)
 {
-    bool active = false;
-    for(int x = 0; x < getCorrelationOrder(); x++)
+    bool active = true;
+    for(int x = 0; x < getLines().count(); x++)
         active |= getLine(x)->isActive();
     if(atleast1)
         return active;
@@ -424,6 +292,8 @@ bool Baseline::isActive(bool atleast1)
 
 bool Baseline::scanActive(bool atleast1)
 {
+    if(getLines().count() == 0)
+        return false;
     bool active = getLine(0)->scanActive();
     for(int x = 1; x < getCorrelationOrder(); x++) {
         if(atleast1)
@@ -441,9 +311,9 @@ void Baseline::TakeMeanValue(Line *sender)
         MinValue = 0;
     } else {
         double min = DBL_MAX;
-        for(int d = 0; d < counts->count(); d++)
+        for(int d = 0; d < getCounts()->getMagnitude()->count(); d++)
         {
-            min = fmin(min, counts->at(d).y());
+            min = fmin(min, getCounts()->getMagnitude()->at(d).y());
         }
         MinValue = min;
     }
@@ -454,23 +324,23 @@ void Baseline::TakeDark(Line* sender)
     if(sender->DarkTaken())
     {
         getDark()->clear();
-        for(int x = 0; x < getMagnitude()->count(); x++)
+        for(int x = 0; x < getSpectrum()->count(); x++)
         {
-            getDark()->insert(getMagnitude()->at(x).x(), getMagnitude()->at(x).y());
+            getDark()->insert(getSpectrum()->getMagnitude()->at(x).x(), getSpectrum()->getMagnitude()->at(x).y());
             QString darkstring = readString("Dark", "");
             if(!darkstring.isEmpty())
                 saveSetting("Dark", darkstring + ";");
             darkstring = readString("Dark", "");
-            saveSetting("Dark", darkstring + QString::number(getMagnitude()->at(x).x()) + "," + QString::number(getMagnitude()->at(
+            saveSetting("Dark", darkstring + QString::number(getSpectrum()->getMagnitude()->at(x).x()) + "," + QString::number(getSpectrum()->getMagnitude()->at(
                             x).y()));
         }
-        getMagnitude()->setName(name + " magnitude (residuals)");
+        getSpectrum()->setName(name + " magnitude (residuals)");
     }
     else
     {
         removeSetting("Dark");
         getDark()->clear();
-        getMagnitude()->setName(name + " magnitude");
+        getSpectrum()->setName(name + " magnitude");
     }
 }
 
@@ -485,10 +355,10 @@ void Baseline::SavePlot()
     {
         QTextStream output(&data);
         output << "'lag (ns)';'magnitude';'phase'\n";
-        for(int x = 0, y = 0; x < getMagnitude()->count(); y++, x++)
+        for(int x = 0, y = 0; x < getSpectrum()->count(); y++, x++)
         {
-            output << "'" + QString::number(getMagnitude()->at(y).x()) + "';'" + QString::number(getMagnitude()->at(y).y()) + "';'"
-                   + QString::number(getPhase()->at(y).x()) + "';'" + QString::number(getPhase()->at(y).y()) + "'\n";
+            output << "'" + QString::number(getSpectrum()->getMagnitude()->at(y).x()) + "';'" + QString::number(getSpectrum()->getMagnitude()->at(y).y()) + "';'"
+                   + QString::number(getSpectrum()->getPhase()->at(y).x()) + "';'" + QString::number(getSpectrum()->getPhase()->at(y).y()) + "'\n";
         }
     }
     data.close();
@@ -509,36 +379,9 @@ int Baseline::smooth()
     return value;
 }
 
-void Baseline::smoothBuffer(QLineSeries* buf, int offset, int len)
+QMap<double, double>* Baseline::getDark()
 {
-    if(buf->count() < offset+len)
-        return;
-    if(buf->count() < smooth())
-        return;
-    offset = fmax(offset, smooth());
-    for(int x = offset/2; x < len-offset/2; x++) {
-        double val = 0.0;
-        for(int y = -offset/2; y < offset/2; y++) {
-            val += buf->at(x-y).y();
-        }
-        val /= smooth();
-        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
-    }
-    if(getMode() == Autocorrelator || getMode() == CrosscorrelatorII || getMode() == CrosscorrelatorIQ) {
-        for(int x = len-1; x >= len-offset/2; x--)
-            buf->remove(buf->at(x).x(), buf->at(x).y());
-        for(int x = offset/2; x >= 0; x--)
-            buf->remove(buf->at(x).x(), buf->at(x).y());
-    }
-}
-
-void Baseline::smoothBuffer(double* buf, int len)
-{
-    for(int x = smooth(); x < len; x++) {
-        for(int y = 0; y < smooth(); y++)
-            buf[x] += buf[x-y];
-        buf[x] /= smooth();
-    }
+    return getCounts()->getDark();
 }
 
 void Baseline::stackCorrelations()
@@ -564,43 +407,37 @@ void Baseline::stackCorrelations()
         int lag = ofs-1;
         int _lag = lag;
         bool tail = false;
-        dsp_buffer_set(magnitude_buf, npackets, 0);
-        dsp_buffer_set(phase_buf, npackets, 0);
         for (int x = 0, z = 0; x < npackets; x++, z++)
         {
-            lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
-            if(lag == 0) continue;
-            tail = (lag >= 0);
+            tail = (lag <= 0);
             if (tail)
                 lag --;
+            lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
             lag += ofs;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(correlation.magnitude > 0) {
-                if(lag < npackets && lag >= -npackets)
+                if(lag < tail && lag >= -ofs)
                 {
-                    magnitude_buf[lag] = (double)correlation.magnitude / correlation.counts;
-                    phase_buf[lag] = (double)correlation.phase;
-                    for(int y = lag; y >= 0 && y < size_2nd; y += (!tail ? -1 : 1))
+                    getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude / correlation.counts;
+                    getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
+                    for(int y = lag; y >= -head_size && y < tail_size; y += (!tail ? 1 : -1))
                     {
-                        magnitude_buf[y] = magnitude_buf[lag];
-                        phase_buf[y] = phase_buf[lag];
+                        getSpectrum()->getElemental()->getMagnitude()[y+ofs] = (double)correlation.magnitude / correlation.counts;
+                        getSpectrum()->getElemental()->getPhase()[y+ofs] = (double)correlation.phase;
                     }
                     _lag = lag;
                 }
             }
         }
-        elemental->setBuffer(magnitude_buf, npackets);
-        elemental->setMagnitude(magnitude_buf, npackets);
-        elemental->setPhase(phase_buf, npackets);
         if(getLine(0)->dft() && getLine(1)->dft())
         {
-            elemental->dft();
+            getSpectrum()->getElemental()->dft();
         }
         if(getLine(0)->Align() && getLine(1)->Align())
-            elemental->run();
+            getSpectrum()->getElemental()->run();
         else
-            elemental->finish(false, -head_size * 1000000000.0 / ahp_xc_get_frequency(), step);
+            getSpectrum()->getElemental()->finish(false, -ofs*step, step);
         free(spectrum);
     }
     getLine(0)->resetPercentPtr();
@@ -610,20 +447,14 @@ void Baseline::stackCorrelations()
 
 void Baseline::plot(bool success, double o, double s)
 {
-    int step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
-    double timespan = step * 1000000000.0 / ahp_xc_get_frequency();
+    double timespan = o;
     if(success)
         timespan = s;
     double offset = o;
-    int x = 0;
-    getMagnitude()->clear();
-    getPhase()->clear();
-    for (double t = offset; x < elemental->getStreamSize(); t += timespan, x++)
-    {
-        stackValue(getMagnitude(), getMagnitudeStack(), ahp_xc_get_sampletime() * t, elemental->getMagnitude()[x]);
-    }
-    smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
-    smoothBuffer(getPhase(), 0, getPhase()->count());
+    getSpectrum()->stackBuffer(getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+    getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
+    getGraph()->paint();
+    gethistogram()->repaint();
 }
 
 Baseline::~Baseline()

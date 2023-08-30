@@ -88,10 +88,8 @@ class Elemental : public QObject
         }
         inline void setStreamSize(int size)
         {
-            while(!lock()) QThread::msleep(100);
             dsp_stream_set_dim(stream, 0, size);
             dsp_stream_alloc_buffer(stream, stream->len);
-            unlock();
         }
         void clear();
         double min(off_t offset, size_t len);

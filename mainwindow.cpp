@@ -145,14 +145,16 @@ MainWindow::MainWindow(QWidget *parent)
     vlbiThread = new Thread(this, 100, 100, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
+    histogram = new Graph(settings, this);
     int starty = 80;
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
-    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
-    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10);
     getGraph()->setUpdatesEnabled(true);
     getGraph()->setVisible(true);
-
+    getGraph()->setGeometry(5, starty + 5, this->width() * 0.8 - 10, this->height() - starty - 10);
+    getHistogram()->setUpdatesEnabled(true);
+    getHistogram()->setVisible(true);
+    getHistogram()->setGeometry(getGraph()->width() + 10, starty + 5, this->width() - getGraph()->width() - 10, this->height() - starty - 10);
     settings->beginGroup("Connection");
     ui->XCPort->clear();
     ui->XCPort->addItem(settings->value("xc_connection", "no connection").toString());
@@ -196,10 +198,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         settings->setValue("Order", value);
         Order = ui->Order->value();
-        while(!lock_vlbi());
-        ahp_xc_set_correlation_order(Order);
-        vlbi_set_correlation_order(getVLBIContext(), Order);
-        unlock_vlbi();
+        updateOrder();;
     });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
@@ -219,20 +218,15 @@ MainWindow::MainWindow(QWidget *parent)
             line->setActive(false);
         for(Baseline * line : Baselines)
         {
-            getGraph()->removeSeries(line->getCounts());
-            getGraph()->removeSeries(line->getMagnitudes());
-            getGraph()->removeSeries(line->getPhases());
-            getGraph()->removeSeries(line->getMagnitude());
-            getGraph()->removeSeries(line->getPhase());
+            getGraph()->removeSeries(line->getSpectrum()->getMagnitude());
             line->~Baseline();
         }
         for(Line * line : Lines)
         {
-            getGraph()->removeSeries(line->getCounts());
-            getGraph()->removeSeries(line->getMagnitudes());
-            getGraph()->removeSeries(line->getPhases());
-            getGraph()->removeSeries(line->getMagnitude());
-            getGraph()->removeSeries(line->getPhase());
+            getGraph()->removeSeries(line->getCounts()->getSeries());
+            getGraph()->removeSeries(line->getCounts()->getMagnitude());
+            getGraph()->removeSeries(line->getSpectrum()->getMagnitude());
+            getHistogram()->removeSeries(line->getCounts()->getHistogram());
             line->~Line();
         }
         Baselines.clear();
@@ -273,6 +267,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Order->setEnabled(false);
         ui->Mode->setEnabled(false);
         getGraph()->clearSeries();
+        getHistogram()->clearSeries();
         connected = false;
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
@@ -437,16 +432,17 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                             switch(m) {
                             case Autocorrelator:
-                                getGraph()->addSeries(Lines[l]->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
-                                getGraph()->addSeries(Lines[l]->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                                getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 break;
                             case CrosscorrelatorII:
                             case CrosscorrelatorIQ:
                                 break;
                             case Counter:
-                            case Spectrograph:
-                                getGraph()->addSeries(Lines[l]->getMagnitudes(), QString::number(Counter) + "0#" + QString::number(l+1));
-                                getGraph()->addSeries(Lines[l]->getCounts(), QString::number(Counter) + "1#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "0#" + QString::number(l+1));
+                                getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
+                                //getHistogram()->addSeries(Lines[l]->getMagnitude()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
                                 break;
                             case HolographII:
                             case HolographIQ:
@@ -459,6 +455,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
                         connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
                         Lines[l]->setGraph(getGraph());
+                        Lines[l]->sethistogram(getGraph());
                         Lines[l]->setStopPtr(&threadsStopped);
                         Lines[l]->Initialize();
                         ui->Lines->addTab(Lines[l], name);
@@ -469,6 +466,7 @@ MainWindow::MainWindow(QWidget *parent)
                         fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Baselines.append(new Baseline(name, idx, Lines, settings));
                         Baselines[idx]->setGraph(getGraph());
+                        Baselines[idx]->sethistogram(getHistogram());
                         Baselines[idx]->setStopPtr(&threadsStopped);
                         connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                         {
@@ -480,13 +478,12 @@ MainWindow::MainWindow(QWidget *parent)
                                 break;
                             case CrosscorrelatorII:
                             case CrosscorrelatorIQ:
-                                getGraph()->addSeries(Baselines[idx]->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                 break;
                             case Counter:
-                            case Spectrograph:
-                                getGraph()->addSeries(Baselines[idx]->getMagnitudes(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                getGraph()->addSeries(Baselines[idx]->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                                getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                 break;
                             case HolographII:
                             case HolographIQ:
@@ -558,6 +555,11 @@ err_exit:
     {
         (void)freq;
     });
+    connect(getHistogram(), static_cast<void (Graph::*)(double)>(&Graph::frequencyUpdated),
+            [ = ](double freq)
+    {
+        (void)freq;
+    });
     connect(ui->Download, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
             [ = ](bool checked)
     {
@@ -566,9 +568,16 @@ err_exit:
     connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
     {
     });
+    connect(getHistogram(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
+    {
+    });
     connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
     {
+        getHistogram()->paint();
         getGraph()->paint();
+    });
+    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+    {
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
     {
@@ -601,6 +610,7 @@ err_exit:
                         line->resetPercentPtr();
                     }
                 }
+                repaint();
                 break;
             case Autocorrelator:
                 indexes.clear();
@@ -636,6 +646,7 @@ err_exit:
                     }
                 }
                 free(spectrum);
+                repaint();
                 break;
             default:
                 if(!ahp_xc_get_packet(getPacket())) {
@@ -644,14 +655,13 @@ err_exit:
                     lastpackettime = packet->timestamp;
                     lock();
                     if(diff < TimeRange)
-                        emit newPacket(packet);
+                        newPacket(packet);
                     unlock();
                     ahp_xc_free_packet(packet);
                 }
+                repaint();
                 break;
         }
-        if(getMode() != HolographII && getMode() != HolographIQ)
-            emit repaint();
     end_unlock:
         thread->unlock();
     });
@@ -755,7 +765,8 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
     statusBar()->setGeometry(0, this->height() - statusBar()->height(), width(), 20);
-    getGraph()->setGeometry(5, starty + 5, this->width() - 10, this->height() - starty - 10 - statusBar()->height());
+    getGraph()->setGeometry(5, starty + 5, this->width() * 0.8 - 10, this->height() - starty - 10);
+    getHistogram()->setGeometry(getGraph()->width() + 10, starty + 5, this->width() - getGraph()->width() - 10, this->height() - starty - 10);
 }
 
 void MainWindow::startThreads()
@@ -821,18 +832,17 @@ void MainWindow::runClicked(bool checked)
 
 void MainWindow::resetTimestamp()
 {
-    starttime = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(
-                    Qt::DateFormat::ISODate).toStdString().c_str());
-    J2000_starttime = vlbi_time_timespec_to_J2000time(starttime);
+    J2000_starttime = getTime();
     lastpackettime = J2000_starttime;
 }
 
 void MainWindow::updateOrder()
 {
     int max_order = 0;
-    for(int x = 0; x < Lines.count(); x++)
-        if(Lines[x]->scanActive())
+    for(int x = 0; x < Lines.count(); x++) {
+        if(Lines[x]->scanActive() || Lines[x]->showCrosscorrelations())
             max_order ++;
+    }
 
     if(max_order >= 2) {
         int order = fmax(2, fmin(max_order, Order));
@@ -849,7 +859,7 @@ void MainWindow::updateOrder()
         enable_vlbi = true;
     } else {
         enable_vlbi = false;
-        ui->Order->setRange(0, 0);
+        ui->Order->setRange(2, 2);
     }
 }
 
@@ -875,6 +885,7 @@ MainWindow::~MainWindow()
     {
         ui->Disconnect->clicked(false);
     }
+    getHistogram()->~Graph();
     getGraph()->~Graph();
     settings->~QSettings();
     fclose(f_stdout);

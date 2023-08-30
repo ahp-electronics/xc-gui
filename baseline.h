@@ -37,6 +37,7 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <cmath>
+#include "series.h"
 #include "types.h"
 #include "elemental.h"
 
@@ -59,72 +60,23 @@ class Baseline : public QWidget
         {
             return name;
         }
-        inline QLineSeries* getMagnitude()
-        {
-            return magnitude;
-        }
-        inline QLineSeries* getPhase()
-        {
-            return phase;
-        }
-        inline void setMagnitudeSize(size_t size)
-        {
-            if(magnitude_size == size) return;
-            magnitude_size = size;
-            if(magnitude_buf != nullptr)
-                magnitude_buf = (double*)realloc(magnitude_buf, sizeof(double) * (size + 1));
-            else
-                magnitude_buf = (double*)malloc(sizeof(double) * (size + 1));
-        }
-        inline void setPhaseSize(size_t size)
-        {
-            if(phase_size == size) return;
-            phase_size = size;
-            if(phase_buf != nullptr)
-                phase_buf = (double*)realloc(phase_buf, sizeof(double) * (size + 1));
-            else
-                phase_buf = (double*)malloc(sizeof(double) * (size + 1));
-        }
-        inline Elemental *getElemental() {
-            return elemental;
-        }
-        inline QLineSeries* getCounts()
+        inline Series* getCounts()
         {
             return counts;
         }
-        inline QMap<double, double>* getCountStack()
+        inline Series* getSpectrum()
         {
-            return countStack;
+            return spectrum;
         }
-        inline Elemental *getCountElemental() {
-            return elementalCounts;
-        }
-        inline QLineSeries* getPhases()
+        inline void setSpectrumSize(size_t size)
         {
-            return phases;
+            getSpectrum()->getElemental()->setStreamSize(size);
         }
-        inline QMap<double, double>* getPhaseStack()
+        inline size_t getSpectrumSize()
         {
-            return phaseStack;
+            getSpectrum()->getElemental()->getStreamSize();
         }
-        inline Elemental *getPhaseElemental() {
-            return elementalPhase;
-        }
-        inline QLineSeries* getMagnitudes()
-        {
-            return magnitudes;
-        }
-        inline QMap<double, double>* getMagnitudeStack()
-        {
-            return magnitudeStack;
-        }
-        inline Elemental *getMagnitudeElemental() {
-            return elementalMagnitude;
-        }
-        inline QMap<double, double>* getDark()
-        {
-            return dark;
-        }
+        QMap<double, double>* getDark();
         void setMode(Mode m);
         inline Mode getMode()
         {
@@ -162,6 +114,10 @@ class Baseline : public QWidget
         inline Line* getLine(int index)
         {
             return lines.at(index);
+        }
+        inline QList<Line*> getLines()
+        {
+            return lines;
         }
         void setCorrelationOrder(int order);
         inline int getCorrelationOrder()
@@ -221,9 +177,6 @@ class Baseline : public QWidget
         }
         bool dft();
         int smooth();
-        void smoothBuffer(QLineSeries* buf, int offset, int len);
-        void smoothBuffer(double* buf, int len);
-        void stackValue(QLineSeries* series, QMap<double, double>* stacked, double x, double y);
 
         void lock()
         {
@@ -241,6 +194,8 @@ class Baseline : public QWidget
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
         inline Graph *getGraph() { return graph; }
         inline void setGraph(Graph * g) { graph = g; }
+        inline Graph* gethistogram() { return histogram; }
+        inline void sethistogram(Graph* h) { histogram = h; }
 
     private:
         int localstop { 0 };
@@ -248,19 +203,18 @@ class Baseline : public QWidget
         double *percent { nullptr };
         double localpercent { 0 };
         Graph *graph;
+        Graph *histogram;
         ahp_xc_packet* packet;
         double timeRange { 10.0 };
         double packetTime { 0.0 };
         QMutex mutex;
         bool running { false };
         void setBufferSizes();
-        void stretch(QLineSeries* series);
+        void stretch(Series* series);
 
         dsp_stream_p stream { nullptr };
         fftw_plan plan;
         double MinValue { 0.0 };
-        double *magnitude_buf { nullptr };
-        double *phase_buf { nullptr };
         size_t magnitude_size { 0 };
         size_t phase_size { 0 };
         double offset { 0.0 };
@@ -280,23 +234,12 @@ class Baseline : public QWidget
         bool threadRunning;
         bool oldstate;
         Mode mode;
-        Elemental *elemental;
-        Elemental* elementalCounts { nullptr };
-        Elemental* elementalPhase { nullptr };
-        Elemental* elementalMagnitude { nullptr };
-        QMap<double, double>* countStack;
-        QMap<double, double>* phaseStack;
-        QMap<double, double>* magnitudeStack;
-        QMap<double, double>* dark;
-        QLineSeries* counts;
-        QLineSeries* phases;
-        QLineSeries* magnitudes;
-        QLineSeries* magnitude;
-        QLineSeries* phase;
+        Series* counts;
+        Series* spectrum;
         QList<Line*> Nodes;
-        double stack_index { 1.0 };
         int correlation_order {2};
         QList<Line*> lines;
+        QList<int> indexes;
 signals:
         void activeStateChanging(Baseline*);
         void activeStateChanged(Baseline*);

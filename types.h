@@ -45,7 +45,6 @@ enum VlbiContext
 enum Mode
 {
     Counter = 0,
-    Spectrograph,
     Autocorrelator,
     CrosscorrelatorII,
     CrosscorrelatorIQ,
@@ -59,6 +58,13 @@ enum Scale
     Sqrt,
     Log
 };
+
+inline double getTime()
+{
+    timespec ts_now = vlbi_time_string_to_timespec((char*)QDateTime::currentDateTimeUtc().toString(
+                    Qt::DateFormat::ISODate).toStdString().c_str());
+    return vlbi_time_timespec_to_J2000time(ts_now);
+}
 
 extern vlbi_context context[vlbi_total_contexts];
 #endif // TYPES_H
