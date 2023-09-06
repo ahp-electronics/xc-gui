@@ -107,12 +107,12 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         index.close();
         ui->Catalogs->setModel(model);
     }
-    int min_frequency = 1000000000.0 / ahp_xc_get_frequency();
-    int max_frequency = min_frequency * ahp_xc_get_delaysize();
-    ui->EndChannel->setRange(min_frequency, max_frequency);
-    ui->StartChannel->setRange(min_frequency, max_frequency - 2);
-    ui->AutoChannel->setRange(min_frequency, max_frequency);
-    ui->CrossChannel->setRange(min_frequency, max_frequency);
+    int min_lag = 1.0 * 1000000000.0 * ahp_xc_get_sampletime();
+    int max_lag = ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime();
+    ui->EndChannel->setRange(min_lag, max_lag);
+    ui->StartChannel->setRange(min_lag, max_lag - 2);
+    ui->AutoChannel->setRange(min_lag, max_lag);
+    ui->CrossChannel->setRange(min_lag, max_lag);
     connect(ui->Catalogs, static_cast<void (QTreeView::*)(const QModelIndex &)>(&QTreeView::clicked), [ = ] (const QModelIndex &index)
     {
         QString catalog = index.parent().data().toString();
@@ -164,9 +164,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     {
         emit takeDark(this);
     });
-    connect(ui->DFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
+    connect(ui->iDFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
-        saveSetting("DFT", ui->DFT->isChecked());
+        saveSetting("iDFT", ui->iDFT->isChecked());
     });
     connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -223,8 +223,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->EndChannel->setValue(ui->StartChannel->value() + 2);
         }
-        start_lag = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->StartChannel->value());
-        setMaxFrequency(start_lag * ahp_xc_get_sampletime() / ahp_xc_get_frequency());
+        lag_start = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->StartChannel->value());
+        setMaxFrequency(ahp_xc_get_frequency() * 1000000000.0 / lag_start);
         setBufferSizes();
         saveSetting("StartChannel", ui->StartChannel->value());
     });
@@ -234,8 +234,8 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         {
             ui->StartChannel->setValue(ui->EndChannel->value() - 2);
         }
-        end_lag = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->EndChannel->value());
-        setMinFrequency(end_lag * ahp_xc_get_sampletime() / ahp_xc_get_frequency());
+        lag_end = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->EndChannel->value());
+        setMinFrequency(ahp_xc_get_frequency() * 1000000000.0 / lag_end);
         setBufferSizes();
         saveSetting("EndChannel", ui->EndChannel->value());
     });
@@ -333,7 +333,7 @@ void Line::Initialize()
     ui->EndChannel->setValue(readInt("EndChannel", ahp_xc_get_frequency()));
     ui->StartChannel->setValue(readInt("StartChannel", ui->StartChannel->minimum()));
     ui->MinValue->setValue(readInt("MinValue", ui->MinValue->minimum()));
-    ui->DFT->setChecked(readBool("DFT", false));
+    ui->iDFT->setChecked(readBool("iDFT", false));
     ui->flag3->setEnabled(!ahp_xc_has_cumulative_only());
     ahp_xc_set_leds(line, flags);
     setFlag(0, readBool(ui->flag0->text(), false));
@@ -351,12 +351,13 @@ void Line::Initialize()
 
 void Line::setBufferSizes()
 {
-    len_lag = end_lag - start_lag;
-    step_lag = fmax(1, len_lag / getResolution());
-    start_channel = start_lag / ahp_xc_get_sampletime() / 1000000000.0;
-    end_channel = end_lag / ahp_xc_get_sampletime() / 1000000000.0;
-    len_channel = len_lag / ahp_xc_get_sampletime() / 1000000000.0;
-    step_channel = fmax(1, step_lag / ahp_xc_get_sampletime() / 1000000000.0);
+    lag_len = lag_end - lag_start;
+    lag_step = fmax(1, lag_len / getResolution());
+    channel_start = lag_start / ahp_xc_get_sampletime() / 1000000000.0;
+    channel_end = lag_end / ahp_xc_get_sampletime() / 1000000000.0;
+    channel_len = lag_len / ahp_xc_get_sampletime() / 1000000000.0;
+    channel_step = fmax(1, lag_step / ahp_xc_get_sampletime() / 1000000000.0);
+    Resolution = fmin(getResolution(), channel_len / channel_step);
     setSpectrumSize(getResolution());
     emit updateBufferSizes();
 }
@@ -494,9 +495,7 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                             mag,
                             phi
                 );
-                getCounts()->buildHistogram(getCounts()->getSeries(), getCounts()->getElemental()->getStream(), 100);
-                getGraph()->paint();
-                gethistogram()->paint();
+                getCounts()->buildHistogram(getCounts()->getSeries(), getCounts()->getElemental()->getStream(), getResolution());
             }
         }
         else
@@ -717,7 +716,7 @@ void Line::setMode(Mode m)
         ui->Crosscorrelations->setEnabled(false);
         ui->Resolution->setEnabled(false);
         ui->Active->setEnabled(true);
-        ui->DFT->setEnabled(false);
+        ui->iDFT->setEnabled(false);
         ui->AutoChannel->setEnabled(false);
         ui->CrossChannel->setEnabled(false);
         ui->StartChannel->setEnabled(false);
@@ -729,7 +728,7 @@ void Line::setMode(Mode m)
         ui->Crosscorrelations->setEnabled(true);
         ui->Resolution->setEnabled(true);
         ui->Active->setEnabled(false);
-        ui->DFT->setEnabled(true);
+        ui->iDFT->setEnabled(true);
         ui->AutoChannel->setEnabled(true);
         ui->CrossChannel->setEnabled(true);
         ui->StartChannel->setEnabled(false);
@@ -741,7 +740,7 @@ void Line::setMode(Mode m)
         ui->Crosscorrelations->setEnabled(false);
         ui->Resolution->setEnabled(true);
         ui->Active->setEnabled(true);
-        ui->DFT->setEnabled(true);
+        ui->iDFT->setEnabled(true);
         ui->AutoChannel->setEnabled(false);
         ui->CrossChannel->setEnabled(false);
         ui->StartChannel->setEnabled(true);
@@ -890,7 +889,7 @@ void Line::SavePlot()
             }
             break;
         case Autocorrelator:
-            if(dft())
+            if(idft())
                 output << "'lag (ns)','magnitude','phase'\n";
             else
                 output << "'channel','magnitude','phase'\n";
@@ -916,9 +915,9 @@ bool Line::Differential()
     return getFlag(4);
 }
 
-bool Line::dft()
+bool Line::idft()
 {
-    return ui->DFT->isChecked();
+    return ui->iDFT->isChecked();
 }
 
 bool Line::Align()
@@ -1052,29 +1051,28 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     {
         int lag = 1;
         int _lag = lag;
-        npackets = getResolution() / 1000000000 / ahp_xc_get_sampletime();
         setSpectrumSize(npackets);
-        for (int x = 0, z = 0; z < getResolution() && x < npackets; x++, z++)
+        for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
         {
-            int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
+            int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime()-1;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / correlation.counts;
+                    getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / (fabs(correlation.real)+fabs(correlation.imaginary));
                     getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {
-                        getSpectrum()->getElemental()->getMagnitude()[y] = (double)correlation.magnitude / correlation.counts;
+                        getSpectrum()->getElemental()->getMagnitude()[y] = (double)correlation.magnitude / (fabs(correlation.real)+fabs(correlation.imaginary));
                         getSpectrum()->getElemental()->getPhase()[y] = (double)correlation.phase;
                     }
                     _lag = lag;
                 }
             }
         }
-        if(dft())
-            getSpectrum()->getElemental()->dft();
+        if(idft())
+            getSpectrum()->getElemental()->idft();
         if(Align())
             getSpectrum()->getElemental()->run();
         else
@@ -1087,11 +1085,15 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
 
 void Line::plot(bool success, double o, double s)
 {
-    double timespan = getLagStep();
+    double timespan = s;
     if(success)
         timespan = s;
     double offset = o;
-    getSpectrum()->stackBuffer(getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+    if(!idft()) {
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+    } else
+        getSpectrum()->stackBuffer(getSpectrum()->getSeries(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
     getGraph()->repaint();
     gethistogram()->repaint();

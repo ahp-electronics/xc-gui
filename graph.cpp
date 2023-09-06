@@ -375,11 +375,11 @@ void Graph::setMode(Mode m)
     {
         switch(mode) {
         case Autocorrelator:
-            setupAxes(1.0, 1.0, "Lag (s)", "Magnitude (counts)", "%g", "%g", 10, 10);
+            setupAxes(1.0, 1.0, "Lag (ns)", "Magnitude (counts)", "%g", "%g", 10, 10);
             break;
         case CrosscorrelatorII:
         case CrosscorrelatorIQ:
-            setupAxes(1.0, 1.0, "Lag (s)", "Magnitude (counts)");
+            setupAxes(1.0, 1.0, "Lag (ns)", "Magnitude (counts)");
             break;
         case Counter:
             setupAxes(1.0, 1.0, "Time (s)", "Counts");
@@ -396,10 +396,12 @@ void Graph::setMode(Mode m)
 
 void Graph::addSeries(QAbstractSeries *series, QString name)
 {
+    lock();
     if(!chart->series().contains(series)) {
         series->setName(name);
         chart->addSeries(series);
     }
+    unlock();
 }
 
 void Graph::setupAxes(double base_x, double base_y, QString title_x, QString title_y, QString format_x, QString format_y, int ticks_x, int ticks_y)

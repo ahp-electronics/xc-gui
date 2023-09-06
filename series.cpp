@@ -6,6 +6,7 @@ Series::Series(QObject *parent) : QObject(parent)
     magnitude = new QLineSeries();
     phase = new QLineSeries();
     histogram = new QScatterSeries();
+    histogram->setMarkerSize(10);
     magnitude_stack = new QMap<double, double>();
     phase_stack = new QMap<double, double>();
     dark = new QMap<double, double>();
@@ -75,26 +76,26 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
 
 void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size)
 {
+    int size = 0;
+    double mn = DBL_MIN;
+    double mx = DBL_MAX;
     if(getElemental()->lock()) {
         getElemental()->clear();
-        getElemental()->setStreamSize(series->count()+2);
-        stream->buf[0] = 0;
-        stream->buf[1] = ahp_xc_get_frequency();
+        getElemental()->setStreamSize(series->count());
         for(int x = 0; x < series->count(); x++)
-            stream->buf[x+2] = series->at(x).y();
+            stream->buf[x] = series->at(x).y();
+        size = fmin(stream->len, histogram_size);
         getElemental()->unlock();
-    }
-    int size = fmin(getElemental()->getStreamSize(), histogram_size);
-    double mn = getElemental()->min(2, stream->len-2);
-    double mx = getElemental()->max(2, stream->len-2);
-    getElemental()->stretch(0, size);
+    } else return;
+    mn = getElemental()->min(0, stream->len);
+    mx = getElemental()->max(0, stream->len);
     dsp_stream_p histo = getElemental()->histogram(size, stream);
-    getElemental()->stretch(mn, mx);
+    if(histo == nullptr) return;
     stack_index_histogram ++;
     getHistogram()->clear();
-    for (int x = 2; x < size; x++)
+    for (int x = 0; x < size; x++)
     {
-        stackHistogram(histo->buf[x], x * mx / mn + mn);
+        stackHistogram(histo->buf[x], x * (mx - mn) / size + mn);
     }
 }
 
@@ -126,27 +127,20 @@ void Series::smoothBuffer(QXYSeries *buf, int offset, int len)
 
 void Series::stackHistogram(double x, double y)
 {
-    if(y == 0.0) {
-        if(getHistogramStack()->contains(x))
-            getHistogram()->append(x, getHistogramStack()->value(x));
-        return;
-    }
-    y /= stack_index_histogram;
+    x /= stack_index_histogram;
     if(getHistogramStack()->contains(x))
-        y += getHistogramStack()->value(x) * (stack_index_histogram-1.0) / stack_index_histogram;
-    if(y != 0) {
-        getHistogramStack()->insert(x, y);
-        getHistogram()->append(x, y);
-    }
+        x += x * (stack_index_histogram-1.0) / stack_index_histogram;
+    getHistogramStack()->insert(x, y);
+    getHistogram()->append(x, y);
 }
 
-void Series::stackBuffer(double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset)
+void Series::stackBuffer(QXYSeries *series, double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset)
 {
     offset = fmax(0, offset);
-    getMagnitude()->clear();
+    series->clear();
     for(off_t x = offset + 1; x < offset+len; x ++)
     {
-        stackValue(getMagnitude(), getStack(), x * x_scale + x_offset, buf[x] * y_scale + y_offset);
+        stackValue(series, getStack(), x * x_scale + x_offset, buf[x] * y_scale + y_offset);
     }
 }
 
@@ -154,14 +148,14 @@ void Series::stackValue(QXYSeries *buf, QMap<double, double>* stack, double x, d
 {
     if(y == 0.0)
     {
-        if(getStack()->contains(x))
+        if(getStack()->keys().contains(x))
             getSeries()->append(x, getStack()->value(x));
         return;
     }
     y /= stack_index;
     if(getDark()->contains(x))
         y -= getDark()->value(x);
-    if(getStack()->contains(x))
+    if(getStack()->keys().contains(x))
     {
         y += getStack()->value(x) * (stack_index-1.0) / stack_index;
     }

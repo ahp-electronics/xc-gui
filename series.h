@@ -49,7 +49,8 @@ public:
         getDark()->clear();
         getElemental()->clear();
         getRaw()->clear();
-        stack_index = 1;
+        stack_index = 0;
+        stack_index_histogram = 0;
     }
     inline QLineSeries *getSeries()
     {
@@ -107,7 +108,7 @@ public:
     void setName(QString name);
     void fill(double* buf, off_t offset, size_t len);
     void addCount(double min_x, double x, double y, double mag, double phi);
-    void stackBuffer(double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset);
+    void stackBuffer(QXYSeries *series, double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset);
     void buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size);
 signals:
 

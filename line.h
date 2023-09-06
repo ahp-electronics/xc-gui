@@ -61,7 +61,7 @@ class Line : public QWidget
 
         void paint();
         bool Histogram();
-        bool dft();
+        bool idft();
         bool Align();
         bool Differential();
         bool scanActive();
@@ -257,35 +257,35 @@ class Line : public QWidget
         }
         inline int getStartChannel()
         {
-            return start_channel;
+            return channel_start;
         }
         inline int getEndChannel()
         {
-            return end_channel;
+            return channel_end;
         }
         inline int getChannelBandwidth()
         {
-            return len_channel;
+            return channel_len;
         }
         inline int getScanStep()
         {
-            return step_channel;
+            return channel_step;
         }
         inline int getStartLag()
         {
-            return start_lag;
+            return lag_start;
         }
         inline int getEndLag()
         {
-            return end_lag;
+            return lag_end;
         }
         inline int getLagBandwidth()
         {
-            return len_lag;
+            return lag_len;
         }
         inline int getLagStep()
         {
-            return step_channel;
+            return lag_step;
         }
         inline double getLatitude()
         {
@@ -417,15 +417,15 @@ class Line : public QWidget
         int flags { 0x8 };
         bool radix_x { false };
         bool radix_y { false };
-        double start_lag { 0 };
-        double end_lag { 1 };
-        double len_lag { 1 };
-        double step_lag { 1 };
-        double max_channel { 10000 };
-        double start_channel { 0 };
-        double end_channel { 1 };
-        double len_channel { 1 };
-        double step_channel { 1 };
+        double lag_start { 0 };
+        double lag_end { 1 };
+        double lag_len { 1 };
+        double lag_step { 1 };
+        double channel_max { 10000 };
+        double channel_start { 0 };
+        double channel_end { 1 };
+        double channel_len { 1 };
+        double channel_step { 1 };
         double Resolution { 1024 };
         double AutoChannel { 1 };
         double CrossChannel { 0 };

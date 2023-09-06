@@ -169,6 +169,7 @@ class MainWindow : public QMainWindow
                 ahp_xc_set_capture_flags((xc_capture_flags)((cur & ~CAP_ENABLE) | CAP_RESET_TIMESTAMP));
                 resetTimestamp();
                 getGraph()->setMode(m);
+                getHistogram()->setMode(m);
                 createPacket();
                 for(int i = 0; i < Lines.count(); i++)
                 {

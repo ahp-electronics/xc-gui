@@ -255,8 +255,9 @@ dsp_stream_p Elemental::histogram(int size, dsp_stream_p str)
         str = getStream();
     dsp_stream_p tmp = dsp_stream_copy(str);
     dsp_t *buf = tmp->buf;
+    if(buf == nullptr) return nullptr;
     dsp_buffer_stretch(buf, tmp->len, 0.0, size);
-    dsp_stream_set_buffer(tmp, &buf[2], tmp->len-2);
+    dsp_stream_set_buffer(tmp, buf, tmp->len);
     dsp_stream_set_dim(histo, 0, size);
     if(histo->len != size)
         dsp_stream_alloc_buffer(histo, histo->len);

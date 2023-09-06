@@ -74,7 +74,7 @@ class Baseline : public QWidget
         }
         inline size_t getSpectrumSize()
         {
-            getSpectrum()->getElemental()->getStreamSize();
+            return getSpectrum()->getElemental()->getStreamSize();
         }
         QMap<double, double>* getDark();
         void setMode(Mode m);
@@ -175,7 +175,7 @@ class Baseline : public QWidget
             }
             return context[index];
         }
-        bool dft();
+        bool idft();
         int smooth();
 
         void lock()
@@ -222,10 +222,10 @@ class Baseline : public QWidget
         int Index;
         int *start;
         int *end;
-        int *len;
         int *step;
         int *size;
-        int size_2nd;
+        int size_2nd {3};
+        int step_size {1};
         int tail_size {1};
         int head_size {1};
         QSettings *settings;
