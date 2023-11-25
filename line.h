@@ -376,8 +376,8 @@ class Line : public QWidget
         inline void setTimeRange(double range) { timeRange = range; }
         inline ahp_xc_packet* getPacket() { return packet; }
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
-        void unloadPositionChart(bool checked);
-        void loadPositionChart(bool checked);
+        void UnloadPositionChart();
+        void LoadPositionChart();
     private:
         QWidget *parent;
         ahp_xc_packet* packet;
@@ -460,6 +460,8 @@ class Line : public QWidget
         void activeStateChanged(Line*);
         void updateBufferSizes();
         void savePlot();
+        void loadPositionChart();
+        void unloadPositionChart();
         void takeDark(Line* sender);
         void clear();
 };

@@ -45,6 +45,10 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
     end = (int*)malloc(sizeof(int));
     step = (int*)malloc(sizeof(int));
     size = (int*)malloc(sizeof(int));
+    lag_start = (double*)malloc(sizeof(double));
+    lag_end = (double*)malloc(sizeof(double));
+    lag_step = (double*)malloc(sizeof(double));
+    lag_size = (double*)malloc(sizeof(double));
     spectrum = new Series();
     counts = new Series();
     resetPercentPtr();
@@ -64,12 +68,20 @@ void Baseline::setBufferSizes()
         end[x] = getLine(x)->getEndChannel();
         step[x] = getLine(x)->getScanStep();
         size[x] = getLine(x)->getChannelBandwidth();
+        lag_start[x] = getLine(x)->getStartLag();
+        lag_end[x] = getLine(x)->getEndLag();
+        lag_step[x] = getLine(x)->getLagStep();
+        lag_size[x] = getLine(x)->getLagBandwidth();
     }
     tail_size = size[0];
     head_size = size[1];
     step_size = fmax(1, fmax(step[0], step[1]));
     size_2nd = fmax(3, (tail_size+head_size)/step_size+1);
     setSpectrumSize(size_2nd);
+    lag_head_size = lag_size[0];
+    lag_tail_size = lag_size[1];
+    lag_size_2nd = lag_tail_size+lag_head_size;
+    lag_step_size = lag_size_2nd / size_2nd;
     unlock();
 }
 
@@ -201,6 +213,10 @@ void Baseline::setCorrelationOrder(int order)
     end = (int*)realloc(end, sizeof(int) * correlation_order);
     step = (int*)realloc(step, sizeof(int) * correlation_order);
     size = (int*)realloc(size, sizeof(int) * correlation_order);
+    lag_start = (double*)realloc(lag_start, sizeof(double) * correlation_order);
+    lag_end = (double*)realloc(lag_end, sizeof(double) * correlation_order);
+    lag_step = (double*)realloc(lag_step, sizeof(double) * correlation_order);
+    lag_size = (double*)realloc(lag_size, sizeof(double) * correlation_order);
     lines.clear();
     indexes.clear();
     for(int x = 0; x < correlation_order; x++) {
@@ -396,6 +412,7 @@ void Baseline::stackCorrelations()
 
     *stop = 0;
     int npackets = 0;
+    setBufferSizes();
     int step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
     npackets = ahp_xc_scan_crosscorrelations(getLine(0)->getLineIndex(), getLine(1)->getLineIndex(), &spectrum, start[0],
                head_size, start[1], tail_size, step, stop, percent);
@@ -412,7 +429,7 @@ void Baseline::stackCorrelations()
         for (int x = 0, z = 0; x < npackets; x++, z++)
         {
             lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
-            tail = (lag > 0);
+            tail = (lag >= 0);
             if (tail)
                 lag --;
             ahp_xc_correlation correlation;
@@ -422,7 +439,7 @@ void Baseline::stackCorrelations()
                 {
                     getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude / correlation.counts;
                     getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
-                    for(int y = lag; y >= -_head && y < _tail; y += (!tail ? 1 : -1))
+                    for(int y = lag; y >= -_head && y < _tail; y += (tail ? 1 : -1))
                     {
                         getSpectrum()->getElemental()->getMagnitude()[y+ofs] = (double)correlation.magnitude / correlation.counts;
                         getSpectrum()->getElemental()->getPhase()[y+ofs] = (double)correlation.phase;
@@ -438,7 +455,7 @@ void Baseline::stackCorrelations()
         if(getLine(0)->Align() && getLine(1)->Align())
             getSpectrum()->getElemental()->run();
         else
-            getSpectrum()->getElemental()->finish(false, -ofs*step, step);
+            getSpectrum()->getElemental()->finish(false, -getStartLag(), getLagStep());
         free(spectrum);
     }
     getLine(0)->resetPercentPtr();

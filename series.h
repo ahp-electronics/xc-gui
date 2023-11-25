@@ -18,8 +18,8 @@ private:
     void stackHistogram(double x, double y);
     void stretch(Series* series);
 
-    int stack_index_histogram { 1 };
-    int stack_index { 1 };
+    int stack_index_histogram { 0 };
+    int stack_index { 0 };
     int cache { 0 };
     QList<double> *raw;
     QLineSeries *series;

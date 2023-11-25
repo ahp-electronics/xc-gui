@@ -137,6 +137,7 @@ void Series::stackBuffer(QXYSeries *series, double *buf, off_t offset, size_t le
 {
     offset = fmax(0, offset);
     series->clear();
+    stack_index ++;
     for(off_t x = offset + 1; x < offset+len; x ++)
     {
         stackValue(series, getStack(), x * x_scale + x_offset, buf[x] * y_scale + y_offset);

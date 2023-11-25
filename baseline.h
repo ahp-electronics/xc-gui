@@ -196,6 +196,22 @@ class Baseline : public QWidget
         inline void setGraph(Graph * g) { graph = g; }
         inline Graph* gethistogram() { return histogram; }
         inline void sethistogram(Graph* h) { histogram = h; }
+        inline int getStartLag()
+        {
+            return lag_head_size;
+        }
+        inline int getEndLag()
+        {
+            return lag_tail_size;
+        }
+        inline int getLagBandwidth()
+        {
+            return lag_size_2nd;
+        }
+        inline int getLagStep()
+        {
+            return lag_step_size;
+        }
 
     private:
         int localstop { 0 };
@@ -224,10 +240,18 @@ class Baseline : public QWidget
         int *end;
         int *step;
         int *size;
+        double *lag_start;
+        double *lag_end;
+        double *lag_step;
+        double *lag_size;
         int size_2nd {3};
         int step_size {1};
         int tail_size {1};
         int head_size {1};
+        int lag_size_2nd {3};
+        int lag_step_size {1};
+        int lag_tail_size {1};
+        int lag_head_size {1};
         QSettings *settings;
         QString name;
         bool scanning;

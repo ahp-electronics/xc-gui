@@ -142,9 +142,9 @@ MainWindow::MainWindow(QWidget *parent)
         ahp_set_stderr(f_stdout);
     }
     ui->setupUi(this);
-    uiThread = new Thread(this, 10, 10, "uiThread");
+    uiThread = new Thread(this, 50, 50, "uiThread");
     readThread = new Thread(this, 1, 1, "readThread");
-    vlbiThread = new Thread(this, 100, 100, "vlbiThread");
+    vlbiThread = new Thread(this, 500, 500, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
     graph = new Graph(settings, this);
     histogram = new Graph(settings, this);
@@ -440,6 +440,7 @@ MainWindow::MainWindow(QWidget *parent)
                             switch(m) {
                             case Autocorrelator:
                                 getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                                getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 break;
                             case CrosscorrelatorII:
                             case CrosscorrelatorIQ:
@@ -447,22 +448,6 @@ MainWindow::MainWindow(QWidget *parent)
                             case Counter:
                                 getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
                                 getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
-                                break;
-                            case HolographII:
-                            case HolographIQ:
-                                break;
-                            default: break;
-                            }
-                        });
-                        connect(getHistogram(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
-                            switch(m) {
-                            case Autocorrelator:
-                                getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
-                                break;
-                            case CrosscorrelatorII:
-                            case CrosscorrelatorIQ:
-                                break;
-                            case Counter:
                                 getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
                                 break;
                             case HolographII:
@@ -681,7 +666,6 @@ err_exit:
                 break;
         }
     end_unlock:
-        emit repaint();
         thread->unlock();
     });
     connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ] (Thread * thread)
@@ -714,6 +698,7 @@ err_exit:
             ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
             ui->voltageLabel->update(ui->voltageLabel->rect());
         }
+        emit repaint();
         thread->unlock();
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
@@ -784,8 +769,8 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
     statusBar()->setGeometry(0, this->height() - statusBar()->height(), width(), 20);
-    getGraph()->setGeometry(5, starty + 5, this->width() * ((getMode() != HolographII && getMode() != HolographIQ) ? graph_ratio : 1.0) - 10, this->height() - starty - 10);
-    getHistogram()->setGeometry(getGraph()->width() + 10, starty + 5, this->width() - getGraph()->width() - 10, this->height() - starty - 10);
+    getGraph()->setGeometry(5, starty, this->width() * ((getMode() != HolographII && getMode() != HolographIQ) ? graph_ratio : 1.0) - 10, this->height() - starty - statusBar()->height());
+    getHistogram()->setGeometry(getGraph()->width() + 10, starty, this->width() - getGraph()->width() - 10, this->height() - starty - statusBar()->height());
 }
 
 void MainWindow::startThreads()

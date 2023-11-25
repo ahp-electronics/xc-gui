@@ -154,8 +154,14 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag4->text(), checked);
     });
-    connect(ui->loadRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::loadPositionChart);
-    connect(ui->clearRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &Line::unloadPositionChart);
+    connect(ui->loadRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, [ = ](bool checked)
+    {
+        emit loadPositionChart();
+    });
+    connect(ui->clearRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, [ = ](bool checked)
+    {
+        emit unloadPositionChart();
+    });
     connect(ui->Save, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
         emit savePlot();
@@ -310,6 +316,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         emit scanActiveStateChanging(this);
         emit scanActiveStateChanged(this);
     });
+    connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
+    connect(this, static_cast<void (Line::*)()>(&Line::loadPositionChart), this, &Line::LoadPositionChart);
+    connect(this, static_cast<void (Line::*)()>(&Line::unloadPositionChart), this, &Line::UnloadPositionChart);
     Initialize();
 }
 
@@ -692,16 +701,6 @@ void Line::setMode(Mode m)
     getDark()->clear();
     getSpectrum()->clear();
     getCounts()->clear();
-    if(m == Autocorrelator)
-    {
-        connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
-        connect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
-    }
-    else
-    {
-        disconnect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
-        disconnect(this, static_cast<void (Line::*)(Line*)>(&Line::takeDark), this, &Line::TakeDark);
-    }
     ui->flag0->setEnabled(ahp_xc_has_leds());
     ui->flag1->setEnabled(ahp_xc_has_leds());
     resetPercentPtr();
@@ -800,12 +799,12 @@ void Line::stretch(QLineSeries* series)
     }
 }
 
-void Line::unloadPositionChart(bool checked)
+void Line::UnloadPositionChart()
 {
     xyz_locations.clear();
 }
 
-void Line::loadPositionChart(bool checked)
+void Line::LoadPositionChart()
 {
     QString filename = QFileDialog::getOpenFileName(this, "Load rail position file", ".",
                        "CSV files (*.csv)", 0, 0);
@@ -856,8 +855,8 @@ void Line::SavePlot()
             for(int x = 0; x < getCounts()->count(); x++)
                 counts.insert(getCounts()->getSeries()->at(x).x(), getCounts()->getSeries()->at(x).y());
             for(int x = 0; x < getSpectrum()->count(); x++) {
-                mag.insert(getSpectrum()->getMagnitude()->at(x).x(), getSpectrum()->getMagnitude()->at(x).y());
-                phi.insert(getSpectrum()->getPhase()->at(x).x(), getSpectrum()->getPhase()->at(x).y());
+                mag.insert(getCounts()->getMagnitude()->at(x).x(), getCounts()->getMagnitude()->at(x).y());
+                phi.insert(getCounts()->getPhase()->at(x).x(), getCounts()->getPhase()->at(x).y());
             }
             for(int i = 0, x = 0, y = 0, z = 0; i < fmax(fmax(getCounts()->count(), getSpectrum()->count()), getSpectrum()->getPhase()->count()); i++)
             {

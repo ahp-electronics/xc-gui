@@ -73,7 +73,7 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     idftLabel = new QLabel(correlator);
     idftLabel->setVisible(true);
     idftLabel->setText("IDFT");
-    setPlotSize(64);
+    setPlotSize(128);
     setRaRate(1.0);
     setDecRate(0.0);
     logaxis_x = new QLogValueAxis();
