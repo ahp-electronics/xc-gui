@@ -66,7 +66,6 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
     }
     getRaw()->append(y);
     getSeries()->append(x, y);
-    smoothBuffer(getSeries(), 0, getSeries()->count());
     if(mag > -1.0)
         getMagnitude()->append(x, mag);
     if(phi > -1.0)

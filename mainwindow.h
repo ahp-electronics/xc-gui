@@ -165,6 +165,10 @@ class MainWindow : public QMainWindow
                     ahp_xc_enable_intensity_crosscorrelator(true);
                 else
                     ahp_xc_enable_intensity_crosscorrelator(false);
+                if(mode == HolographII || mode == HolographIQ)
+                    getHistogram()->hide();
+                else
+                    getHistogram()->show();
                 xc_capture_flags cur = ahp_xc_get_capture_flags();
                 ahp_xc_set_capture_flags((xc_capture_flags)((cur & ~CAP_ENABLE) | CAP_RESET_TIMESTAMP));
                 resetTimestamp();
@@ -182,6 +186,7 @@ class MainWindow : public QMainWindow
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);
                 }
+                resizeEvent(nullptr);
                 startThreads();
             }
         }

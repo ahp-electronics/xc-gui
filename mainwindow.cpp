@@ -194,6 +194,9 @@ MainWindow::MainWindow(QWidget *parent)
         TimeRange = ui->Range->value();
         for(Line* line : Lines)
             line->setTimeRange(TimeRange);
+        for(Baseline* line : Baselines)
+                line->setTimeRange(TimeRange);
+
     });
     connect(ui->Order, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [ = ](int value)
@@ -443,7 +446,7 @@ MainWindow::MainWindow(QWidget *parent)
                                 break;
                             case Counter:
                                 getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
-                                getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                                 break;
                             case HolographII:
                             case HolographIQ:
@@ -461,7 +464,6 @@ MainWindow::MainWindow(QWidget *parent)
                                 break;
                             case Counter:
                                 getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
-                                //getHistogram()->addSeries(Lines[l]->getMagnitude()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
                                 break;
                             case HolographII:
                             case HolographIQ:
@@ -484,6 +486,7 @@ MainWindow::MainWindow(QWidget *parent)
                         QString name = "Baseline " + QString::number(idx);
                         fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Baselines.append(new Baseline(name, idx, Lines, settings));
+                        Baselines[idx]->setTimeRange(TimeRange);
                         connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                         {
                             Baselines[idx]->addCount(J2000_starttime, packet);
@@ -781,7 +784,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     ui->Lines->setGeometry(5, starty + 5, this->width() - 10, ui->Lines->height());
     starty += 5 + ui->Lines->height();
     statusBar()->setGeometry(0, this->height() - statusBar()->height(), width(), 20);
-    getGraph()->setGeometry(5, starty + 5, this->width() * graph_ratio - 10, this->height() - starty - 10);
+    getGraph()->setGeometry(5, starty + 5, this->width() * ((getMode() != HolographII && getMode() != HolographIQ) ? graph_ratio : 1.0) - 10, this->height() - starty - 10);
     getHistogram()->setGeometry(getGraph()->width() + 10, starty + 5, this->width() - getGraph()->width() - 10, this->height() - starty - 10);
 }
 
