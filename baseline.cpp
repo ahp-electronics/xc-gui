@@ -192,7 +192,7 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                         mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
                     mag = (double)sqrt(mag) / ahp_xc_get_packettime();
                 } else
-                    mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude / (double)packet->crosscorrelations[Index].correlations[0].counts;
+                    mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude;
                 getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, packet->crosscorrelations[Index].correlations[0].counts / ahp_xc_get_packettime(), mag, phi);
                 getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100);
             }
