@@ -437,11 +437,11 @@ void Baseline::stackCorrelations()
             if(correlation.magnitude > 0) {
                 if(lag > -_head && lag < _tail)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude / correlation.counts;
+                    getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude;
                     getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
                     for(int y = lag; y >= -_head && y < _tail; y += (tail ? 1 : -1))
                     {
-                        getSpectrum()->getElemental()->getMagnitude()[y+ofs] = (double)correlation.magnitude / correlation.counts;
+                        getSpectrum()->getElemental()->getMagnitude()[y+ofs] = (double)correlation.magnitude;
                         getSpectrum()->getElemental()->getPhase()[y+ofs] = (double)correlation.phase;
                     }
                     _lag = lag;

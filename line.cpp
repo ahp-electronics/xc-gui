@@ -1,4 +1,4 @@
-/*
+﻿/*
    MIT License
 
    libahp_xc library to drive the AHP XC correlators
@@ -494,8 +494,8 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                 double phi = -1.0;
 
                 if(showAutocorrelations()) {
-                    mag = (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / (double)packet->autocorrelations[getLineIndex()].correlations[0].counts,
-                    phi = (double)packet->autocorrelations[getLineIndex()].correlations[0].phase / (double)packet->autocorrelations[getLineIndex()].correlations[0].counts;
+                    mag = (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude,
+                    phi = (double)packet->autocorrelations[getLineIndex()].correlations[0].phase;
                 }
                 getCounts()->addCount(
                             packet->timestamp + starttime - getTimeRange(),
@@ -1059,11 +1059,11 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             if(correlation.magnitude > 0) {
                 if(lag < npackets && lag >= 0)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / (fabs(correlation.real)+fabs(correlation.imaginary));
+                    getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude;
                     getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
                     for(int y = lag; y < npackets; y++)
                     {
-                        getSpectrum()->getElemental()->getMagnitude()[y] = (double)correlation.magnitude / (fabs(correlation.real)+fabs(correlation.imaginary));
+                        getSpectrum()->getElemental()->getMagnitude()[y] = (double)correlation.magnitude;
                         getSpectrum()->getElemental()->getPhase()[y] = (double)correlation.phase;
                     }
                     _lag = lag;
