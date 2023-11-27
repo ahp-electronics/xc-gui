@@ -375,14 +375,14 @@ void Graph::setMode(Mode m)
     {
         switch(mode) {
         case Autocorrelator:
-            setupAxes(1.0, 1.0, "Lag (ns)", "Magnitude (counts)", "%g", "%g", 10, 10);
+            setupAxes(1.0, 1.0, "Lag (ns)", "Magnitude (counts)", "%d", "%.03lf", 10, 10);
             break;
         case CrosscorrelatorII:
         case CrosscorrelatorIQ:
-            setupAxes(1.0, 1.0, "Lag (ns)", "Magnitude (counts)");
+            setupAxes(1.0, 1.0, "Lag (ns)", "Magnitude (counts)", "%d", "%.03lf");
             break;
         case Counter:
-            setupAxes(1.0, 1.0, "Time (s)", "Counts");
+            setupAxes(1.0, 1.0, "Time (s)", "Counts", "%d", "%.03lf");
             break;
         default:break;
         }

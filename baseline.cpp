@@ -434,18 +434,16 @@ void Baseline::stackCorrelations()
                 lag --;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            if(correlation.magnitude > 0) {
-                if(lag > -_head && lag < _tail)
+            if(lag > -_head && lag < _tail)
+            {
+                getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude;
+                getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
+                for(int y = lag; y >= -_head && y < _tail; y += (tail ? 1 : -1))
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude;
-                    getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
-                    for(int y = lag; y >= -_head && y < _tail; y += (tail ? 1 : -1))
-                    {
-                        getSpectrum()->getElemental()->getMagnitude()[y+ofs] = (double)correlation.magnitude;
-                        getSpectrum()->getElemental()->getPhase()[y+ofs] = (double)correlation.phase;
-                    }
-                    _lag = lag;
+                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag+ofs];
+                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag+ofs];
                 }
+                _lag = lag;
             }
         }
         if(getLine(0)->idft() && getLine(1)->idft())
@@ -455,7 +453,7 @@ void Baseline::stackCorrelations()
         if(getLine(0)->Align() && getLine(1)->Align())
             getSpectrum()->getElemental()->run();
         else
-            getSpectrum()->getElemental()->finish(false, -getStartLag(), getLagStep());
+            getSpectrum()->getElemental()->finish(false, -getStartLag(), getScanStep());
         free(spectrum);
     }
     getLine(0)->resetPercentPtr();
@@ -473,7 +471,7 @@ void Baseline::plot(bool success, double o, double s)
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
         getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     } else
-        getSpectrum()->stackBuffer(getSpectrum()->getSeries(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
     getGraph()->repaint();
     gethistogram()->repaint();

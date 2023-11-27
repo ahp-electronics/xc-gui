@@ -212,6 +212,10 @@ class Baseline : public QWidget
         {
             return lag_step_size;
         }
+        inline int getScanStep()
+        {
+            return step_size;
+        }
 
     private:
         int localstop { 0 };

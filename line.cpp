@@ -255,15 +255,15 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->RadixY, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         radix_y = checked;
-        getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "%.5lf", "%d");
-        gethistogram()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "%.5lf", "%d");
+        getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%.03lf");
+        gethistogram()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%.03lf");
         saveSetting("RadixY", radix_y);
     });
     connect(ui->RadixX, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         radix_x = checked;
-        getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "%.5lf", "%d");
-        gethistogram()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "%.5lf", "%d");
+        getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%03lf");
+        gethistogram()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%.03lf");
         saveSetting("RadixX", ui->Counts->isChecked());
     });
     connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
@@ -1056,18 +1056,16 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime()-1;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            if(correlation.magnitude > 0) {
-                if(lag < npackets && lag >= 0)
+            if(lag < npackets && lag >= 0)
+            {
+                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude;
+                getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
+                for(int y = lag; y < npackets; y++)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude;
-                    getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
-                    for(int y = lag; y < npackets; y++)
-                    {
-                        getSpectrum()->getElemental()->getMagnitude()[y] = (double)correlation.magnitude;
-                        getSpectrum()->getElemental()->getPhase()[y] = (double)correlation.phase;
-                    }
-                    _lag = lag;
+                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
+                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
                 }
+                _lag = lag;
             }
         }
         if(idft())
@@ -1092,7 +1090,7 @@ void Line::plot(bool success, double o, double s)
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
         getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     } else
-        getSpectrum()->stackBuffer(getSpectrum()->getSeries(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
     getGraph()->repaint();
     gethistogram()->repaint();

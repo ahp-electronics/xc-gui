@@ -75,7 +75,7 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
 
 void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size)
 {
-    int size = 0;
+    int size = 1;
     double mn = DBL_MIN;
     double mx = DBL_MAX;
     if(getElemental()->lock()) {
@@ -142,6 +142,7 @@ void Series::stackBuffer(QXYSeries *series, double *buf, off_t offset, size_t le
     {
         stackValue(series, getStack(), x * x_scale + x_offset, buf[x] * y_scale + y_offset);
     }
+    smoothBuffer(series, 0, series->count());
 }
 
 void Series::stackValue(QXYSeries *buf, QMap<double, double>* stack, double x, double y)
