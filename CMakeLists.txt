@@ -11,10 +11,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(XC_GUI_VERSION_MAJOR 1)
-set(XC_GUI_VERSION_MINOR 0)
-set(XC_GUI_VERSION_RELEASE 0)
-set(XC_GUI_VERSION "${XC_GUI_VERSION_MAJOR}.${XC_GUI_VERSION_MINOR}.${XC_GUI_VERSION_RELEASE}")
+set(AHP_XC_GUI_VERSION_MAJOR 1)
+set(AHP_XC_GUI_VERSION_MINOR 1)
+set(AHP_XC_GUI_VERSION_RELEASE 0)
+set(AHP_XC_GUI_VERSION "${AHP_XC_GUI_VERSION_MAJOR}.${AHP_XC_GUI_VERSION_MINOR}.${AHP_XC_GUI_VERSION_RELEASE}")
 
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.
 # Check http://doc.qt.io/qt-5/deployment-android.html for more information.
@@ -57,7 +57,7 @@ include_directories(${AHP_XC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 
 if(ANDROID)
-    add_library(xc-gui SHARED
+    add_library(ahp-xc-gui SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.h
@@ -78,7 +78,7 @@ if(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/threads.h
     )
 else(ANDROID)
-    add_executable(xc-gui
+    add_executable(ahp-xc-gui
         ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.h
@@ -101,11 +101,11 @@ else(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/app.rc
     )
     if(WIN32)
-        target_link_libraries(xc-gui PRIVATE comctl32)
+        target_link_libraries(ahp-xc-gui PRIVATE comctl32)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wl,--subsystem,windows -static-libstdc++ -static-libgcc")
-        set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
+        set_target_properties(ahp-xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
     endif(WIN32)
 endif(ANDROID)
 
@@ -113,13 +113,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
-target_link_libraries(xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
-target_link_libraries(xc-gui PRIVATE ${URJTAG_LIBRARIES})
-target_link_libraries(xc-gui PRIVATE ${USB_LIBRARIES})
-target_link_libraries(xc-gui PRIVATE ${USB1_LIBRARIES})
-target_link_libraries(xc-gui PRIVATE ${DFU_LIBRARIES})
-target_link_libraries(xc-gui PRIVATE ${FTDI_LIBRARIES})
+target_link_libraries(ahp-xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(ahp-xc-gui PRIVATE ${URJTAG_LIBRARIES})
+target_link_libraries(ahp-xc-gui PRIVATE ${USB_LIBRARIES})
+target_link_libraries(ahp-xc-gui PRIVATE ${USB1_LIBRARIES})
+target_link_libraries(ahp-xc-gui PRIVATE ${DFU_LIBRARIES})
+target_link_libraries(ahp-xc-gui PRIVATE ${FTDI_LIBRARIES})
 
-install(TARGETS xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
+install(TARGETS ahp-xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ahp-xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ahp-xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)

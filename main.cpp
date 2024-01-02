@@ -24,6 +24,7 @@
 */
 
 #include "mainwindow.h"
+#include <config.h>
 
 #include <QApplication>
 
@@ -42,6 +43,7 @@ int main(int argc, char *argv[])
     dsp_set_app_name((char*)"xc-gui");
     dsp_set_debug_level(5);
     MainWindow w;
+    w.setWindowTitle("XC Gui - Version " XC_GUI_VERSION " Engine " + QString::number(ahp_xc_get_version(), 16));
     QFont font = w.font();
     font.setPixelSize(12);
     w.setFont(font);

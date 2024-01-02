@@ -436,7 +436,7 @@ void Baseline::stackCorrelations()
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(lag > -_head && lag < _tail)
             {
-                getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude;
+                getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude / correlation.counts;
                 getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
                 for(int y = lag; y >= -_head && y < _tail; y += (tail ? 1 : -1))
                 {
