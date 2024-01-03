@@ -252,6 +252,7 @@ class Baseline : public QWidget
         int step_size {1};
         int tail_size {1};
         int head_size {1};
+        int len {1};
         int lag_size_2nd {3};
         int lag_step_size {1};
         int lag_tail_size {1};

@@ -937,8 +937,7 @@ void Line::motor_unlock()
 void Line::setActive(bool a)
 {
     if(getMode() == Counter) {
-        if(a)
-            running = (showCounts() || showAutocorrelations());
+        running = a && (showCounts() || showAutocorrelations());
     } else running = a;
     emit activeStateChanged(this);
 }
@@ -1048,8 +1047,6 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     int npackets = getResolution();
     if(spectrum != nullptr && npackets > 0)
     {
-        int lag = 1;
-        int _lag = lag;
         setSpectrumSize(npackets);
         for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
         {
@@ -1065,7 +1062,6 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
                     getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
                     getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
                 }
-                _lag = lag;
             }
         }
         if(idft())

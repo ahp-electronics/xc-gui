@@ -203,7 +203,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         settings->setValue("Order", value);
         Order = ui->Order->value();
-        updateOrder();;
+        updateOrder();
     });
     connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
             [ = ](int value)
@@ -593,11 +593,7 @@ err_exit:
         int y = 0;
         int off = 0;
         ahp_xc_packet *packet;
-        QList<uint32_t> indexes;
-        QList<off_t> starts;
-        QList<size_t> sizes;
-        QList<size_t> steps;
-        QList<size_t> repeats;
+        QList<ahp_xc_scan_request> requests;
         ahp_xc_sample *spectrum = nullptr;
         int npackets;
         if(threadsStopped)
@@ -618,26 +614,25 @@ err_exit:
                 }
                 break;
             case Autocorrelator:
-                indexes.clear();
-                starts.clear();
-                sizes.clear();
-                steps.clear();
-                repeats.clear();
+                requests.clear();
                 for(int x = 0; x < Lines.count(); x++)
                 {
                     Line* line = Lines[x];
                     if(line->scanActive())
                     {
-                        indexes.append(line->getLineIndex());
-                        starts.append(line->getStartChannel());
-                        sizes.append(line->getChannelBandwidth());
-                        steps.append(line->getScanStep());
+                        requests.append((ahp_xc_scan_request) {
+                                            .index = line->getLineIndex(),
+                                            .start = (off_t)line->getStartChannel(),
+                                            .len = (size_t)line->getChannelBandwidth(),
+                                            .step = (size_t)line->getScanStep()
+                                        }
+                        );
                         line->setPercentPtr(&percent);
                     } else {
                         line->resetPercentPtr();
                     }
                 }
-                npackets = ahp_xc_scan_autocorrelations(indexes.count(), indexes.toVector().data(), &spectrum, starts.toVector().data(), sizes.toVector().data(), steps.toVector().data(), &threadsStopped, &percent);
+                npackets = ahp_xc_scan_autocorrelations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)
@@ -646,7 +641,7 @@ err_exit:
                     if(line->scanActive())
                     {
                         line->stackCorrelations(&spectrum[off]);
-                        off += sizes[y]/steps[y];
+                        off += requests[y].len/requests[y].step;
                         y++;
                     }
                 }

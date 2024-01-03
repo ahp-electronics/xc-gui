@@ -63,25 +63,22 @@ Baseline::Baseline(QString n, int index, QList<Line *>nodes, QSettings *s, QWidg
 void Baseline::setBufferSizes()
 {
     lock();
+    len = 1;
+    size_2nd = 1;
+    lag_size_2nd = 1;
     for(int x = 0; x < getCorrelationOrder(); x++) {
         start[x] = getLine(x)->getStartChannel();
         end[x] = getLine(x)->getEndChannel();
         step[x] = getLine(x)->getScanStep();
         size[x] = getLine(x)->getChannelBandwidth();
+        size_2nd *= getLine(x)->getChannelBandwidth() / getLine(x)->getScanStep();
         lag_start[x] = getLine(x)->getStartLag();
         lag_end[x] = getLine(x)->getEndLag();
         lag_step[x] = getLine(x)->getLagStep();
         lag_size[x] = getLine(x)->getLagBandwidth();
+        lag_size_2nd *= getLine(x)->getLagBandwidth() / getLine(x)->getLagStep();
     }
-    tail_size = size[0];
-    head_size = size[1];
-    step_size = fmax(1, fmax(step[0], step[1]));
-    size_2nd = fmax(3, (tail_size+head_size)/step_size+1);
     setSpectrumSize(size_2nd);
-    lag_head_size = lag_size[0];
-    lag_tail_size = lag_size[1];
-    lag_size_2nd = lag_tail_size+lag_head_size;
-    lag_step_size = lag_size_2nd / size_2nd;
     unlock();
 }
 
@@ -253,7 +250,7 @@ void Baseline::setCorrelationOrder(int order)
                 line = getLine(y);
                 newstate &= line->showCrosscorrelations();
                 if(line != nullptr)
-                *stop = !(*stop && line->isActive());
+                *stop = (*stop || !line->isRunning());
             }
             if(oldstate != newstate)
             {
@@ -405,59 +402,60 @@ void Baseline::stackCorrelations()
 {
     scanning = true;
     ahp_xc_sample *spectrum = nullptr;
-    getLine(0)->setPercentPtr(percent);
-    getLine(1)->setPercentPtr(percent);
-    getLine(0)->resetStopPtr();
-    getLine(1)->resetStopPtr();
-
     *stop = 0;
     int npackets = 0;
     setBufferSizes();
-    int step = fmax(getLine(0)->getScanStep(), getLine(1)->getScanStep());
-    npackets = ahp_xc_scan_crosscorrelations(getLine(0)->getLineIndex(), getLine(1)->getLineIndex(), &spectrum, start[0],
-               head_size, start[1], tail_size, step, stop, percent);
-    getLine(0)->setLocation();
-    getLine(1)->setLocation();
+    QList<ahp_xc_scan_request> requests;
+    for(Line* line : getLines()) {
+        requests.append((ahp_xc_scan_request) {
+                .index = line->getLineIndex(),
+                .start = (off_t)line->getStartChannel(),
+                .len = (size_t)line->getChannelBandwidth(),
+                .step = (size_t)line->getScanStep()
+            }
+        );
+        line->setPercentPtr(percent);
+        line->resetStopPtr();
+        line->setLocation();
+    }
+    npackets = ahp_xc_scan_crosscorrelations(requests.toVector().data(), requests.length(), &spectrum, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
-        int _head = head_size/step;
-        int _tail = tail_size/step;
-        int ofs = _head;
-        int lag = ofs-1;
-        int _lag = lag;
-        bool tail = false;
-        for (int x = 0, z = 0; x < npackets; x++, z++)
+        setSpectrumSize(npackets);
+        for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
         {
-            lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime();
-            tail = (lag >= 0);
-            if (tail)
-                lag --;
+            int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime()-1;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            if(lag > -_head && lag < _tail)
+            if(lag < npackets && lag >= 0)
             {
-                getSpectrum()->getElemental()->getMagnitude()[lag+ofs] = (double)correlation.magnitude / correlation.counts;
-                getSpectrum()->getElemental()->getPhase()[lag+ofs] = (double)correlation.phase;
-                for(int y = lag; y >= -_head && y < _tail; y += (tail ? 1 : -1))
+                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / correlation.counts;
+                getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
+                for(int y = lag; y < npackets; y++)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag+ofs];
-                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag+ofs];
+                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
+                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
                 }
-                _lag = lag;
             }
         }
-        if(getLine(0)->idft() && getLine(1)->idft())
-        {
-            getSpectrum()->getElemental()->idft();
+        bool idft = true;
+        bool align = true;
+        for(Line *line : getLines()) {
+            idft &= line->idft();
+            align &= line->Align();
         }
-        if(getLine(0)->Align() && getLine(1)->Align())
+        if(idft)
+            getSpectrum()->getElemental()->idft();
+        if(align)
             getSpectrum()->getElemental()->run();
         else
             getSpectrum()->getElemental()->finish(false, -getStartLag(), getScanStep());
         free(spectrum);
     }
-    getLine(0)->resetPercentPtr();
-    getLine(1)->resetPercentPtr();
+    for(Line* line : getLines()) {
+        line->resetPercentPtr();
+        line->resetStopPtr();
+    }
     scanning = false;
 }
 
