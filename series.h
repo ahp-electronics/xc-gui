@@ -36,6 +36,12 @@ public:
     explicit Series(QObject *parent = nullptr);
     ~Series();
 
+    inline void reset()
+    {
+        stack_index = 0;
+        stack_index_histogram = 0;
+    }
+
     inline void clear()
     {
         getSeries()->clear();
@@ -58,7 +64,7 @@ public:
     }
     inline QLineSeries *getMagnitude()
     {
-        return magnitude;
+        return phase;
     }
     inline QMap<double, double> *getMagnitudeStack()
     {

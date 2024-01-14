@@ -231,7 +231,7 @@ MainWindow::MainWindow(QWidget *parent)
         {
             getGraph()->removeSeries(line->getCounts()->getSeries());
             getGraph()->removeSeries(line->getCounts()->getMagnitude());
-            getGraph()->removeSeries(line->getSpectrum()->getMagnitude());
+            getGraph()->removeSeries((QLineSeries*)line->getSpectrum()->getMagnitude());
             getHistogram()->removeSeries(line->getCounts()->getHistogram());
             line->~Line();
         }
@@ -439,7 +439,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                             switch(m) {
                             case Autocorrelator:
-                                getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries((QLineSeries*)Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 break;
                             case CrosscorrelatorII:

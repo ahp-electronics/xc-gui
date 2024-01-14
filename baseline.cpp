@@ -429,12 +429,12 @@ void Baseline::stackCorrelations()
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(lag < npackets && lag >= 0)
             {
-                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / correlation.counts;
-                getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
-                for(int y = lag; y < npackets; y++)
+                getSpectrum()->getElemental()->getMagnitude()[z] = (double)correlation.magnitude / correlation.counts;
+                getSpectrum()->getElemental()->getPhase()[z] = (double)correlation.phase;
+                for(int y = z; y < npackets; y++)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
-                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
+                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[z];
+                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[z];
                 }
             }
         }
@@ -464,12 +464,14 @@ void Baseline::plot(bool success, double o, double s)
     double timespan = s;
     if(success)
         timespan = s;
-    double offset = o;
+    double x_offset = o;
+    double y_offset = 0;
+    getSpectrum()->reset();
     if(!idft()) {
-        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
-        getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
+        getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
     } else
-        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
     getGraph()->repaint();
     gethistogram()->repaint();

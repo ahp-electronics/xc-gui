@@ -516,7 +516,7 @@ void Graph::paint()
         double mn = DBL_MAX;
         double mx = DBL_MIN;
         for(QAbstractSeries* s : chart->series()) {
-            QLineSeries *series = (QLineSeries*)s;
+            QXYSeries *series = (QXYSeries*)s;
             if(series->count() == 0)
                 continue;
             for(int y = 0; y < series->count(); y++)
@@ -535,7 +535,7 @@ void Graph::paint()
         mn = DBL_MAX;
         mx = DBL_MIN;
         for(QAbstractSeries* s : chart->series()) {
-            QLineSeries *series = (QLineSeries*)s;
+            QXYSeries *series = (QXYSeries*)s;
             if(series->count() == 0)
                 continue;
             for(int y = 0; y < series->count(); y++)
