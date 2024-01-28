@@ -320,7 +320,7 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 xc_local_port = true;
-                ahp_xc_connect(xcport.toUtf8(), false);
+                ahp_xc_connect(xcport.toUtf8(), true);
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
