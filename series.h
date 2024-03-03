@@ -64,7 +64,7 @@ public:
     }
     inline QLineSeries *getMagnitude()
     {
-        return phase;
+        return magnitude;
     }
     inline QMap<double, double> *getMagnitudeStack()
     {

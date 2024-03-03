@@ -281,6 +281,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         (void)checked;
         int port = 5760;
+        bool try_high_speed;
         QString address = "localhost";
         QString xcport, motorport, controlport;
         xcport = ui->XCPort->currentText();
@@ -320,7 +321,9 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 xc_local_port = true;
-                ahp_xc_connect(xcport.toUtf8(), true);
+                ahp_xc_connect(xcport.toUtf8(), false);
+                try_high_speed = true;
+high_speed_connect:
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_connected())
@@ -439,7 +442,7 @@ MainWindow::MainWindow(QWidget *parent)
                         connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                             switch(m) {
                             case Autocorrelator:
-                                getGraph()->addSeries((QLineSeries*)Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 break;
                             case CrosscorrelatorII:
@@ -487,7 +490,7 @@ MainWindow::MainWindow(QWidget *parent)
                                 getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                 break;
                             case Counter:
-                                getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                 getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                 break;
                             case HolographII:
@@ -518,6 +521,11 @@ MainWindow::MainWindow(QWidget *parent)
 err_exit:
                     ui->Download->setEnabled(true);
                     ahp_xc_disconnect();
+                    if(xc_local_port && try_high_speed) {
+                        try_high_speed = false;
+                        ahp_xc_connect(xcport.toUtf8(), true);
+                        goto high_speed_connect;
+                    }
                     return;
                 }
             }
