@@ -1088,8 +1088,8 @@ void Line::plot(bool success, double o, double s)
     } else
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
-    getGraph()->repaint();
-    gethistogram()->repaint();
+    getGraph()->paint();
+    gethistogram()->paint();
 }
 
 Line::~Line()
