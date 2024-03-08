@@ -1055,7 +1055,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(lag < npackets && lag >= 0)
             {
-                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / correlation.counts;
+                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude;
                 getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
                 for(int y = lag; y < npackets; y++)
                 {

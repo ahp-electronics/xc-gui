@@ -90,6 +90,9 @@ class Elemental : public QObject
         {
             dsp_stream_set_dim(stream, 0, size);
             dsp_stream_alloc_buffer(stream, stream->len);
+            dsp_buffer_set(stream->buf, stream->len, 0);
+            dsp_buffer_set(stream->magnitude->buf, stream->len, 0);
+            dsp_buffer_set(stream->phase->buf, stream->len, 0);
         }
         void clear();
         double min(off_t offset, size_t len);

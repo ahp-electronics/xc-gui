@@ -654,6 +654,8 @@ err_exit:
                     }
                 }
                 free(spectrum);
+                if(!threadsStopped)
+                    ui->Run->click();
                 break;
             default:
                 if(!ahp_xc_get_packet(getPacket())) {
