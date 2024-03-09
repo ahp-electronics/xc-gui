@@ -423,6 +423,12 @@ high_speed_connect:
                         fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
                         Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
                         Lines[l]->setTimeRange(TimeRange);
+                        connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::scanStarted), [ = ] () {
+                            Lines[l]->enableControls(false);
+                        });
+                        connect(this, static_cast<void (MainWindow::*)(bool)>(&MainWindow::scanFinished), [ = ] (bool complete) {
+                            Lines[l]->enableControls(true);
+                        });
                         connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
                                 [ = ](Line* line) {
                             if(line->scanActive())
@@ -443,6 +449,7 @@ high_speed_connect:
                             switch(m) {
                             case Autocorrelator:
                                 getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
                                 getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                                 break;
                             case CrosscorrelatorII:
@@ -451,6 +458,7 @@ high_speed_connect:
                             case Counter:
                                 getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
                                 getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                                getGraph()->addSeries(Lines[l]->getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(l+1));
                                 getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
                                 break;
                             case HolographII:
@@ -487,11 +495,13 @@ high_speed_connect:
                             case CrosscorrelatorII:
                             case CrosscorrelatorIQ:
                                 getGraph()->addSeries(Baselines[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
                                 getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                                 break;
                             case Counter:
-                                getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                                getGraph()->addSeries(Baselines[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
+                                getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(Counter) + "#" + QString::number(idx+1));
                                 break;
                             case HolographII:
                             case HolographIQ:
@@ -819,9 +829,13 @@ void MainWindow::runClicked(bool checked)
         for(Line *line : Lines) {
             if(line->scanActive()) {
                 emit line->setBufferSizes();
-                emit scanStarted();
+                if(getMode() == Autocorrelator) {
+                    line->enableControls(false);
+                }
             }
         }
+        if(getMode() == Autocorrelator)
+            emit scanStarted();
         threadsStopped = false;
     }
     else

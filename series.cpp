@@ -67,9 +67,9 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
     getRaw()->append(y);
     getSeries()->append(x, y);
     if(mag > -1.0)
-        getMagnitude()->append(x, mag);
+        getMagnitude()->append(x, mag * y);
     if(phi > -1.0)
-        getPhase()->append(x, phi);
+        getPhase()->append(x, phi * y / M_PI / 2);
     smoothBuffer(getSeries(), 0, getSeries()->count());
 }
 
@@ -133,14 +133,14 @@ void Series::stackHistogram(double x, double y)
     getHistogram()->append(x, y);
 }
 
-void Series::stackBuffer(QXYSeries *series, double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset)
+void Series::stackBuffer(QXYSeries *series, QMap<double, double> *stack, double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset)
 {
     offset = fmax(0, offset);
     series->clear();
     stack_index ++;
     for(off_t x = offset + 1; x < offset+len; x ++)
     {
-        stackValue(series, getStack(), x * x_scale + x_offset, buf[x] * y_scale + y_offset);
+        stackValue(series, stack, x * x_scale + x_offset, buf[x] * y_scale + y_offset);
     }
     smoothBuffer(series, 0, series->count());
 }

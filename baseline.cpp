@@ -182,14 +182,31 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                 if(!getLine(x)->showCrosscorrelations())
                     active &= false;
             if(active) {
-                double mag = -1.0;
-                double phi = -1.0;
-                if(ahp_xc_intensity_crosscorrelator_enabled())
+                double mag = 0.0;
+                double phi = 0.0;
+                if(ahp_xc_intensity_crosscorrelator_enabled()) {
+                    double cnt = 0;
+                    double cr = 0;
+                    double ci = 0;
                     for(int x = 0; x < getCorrelationOrder(); x++) {
-                        mag += pow(packet->counts[getLine(x)->getLineIndex()], 2);
-                    mag = (double)sqrt(mag) / ahp_xc_get_packettime();
-                } else
+                        double rad_p = (phi+packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].phase)/2.0;
+                        double rad_m = (phi-packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].phase)/2.0;
+                        cnt += packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].counts;
+                        mag += packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].magnitude;
+                        cr = 2*sin(rad_p)*cos(rad_m);
+                        ci = 2*cos(rad_p)*cos(rad_m);
+                    }
+                    mag /= getCorrelationOrder();
+                    cnt /= getCorrelationOrder();
+                    phi = asin(cr);
+                    if(ci < 0) phi += M_PI;
+                    cr *= mag;
+                    ci *= mag;
+                    mag = sqrt(pow(cr, 2)+pow(ci, 2));
+                } else {
                     mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude;
+                    phi = (double)packet->crosscorrelations[Index].correlations[0].phase;
+                }
                 getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, packet->crosscorrelations[Index].correlations[0].counts / ahp_xc_get_packettime(), mag, phi);
                 getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100);
             }
@@ -429,7 +446,7 @@ void Baseline::stackCorrelations()
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             if(lag < npackets && lag >= 0)
             {
-                getSpectrum()->getElemental()->getMagnitude()[z] = (double)correlation.magnitude;
+                getSpectrum()->getElemental()->getMagnitude()[z] = (double)correlation.magnitude * M_PI * 2;
                 getSpectrum()->getElemental()->getPhase()[z] = (double)correlation.phase;
                 for(int y = z; y < npackets; y++)
                 {
@@ -468,10 +485,10 @@ void Baseline::plot(bool success, double o, double s)
     double y_offset = 0;
     getSpectrum()->reset();
     if(!idft()) {
-        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
-        getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getMagnitudeStack(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
+        getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
     } else
-        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
     getGraph()->paint();
     gethistogram()->paint();

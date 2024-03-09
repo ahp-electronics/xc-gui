@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>XC Gui</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QComboBox" name="XCPort">
     <property name="geometry">
