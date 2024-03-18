@@ -281,7 +281,6 @@ MainWindow::MainWindow(QWidget *parent)
     {
         (void)checked;
         int port = 5760;
-        bool try_high_speed;
         QString address = "localhost";
         QString xcport, motorport, controlport;
         xcport = ui->XCPort->currentText();
@@ -301,245 +300,220 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 address = xcport.split(":")[0];
                 port = xcport.split(":")[1].toInt();
-                ui->Connect->setEnabled(false);
-                update();
-                xc_socket.connectToHost(address, port);
-                xc_socket.waitForConnected();
-                if(xc_socket.isValid())
-                {
-                    xc_socket.setReadBufferSize(4096);
-                    xcFD = xc_socket.socketDescriptor();
-                    if(xcFD > -1)
-                        ahp_xc_connect_fd(xcFD);
-                }
-                else
-                {
-                    ui->Connect->setEnabled(true);
-                    update();
-                }
+                ahp_xc_connect_udp(address.toUtf8(), port);
+                xcFD = ahp_xc_get_fd();
             }
             else
             {
                 xc_local_port = true;
-                ahp_xc_connect(xcport.toUtf8(), false);
-                try_high_speed = true;
-high_speed_connect:
+                ahp_xc_connect((
+#ifndef WINDOWS
+    "/dev/"
+#else
+    "\\\\.\\"
+#endif
+                        +xcport).toUtf8());
                 xcFD = ahp_xc_get_fd();
             }
-            if(ahp_xc_is_connected())
+            if(ahp_xc_is_detected())
             {
-                if(!ahp_xc_get_properties())
-                {
-                    ui->Download->setEnabled(false);
-                    if(ui->Download->isChecked()) {
-                        QString product;
-                        if(ahp_xc_has_crosscorrelator())
-                            product.append("x");
-                        else
-                            product.append("a");
-                        product.append("c");
-                        product.append(QString::number(ahp_xc_get_nlines()));
-                        if(DownloadFirmware(url+product, svf_filename, settings))
+                ui->Download->setEnabled(false);
+                if(ui->Download->isChecked()) {
+                    QString product;
+                    if(ahp_xc_has_crosscorrelator())
+                        product.append("x");
+                    else
+                        product.append("a");
+                    product.append("c");
+                    product.append(QString::number(ahp_xc_get_nlines()));
+                    if(DownloadFirmware(url+product, svf_filename, settings))
+                        has_svf_firmware = true;
+                    if(has_svf_firmware) {
+                        if(DownloadFirmware(url+"ecp5u", bsdl_filename, settings))
                             has_svf_firmware = true;
-                        if(has_svf_firmware) {
-                            if(DownloadFirmware(url+"ecp5u", bsdl_filename, settings))
-                                has_svf_firmware = true;
-                            QString bsdl_path = homedir;
-                            QFile file(svf_filename);
-                            file.open(QIODevice::ReadOnly);
-                            int maxerr = 10;
-                            int err = 1;
-                            while (maxerr-- > 0 && err != 0)
-                                err = flash_svf(file.handle(), bsdl_path.toStdString().c_str());
-                            file.close();
-                            if (err) goto err_exit;
-                        }
+                        QString bsdl_path = homedir;
+                        QFile file(svf_filename);
+                        file.open(QIODevice::ReadOnly);
+                        int maxerr = 10;
+                        int err = 1;
+                        while (maxerr-- > 0 && err != 0)
+                            err = flash_svf(file.handle(), bsdl_path.toStdString().c_str());
+                        file.close();
+                        if (err) goto err_exit;
                     }
+                }
 
-                    if(ahp_xc_get_packettime() > 0.1 && xc_local_port)
-                        ahp_xc_set_baudrate((baud_rate)round(log2(ahp_xc_get_packettime() / 0.1)));
-                    motorFD = -1;
-                    if(motorport == "no connection")
+                motorFD = -1;
+                if(motorport == "no connection")
+                {
+                    settings->setValue("motor_connection", motorport);
+                }
+                else
+                {
+                    if(motorport.contains(':'))
                     {
-                        settings->setValue("motor_connection", motorport);
+                        address = motorport.split(":")[0];
+                        port = motorport.split(":")[1].toInt();
+                        ui->Connect->setEnabled(false);
+                        update();
+                        motor_socket.connectToHost(address, port);
+                        motor_socket.waitForConnected();
+                        if(motor_socket.isValid())
+                        {
+                            motor_socket.setReadBufferSize(4096);
+                            motorFD = motor_socket.socketDescriptor();
+                            if(motorFD != -1)
+                            {
+                                getGraph()->setMotorFD(motorFD);
+                                ahp_gt_select_device(0);
+                                if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
+                                    settings->setValue("motor_connection", motorport);
+                            }
+                        }
+                        else
+                        {
+                            ui->Connect->setEnabled(true);
+                            update();
+                        }
                     }
                     else
                     {
-                        if(motorport.contains(':'))
-                        {
-                            address = motorport.split(":")[0];
-                            port = motorport.split(":")[1].toInt();
-                            ui->Connect->setEnabled(false);
-                            update();
-                            motor_socket.connectToHost(address, port);
-                            motor_socket.waitForConnected();
-                            if(motor_socket.isValid())
-                            {
-                                motor_socket.setReadBufferSize(4096);
-                                motorFD = motor_socket.socketDescriptor();
-                                if(motorFD != -1)
-                                {
-                                    getGraph()->setMotorFD(motorFD);
-                                    ahp_gt_select_device(0);
-                                    if(!ahp_gt_connect_fd(getGraph()->getMotorFD()))
-                                        settings->setValue("motor_connection", motorport);
-                                }
-                            }
-                            else
-                            {
-                                ui->Connect->setEnabled(true);
-                                update();
-                            }
-                        }
-                        else
-                        {
-                            if(!ahp_gt_connect(motorport.toUtf8()))
-                                settings->setValue("motor_connection", motorport);
-                            motorFD = ahp_gt_get_fd();
-                        }
+                        if(!ahp_gt_connect(motorport.toUtf8()))
+                            settings->setValue("motor_connection", motorport);
+                        motorFD = ahp_gt_get_fd();
                     }
-                    ahp_xc_max_threads(QThread::idealThreadCount());
-                    vlbi_max_threads(QThread::idealThreadCount());
-
-                    for(int i = 0; i < vlbi_total_contexts; i++) {
-                        context[i] = vlbi_init();
-                    }
-                    connected = true;
-                    settings->setValue("xc_connection", xcport);
-                    QString header = ahp_xc_get_header();
-                    QString devices = settings->value("devices", "").toString();
-                    if(!devices.contains(header))
-                    {
-                        if(!devices.isEmpty())
-                            devices.append(",");
-                        devices.append(header);
-                        settings->setValue("devices", devices);
-                    }
-                    settings->endGroup();
-                    settings->beginGroup(header);
-                    for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
-                    {
-                        QString name = "Line " + QString::number(l + 1);
-                        fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
-                        Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
-                        Lines[l]->setTimeRange(TimeRange);
-                        connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::scanStarted), [ = ] () {
-                            Lines[l]->enableControls(false);
-                        });
-                        connect(this, static_cast<void (MainWindow::*)(bool)>(&MainWindow::scanFinished), [ = ] (bool complete) {
-                            Lines[l]->enableControls(true);
-                        });
-                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
-                                [ = ](Line* line) {
-                            if(line->scanActive())
-                                line->addToVLBIContext();
-                            else
-                                line->removeFromVLBIContext();
-                        });
-                        connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanged),
-                                [ = ](Line* line) {
-                            updateOrder();
-                        });
-                        connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
-                        {
-                            Lines[l]->addCount(J2000_starttime, packet);
-                            emit repaint();
-                        });
-                        connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
-                            switch(m) {
-                            case Autocorrelator:
-                                getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
-                                getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
-                                getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogram(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
-                                break;
-                            case CrosscorrelatorII:
-                            case CrosscorrelatorIQ:
-                                break;
-                            case Counter:
-                                getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
-                                getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
-                                getGraph()->addSeries(Lines[l]->getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(l+1));
-                                getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
-                                break;
-                            case HolographII:
-                            case HolographIQ:
-                                break;
-                            default: break;
-                            }
-                        });
-                        connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), Lines[l], &Line::gotoRaDec);
-                        connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), Lines[l], &Line::startTracking);
-                        connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
-                        connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
-                        Lines[l]->setGraph(getGraph());
-                        Lines[l]->sethistogram(getHistogram());
-                        Lines[l]->setStopPtr(&threadsStopped);
-                        Lines[l]->Initialize();
-                        ui->Lines->addTab(Lines[l], name);
-                    }
-                    for(unsigned int idx = 0; idx < ahp_xc_get_nbaselines(); idx++)
-                    {
-                        QString name = "Baseline " + QString::number(idx);
-                        fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
-                        Baselines.append(new Baseline(name, idx, Lines, settings));
-                        Baselines[idx]->setTimeRange(TimeRange);
-                        connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
-                        {
-                            Baselines[idx]->addCount(J2000_starttime, packet);
-                            emit repaint();
-                        });
-                        connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
-                            switch(m) {
-                            case Autocorrelator:
-                                break;
-                            case CrosscorrelatorII:
-                            case CrosscorrelatorIQ:
-                                getGraph()->addSeries(Baselines[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                getGraph()->addSeries(Baselines[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
-                                getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogram(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                                break;
-                            case Counter:
-                                getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
-                                getGraph()->addSeries(Baselines[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
-                                getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(Counter) + "#" + QString::number(idx+1));
-                                break;
-                            case HolographII:
-                            case HolographIQ:
-                                break;
-                            default: break;
-                            }
-                        });
-                        Baselines[idx]->setGraph(getGraph());
-                        Baselines[idx]->sethistogram(getHistogram());
-                        Baselines[idx]->setStopPtr(&threadsStopped);
-                    }
-
-                    createPacket();
-
-                    Order = settings->value("Order", 2).toInt();
-                    ui->Order->setEnabled(true);
-                    ui->Connect->setEnabled(false);
-                    ui->Voltage->setEnabled(ahp_xc_has_leds());
-                    ui->Run->setEnabled(true);
-                    ui->Disconnect->setEnabled(true);
-                    ui->Range->setValue(settings->value("Timerange", 0).toInt());
-                    ui->Range->setEnabled(true);
-                    ui->Mode->setEnabled(true);
-                    ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
-                    setMode(Counter);
-                } else {
-err_exit:
-                    ui->Download->setEnabled(true);
-                    ahp_xc_disconnect();
-                    if(xc_local_port && try_high_speed) {
-                        try_high_speed = false;
-                        ahp_xc_connect(xcport.toUtf8(), true);
-                        goto high_speed_connect;
-                    }
-                    return;
                 }
-            }
-            else {
+                ahp_xc_max_threads(QThread::idealThreadCount());
+                vlbi_max_threads(QThread::idealThreadCount());
+
+                for(int i = 0; i < vlbi_total_contexts; i++) {
+                    context[i] = vlbi_init();
+                }
+                connected = true;
+                settings->setValue("xc_connection", xcport);
+                QString header = ahp_xc_get_header();
+                QString devices = settings->value("devices", "").toString();
+                if(!devices.contains(header))
+                {
+                    if(!devices.isEmpty())
+                        devices.append(",");
+                    devices.append(header);
+                    settings->setValue("devices", devices);
+                }
+                settings->endGroup();
+                settings->beginGroup(header);
+                for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
+                {
+                    QString name = "Line " + QString::number(l + 1);
+                    fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
+                    Lines.append(new Line(name, l, settings, ui->Lines, &Lines));
+                    Lines[l]->setTimeRange(TimeRange);
+                    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::scanStarted), [ = ] () {
+                        Lines[l]->enableControls(false);
+                    });
+                    connect(this, static_cast<void (MainWindow::*)(bool)>(&MainWindow::scanFinished), [ = ] (bool complete) {
+                        Lines[l]->enableControls(true);
+                    });
+                    connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
+                            [ = ](Line* line) {
+                        if(line->scanActive())
+                            line->addToVLBIContext();
+                        else
+                            line->removeFromVLBIContext();
+                    });
+                    connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanged),
+                            [ = ](Line* line) {
+                        updateOrder();
+                    });
+                    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+                    {
+                        Lines[l]->addCount(J2000_starttime, packet);
+                    });
+                    connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
+                        switch(m) {
+                        case Autocorrelator:
+                            getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                            getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
+                            getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogramMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                            break;
+                        case CrosscorrelatorII:
+                        case CrosscorrelatorIQ:
+                            break;
+                        case Counter:
+                            getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
+                            getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                            getGraph()->addSeries(Lines[l]->getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(l+1));
+                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
+                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                            break;
+                        case HolographII:
+                        case HolographIQ:
+                            break;
+                        default: break;
+                        }
+                    });
+                    connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::gotoRaDec), Lines[l], &Line::gotoRaDec);
+                    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::startTracking), Lines[l], &Line::startTracking);
+                    connect(getGraph(), static_cast<void (Graph::*)(double, double)>(&Graph::startSlewing), Lines[l], &Line::startSlewing);
+                    connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::haltMotors), Lines[l], &Line::haltMotors);
+                    Lines[l]->setGraph(getGraph());
+                    Lines[l]->sethistogram(getHistogram());
+                    Lines[l]->setStopPtr(&threadsStopped);
+                    Lines[l]->Initialize();
+                    ui->Lines->addTab(Lines[l], name);
+                }
+                for(unsigned int idx = 0; idx < ahp_xc_get_nbaselines(); idx++)
+                {
+                    QString name = "Baseline " + QString::number(idx);
+                    fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
+                    Baselines.append(new Baseline(name, idx, Lines, settings));
+                    Baselines[idx]->setTimeRange(TimeRange);
+                    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+                    {
+                        Baselines[idx]->addCount(J2000_starttime, packet);
+                    });
+                    connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
+                        switch(m) {
+                        case Autocorrelator:
+                            break;
+                        case CrosscorrelatorII:
+                        case CrosscorrelatorIQ:
+                            getGraph()->addSeries(Baselines[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                            getGraph()->addSeries(Baselines[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                            getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogramMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                            break;
+                        case Counter:
+                            getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                            getGraph()->addSeries(Baselines[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
+                            getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
+                            getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                            break;
+                        case HolographII:
+                        case HolographIQ:
+                            break;
+                        default: break;
+                        }
+                    });
+                    Baselines[idx]->setGraph(getGraph());
+                    Baselines[idx]->sethistogram(getHistogram());
+                    Baselines[idx]->setStopPtr(&threadsStopped);
+                }
+
+                createPacket();
+
+                Order = settings->value("Order", 2).toInt();
+                ui->Order->setEnabled(true);
+                ui->Connect->setEnabled(false);
+                ui->Voltage->setEnabled(ahp_xc_has_leds());
+                ui->Run->setEnabled(true);
+                ui->Disconnect->setEnabled(true);
+                ui->Range->setValue(settings->value("Timerange", 0).toInt());
+                ui->Range->setEnabled(true);
+                ui->Mode->setEnabled(true);
+                ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
+                setMode(Counter);
+            } else {
+err_exit:
                 ui->Download->setEnabled(true);
                 ahp_xc_disconnect();
                 return;

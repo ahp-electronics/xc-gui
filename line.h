@@ -416,6 +416,7 @@ class Line : public QWidget
         Graph* histogram;
         unsigned int line { 0 };
         int flags { 0x8 };
+        unsigned char tests { 0x0 };
         bool radix_x { false };
         bool radix_y { false };
         double lag_start { 0 };

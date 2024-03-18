@@ -7,11 +7,17 @@ Series::Series(QObject *parent) : QObject(parent)
     phase = new QLineSeries();
     histogram = new QScatterSeries();
     histogram->setMarkerSize(10);
+    histogram_magnitude = new QScatterSeries();
+    histogram_magnitude->setMarkerSize(10);
+    histogram_phase = new QScatterSeries();
+    histogram_phase->setMarkerSize(10);
     magnitude_stack = new QMap<double, double>();
     phase_stack = new QMap<double, double>();
     dark = new QMap<double, double>();
     stack = new QMap<double, double>();
     histogram_stack = new QMap<double, double>();
+    histogram_stack_magnitude = new QMap<double, double>();
+    histogram_stack_phase = new QMap<double, double>();
     elemental = new Elemental();
     raw = new QList<double>();
 }
@@ -22,6 +28,8 @@ Series::~Series()
     getMagnitude()->~QLineSeries();
     getPhase()->~QLineSeries();
     getHistogram()->~QScatterSeries();
+    getHistogramMagnitude()->~QScatterSeries();
+    getHistogramPhase()->~QScatterSeries();
     getDark()->~QMap<double, double>();
     getStack()->~QMap<double, double>();
     getHistogramStack()->~QMap<double, double>();
@@ -64,8 +72,10 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
             }
         }
     }
-    getRaw()->append(y);
-    getSeries()->append(x, y);
+    if(y > -1.0) {
+        getRaw()->append(y);
+        getSeries()->append(x, y);
+    } else y = M_PI * 2;
     if(mag > -1.0)
         getMagnitude()->append(x, mag * y);
     if(phi > -1.0)
@@ -73,7 +83,7 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
     smoothBuffer(getSeries(), 0, getSeries()->count());
 }
 
-void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size)
+void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size, int *stack_index, QMap<double, double> *stack, QScatterSeries *histogram)
 {
     int size = 1;
     double mn = DBL_MIN;
@@ -90,11 +100,11 @@ void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogra
     mx = getElemental()->max(0, stream->len);
     dsp_stream_p histo = getElemental()->histogram(size, stream);
     if(histo == nullptr) return;
-    stack_index_histogram ++;
+    (*stack_index) ++;
     getHistogram()->clear();
     for (int x = 0; x < size; x++)
     {
-        stackHistogram(histo->buf[x], x * (mx - mn) / size + mn);
+        stackHistogram(histo->buf[x], x * (mx - mn) / size + mn, stack_index, stack, histogram);
     }
 }
 
@@ -124,13 +134,13 @@ void Series::smoothBuffer(QXYSeries *buf, int offset, int len)
         buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), buf->at(offset/2).y());
 }
 
-void Series::stackHistogram(double x, double y)
+void Series::stackHistogram(double x, double y, int* stack_index, QMap<double, double> *stack, QScatterSeries *series)
 {
-    x /= stack_index_histogram;
+    x /= *stack_index;
     if(getHistogramStack()->contains(x))
-        x += x * (stack_index_histogram-1.0) / stack_index_histogram;
-    getHistogramStack()->insert(x, y);
-    getHistogram()->append(x, y);
+        x += x * ((*stack_index)-1.0) / (*stack_index);
+    stack->insert(x, y);
+    series->append(x, y);
 }
 
 void Series::stackBuffer(QXYSeries *series, QMap<double, double> *stack, double *buf, off_t offset, size_t len, double x_scale, double x_offset, double y_scale, double y_offset)

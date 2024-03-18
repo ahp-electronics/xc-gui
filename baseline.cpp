@@ -182,22 +182,21 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                 if(!getLine(x)->showCrosscorrelations())
                     active &= false;
             if(active) {
-                double mag = 0.0;
-                double phi = 0.0;
+                double mag = -1.0;
+                double phi = -1.0;
                 if(ahp_xc_intensity_crosscorrelator_enabled()) {
-                    double cnt = 0;
+                    mag = 0.0;
+                    phi = 0.0;
                     double cr = 0;
                     double ci = 0;
                     for(int x = 0; x < getCorrelationOrder(); x++) {
                         double rad_p = (phi+packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].phase)/2.0;
                         double rad_m = (phi-packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].phase)/2.0;
-                        cnt += packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].counts;
                         mag += packet->autocorrelations[getLine(x)->getLineIndex()].correlations[0].magnitude;
                         cr = 2*sin(rad_p)*cos(rad_m);
                         ci = 2*cos(rad_p)*cos(rad_m);
                     }
                     mag /= getCorrelationOrder();
-                    cnt /= getCorrelationOrder();
                     phi = asin(cr);
                     if(ci < 0) phi += M_PI;
                     cr *= mag;
@@ -207,8 +206,9 @@ void Baseline::addCount(double starttime, ahp_xc_packet *packet)
                     mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude;
                     phi = (double)packet->crosscorrelations[Index].correlations[0].phase;
                 }
-                getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, packet->crosscorrelations[Index].correlations[0].counts / ahp_xc_get_packettime(), mag, phi);
-                getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100);
+                getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, -1.0, mag, phi);
+                getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100, getCounts()->getHistogramStackIndexMagnitude(), getCounts()->getHistogramStackMagnitude(), getCounts()->getHistogramMagnitude());
+                getCounts()->buildHistogram(getCounts()->getPhase(), getCounts()->getElemental()->getStream()->phase, 100, getCounts()->getHistogramStackIndexPhase(), getCounts()->getHistogramStackPhase(), getCounts()->getHistogramPhase());
             }
             else
             {
@@ -489,7 +489,8 @@ void Baseline::plot(bool success, double o, double s)
         getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
     } else
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
-    getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
+    getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100, getSpectrum()->getHistogramStackIndexMagnitude(), getSpectrum()->getHistogramStackMagnitude(), getSpectrum()->getHistogramMagnitude());
+    getSpectrum()->buildHistogram(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getStream()->phase, 100, getSpectrum()->getHistogramStackIndexPhase(), getSpectrum()->getHistogramStackPhase(), getSpectrum()->getHistogramPhase());
     getGraph()->paint();
     gethistogram()->paint();
 }

@@ -121,6 +121,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->flag0, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
+        flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 0);
         flags |= checked << 0;
         ahp_xc_set_leds(line, flags);
@@ -128,6 +129,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->flag1, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
+        flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 1);
         flags |= checked << 1;
         ahp_xc_set_leds(line, flags);
@@ -135,6 +137,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->flag2, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
+        flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 2);
         flags |= checked << 2;
         ahp_xc_set_leds(line, flags);
@@ -142,17 +145,19 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->flag3, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
+        flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 3);
         flags |= !checked << 3;
         ahp_xc_set_leds(line, flags);
         saveSetting(ui->flag3->text(), checked);
     });
-    connect(ui->flag4, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
+    connect(ui->flag5, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
-        flags &= ~(1 << 4);
-        flags |= checked << 4;
-        ahp_xc_set_leds(line, flags);
-        saveSetting(ui->flag4->text(), checked);
+        tests = ahp_xc_get_test_flags(getLineIndex());
+        tests &= ~(1 << 3);
+        tests |= checked << 3;
+        ahp_xc_set_test_flags(line, tests);
+        saveSetting(ui->flag5->text(), checked);
     });
     connect(ui->loadRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, [ = ](bool checked)
     {
@@ -350,6 +355,7 @@ void Line::Initialize()
     setFlag(2, readBool(ui->flag2->text(), false));
     setFlag(3, readBool(ui->flag3->text(), false));
     setFlag(4, readBool(ui->flag4->text(), false));
+    setFlag(5, readBool(ui->flag5->text(), false));
     ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
     ui->Crosscorrelations->setChecked(readBool(ui->Crosscorrelations->text(), false));
@@ -496,7 +502,13 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                         mag,
                         phi
             );
-            getCounts()->buildHistogram(getCounts()->getSeries(), getCounts()->getElemental()->getStream(), getResolution());
+            if(showCounts()) {
+                getCounts()->buildHistogram(getCounts()->getSeries(), getCounts()->getElemental()->getStream(), getResolution(), getCounts()->getHistogramStackIndex(), getCounts()->getHistogramStack(), getCounts()->getHistogram());
+            }
+            if(showAutocorrelations()) {
+                getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, getResolution(), getCounts()->getHistogramStackIndexMagnitude(), getCounts()->getHistogramStackMagnitude(), getCounts()->getHistogramMagnitude());
+                getCounts()->buildHistogram(getCounts()->getPhase(), getCounts()->getElemental()->getStream()->phase, getResolution(), getCounts()->getHistogramStackIndexPhase(), getCounts()->getHistogramStackPhase(), getCounts()->getHistogramPhase());
+            }
         }
         else
         {
@@ -640,6 +652,10 @@ void Line::setFlag(int flag, bool value)
         if(ui->flag4->isChecked() != value)
             ui->flag4->click();
             break;
+        case 5:
+        if(ui->flag5->isChecked() != value)
+            ui->flag5->click();
+            break;
         default:
             break;
     }
@@ -667,6 +683,8 @@ bool Line::getFlag(int flag)
             return ui->flag3->isChecked();
         case 4:
             return ui->flag4->isChecked();
+        case 5:
+            return ui->flag5->isChecked();
         default:
             return false;
     }
@@ -1083,7 +1101,8 @@ void Line::plot(bool success, double o, double s)
         getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     } else
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(),getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
-    getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100);
+    getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100, getSpectrum()->getHistogramStackIndexMagnitude(), getSpectrum()->getHistogramStackMagnitude(), getSpectrum()->getHistogramMagnitude());
+    getSpectrum()->buildHistogram(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getStream()->phase, 100, getSpectrum()->getHistogramStackIndexPhase(), getSpectrum()->getHistogramStackPhase(), getSpectrum()->getHistogramPhase());
     getGraph()->paint();
     gethistogram()->paint();
 }
