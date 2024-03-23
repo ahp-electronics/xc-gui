@@ -43,7 +43,7 @@ double coverage_delegate(double x, double y)
 
 static int32_t flash_svf(int32_t fd, const char *bsdl_path)
 {
-    return program_jtag(fd, "dirtyjtag", bsdl_path, 1000000, 0);
+    return program_jtag(fd, "FT232", nullptr, bsdl_path, 1000000, 0);
 }
 
 static int32_t flash_dfu(int32_t fd, int32_t *progress, int32_t *finished)
