@@ -300,8 +300,10 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 address = xcport.split(":")[0];
                 port = xcport.split(":")[1].toInt();
-                ahp_xc_connect_udp(address.toUtf8(), port);
-                xcFD = ahp_xc_get_fd();
+                QTcpSocket socket(this);
+                socket.connectToHost(address, port);
+                xcFD = (int)socket.socketDescriptor();
+                ahp_xc_connect_fd(xcFD);
             }
             else
             {
