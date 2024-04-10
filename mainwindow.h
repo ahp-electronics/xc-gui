@@ -270,6 +270,7 @@ signals:
         bool enable_vlbi {false};
         bool has_svf_firmware {false};
         bool has_dfu_firmware {false};
+        QStringList CheckFirmware(QString url, int timeout_ms);
         bool DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms = 30000);
         QString base64;
         int currentVoltage {0};

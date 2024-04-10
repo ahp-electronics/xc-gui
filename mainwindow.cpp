@@ -28,8 +28,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <urjtag.h>
-#include <dfu.h>
-
 
 const double graph_ratio = 0.75;
 
@@ -43,12 +41,7 @@ double coverage_delegate(double x, double y)
 
 static int32_t flash_svf(int32_t fd, const char *bsdl_path)
 {
-    return program_jtag(fd, "FT2232", nullptr, bsdl_path, 1000000, 0);
-}
-
-static int32_t flash_dfu(int32_t fd, int32_t *progress, int32_t *finished)
-{
-    return dfu_flash(fd, progress, finished);
+    return program_jtag(fd, "FT2232", nullptr, bsdl_path, 12000000, 0);
 }
 
 static char *strrand(int len)
@@ -62,6 +55,39 @@ static char *strrand(int len)
 }
 
 QMutex(MainWindow::vlbi_mutex);
+
+QStringList MainWindow::CheckFirmware(QString url, int timeout_ms)
+{
+    QByteArray list;
+    QJsonDocument doc;
+    QNetworkAccessManager* manager = new QNetworkAccessManager();
+    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url)));
+    QTimer timer;
+    timer.setSingleShot(true);
+    QEventLoop loop;
+    connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
+    connect(response, SIGNAL(finished()), &loop, SLOT(quit()));
+    timer.start(timeout_ms);
+    loop.exec();
+    QString base64 = "";
+    if(response->error() == QNetworkReply::NetworkError::NoError) {
+        QJsonDocument doc = QJsonDocument::fromJson(response->readAll());
+        QJsonObject obj = doc.object();
+        base64 = obj["data"].toString();
+    }
+    if(base64.isNull() || base64.isEmpty()) {
+        goto ck_end;
+    }
+    list = QByteArray::fromBase64(base64.toUtf8());
+    doc = QJsonDocument::fromJson(list.toStdString().c_str());
+    response->deleteLater();
+    response->manager()->deleteLater();
+    return doc.toVariant().toStringList();
+ck_end:
+    response->deleteLater();
+    response->manager()->deleteLater();
+    return QStringList();
+}
 
 bool MainWindow::DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms)
 {
@@ -120,13 +146,10 @@ MainWindow::MainWindow(QWidget *parent)
         f->~QFile();
     }
     settings = new QSettings(ini, QSettings::Format::IniFormat);
-    QString url = "https://www.iliaplatone.com/firwmare.php?product=";
+    QString url = "https://www.iliaplatone.com/firwmare.php?download=on&product=";
     bsdl_filename = homedir + dir_separator + strrand(32) + ".bsm";
     svf_filename = homedir + dir_separator + strrand(32);
-    dfu_filename = homedir + dir_separator + strrand(32);
     stdout_filename = homedir + dir_separator + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).replace(":", "") + ".log";
-    if(DownloadFirmware(url+"xc-hub", dfu_filename, settings))
-        has_dfu_firmware = true;
 
     connected = false;
     TimeRange = 10;
@@ -180,7 +203,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->MotorPort->addItem("no connection");
     ui->XCPort->setCurrentIndex(0);
     ui->MotorPort->setCurrentIndex(0);
-    ui->Download->setChecked(settings->value("Download", false).toBool());
+    //ui->Download->setChecked(settings->value("Download", false).toBool());
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &MainWindow::runClicked);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
@@ -216,7 +239,7 @@ MainWindow::MainWindow(QWidget *parent)
         (void)checked;
         if(!connected)
             return;
-        ui->Download->setEnabled(true);
+        //ui->Download->setEnabled(true);
         ui->Mode->setCurrentIndex(0);
         stopThreads();
         for(Line * line : Lines)
@@ -319,7 +342,7 @@ MainWindow::MainWindow(QWidget *parent)
             }
             if(ahp_xc_is_detected())
             {
-                ui->Download->setEnabled(false);
+                /*ui->Download->setEnabled(false);
                 if(ui->Download->isChecked()) {
                     QString product;
                     if(ahp_xc_has_crosscorrelator())
@@ -331,7 +354,7 @@ MainWindow::MainWindow(QWidget *parent)
                     if(DownloadFirmware(url+product, svf_filename, settings))
                         has_svf_firmware = true;
                     if(has_svf_firmware) {
-                        if(DownloadFirmware(url+"ecp5u", bsdl_filename, settings))
+                        if(DownloadFirmware(url, bsdl_filename, settings))
                             has_svf_firmware = true;
                         QString bsdl_path = homedir;
                         QFile file(svf_filename);
@@ -343,7 +366,7 @@ MainWindow::MainWindow(QWidget *parent)
                         file.close();
                         if (err) goto err_exit;
                     }
-                }
+                }*/
 
                 motorFD = -1;
                 if(motorport == "no connection")
@@ -436,7 +459,7 @@ MainWindow::MainWindow(QWidget *parent)
                         case Autocorrelator:
                             getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                             getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogramMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogramMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                             break;
                         case CrosscorrelatorII:
                         case CrosscorrelatorIQ:
@@ -445,8 +468,8 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
                             getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                             getGraph()->addSeries(Lines[l]->getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                             break;
                         case HolographII:
                         case HolographIQ:
@@ -482,13 +505,13 @@ MainWindow::MainWindow(QWidget *parent)
                         case CrosscorrelatorIQ:
                             getGraph()->addSeries(Baselines[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                             getGraph()->addSeries(Baselines[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
-                            getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogramMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogramMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                             break;
                         case Counter:
                             getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             getGraph()->addSeries(Baselines[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
-                            getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
-                            getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             break;
                         case HolographII:
                         case HolographIQ:
@@ -516,7 +539,7 @@ MainWindow::MainWindow(QWidget *parent)
                 setMode(Counter);
             } else {
 err_exit:
-                ui->Download->setEnabled(true);
+                //ui->Download->setEnabled(true);
                 ahp_xc_disconnect();
                 return;
             }
@@ -562,11 +585,11 @@ err_exit:
     {
         (void)freq;
     });
-    connect(ui->Download, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
+    /*connect(ui->Download, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
             [ = ](bool checked)
     {
         settings->setValue("Download", checked);
-    });
+    });*/
     connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
     {
     });
