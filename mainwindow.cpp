@@ -89,12 +89,11 @@ ck_end:
     return QStringList();
 }
 
-bool MainWindow::DownloadFirmware(QString url, QString filename, QSettings *settings, int timeout_ms)
+bool MainWindow::DownloadFirmware(QString url, QString svf, QString bsdl, QSettings *settings, int timeout_ms)
 {
     QByteArray bin;
-    QFile file(filename);
     QNetworkAccessManager* manager = new QNetworkAccessManager();
-    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url)));
+    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url+"&download=on")));
     QTimer timer;
     timer.setSingleShot(true);
     QEventLoop loop;
@@ -102,23 +101,36 @@ bool MainWindow::DownloadFirmware(QString url, QString filename, QSettings *sett
     connect(response, SIGNAL(finished()), &loop, SLOT(quit()));
     timer.start(timeout_ms);
     loop.exec();
-    QString base64 = settings->value("firmware", "").toString();
+    QString base64 = settings->value("firmware-"+svf, "").toString();
     if(response->error() == QNetworkReply::NetworkError::NoError) {
+        if(QFile::exists(svf)) unlink(svf.toUtf8());
+        if(QFile::exists(bsdl)) unlink(bsdl.toUtf8());
         QJsonDocument doc = QJsonDocument::fromJson(response->readAll());
         QJsonObject obj = doc.object();
         base64 = obj["data"].toString();
+        if(base64.isNull() || base64.isEmpty()) {
+            goto dl_end;
+        }
+        bin = QByteArray::fromBase64(base64.toUtf8());
+        QFile svf_file(svf);
+        svf_file.open(QIODevice::WriteOnly);
+        svf_file.write(bin, bin.length());
+        svf_file.close();
+        base64 = obj["image"].toString();
+        if(base64.isNull() || base64.isEmpty()) {
+            goto dl_end;
+        }
+        bin = QByteArray::fromBase64(base64.toUtf8());
+        QFile bsdl_file(bsdl);
+        bsdl_file.open(QIODevice::WriteOnly);
+        bsdl_file.write(bin, bin.length());
+        bsdl_file.close();
     }
-    if(base64.isNull() || base64.isEmpty()) {
-        goto dl_end;
-    }
-    bin = QByteArray::fromBase64(base64.toUtf8());
-    file.open(QIODevice::WriteOnly);
-    file.write(bin, bin.length());
-    file.close();
 dl_end:
     response->deleteLater();
     response->manager()->deleteLater();
-    if(!QFile::exists(filename)) return false;
+    if(!QFile::exists(svf)) return false;
+    if(!QFile::exists(bsdl)) return false;
     return true;
 }
 
@@ -146,7 +158,7 @@ MainWindow::MainWindow(QWidget *parent)
         f->~QFile();
     }
     settings = new QSettings(ini, QSettings::Format::IniFormat);
-    QString url = "https://www.iliaplatone.com/firwmare.php?download=on&product=";
+    QString url = "https://www.iliaplatone.com/firmware.php?product=";
     bsdl_filename = homedir + dir_separator + strrand(32) + ".bsm";
     svf_filename = homedir + dir_separator + strrand(32);
     stdout_filename = homedir + dir_separator + QDateTime::currentDateTimeUtc().toString(Qt::DateFormat::ISODate).replace(":", "") + ".log";
@@ -197,13 +209,15 @@ MainWindow::MainWindow(QWidget *parent)
         if(portname != ui->MotorPort->itemText(0))
             ui->MotorPort->addItem(portname);
     }
+    QStringList firmwares = CheckFirmware(url+"xc*");
+    for (QString fw : firmwares)
+        ui->firmware->addItem(fw.replace("firmware/", "").replace("-firmware.bin", ""));
     if(ui->XCPort->itemText(0) != "no connection")
         ui->XCPort->addItem("no connection");
     if(ui->MotorPort->itemText(0) != "no connection")
         ui->MotorPort->addItem("no connection");
     ui->XCPort->setCurrentIndex(0);
     ui->MotorPort->setCurrentIndex(0);
-    //ui->Download->setChecked(settings->value("Download", false).toBool());
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &MainWindow::runClicked);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
@@ -239,7 +253,6 @@ MainWindow::MainWindow(QWidget *parent)
         (void)checked;
         if(!connected)
             return;
-        //ui->Download->setEnabled(true);
         ui->Mode->setCurrentIndex(0);
         stopThreads();
         for(Line * line : Lines)
@@ -310,6 +323,20 @@ MainWindow::MainWindow(QWidget *parent)
         motorport = ui->MotorPort->currentText();
         settings->beginGroup("Connection");
 
+        if(ui->firmware->currentIndex() > 0) {
+            if(DownloadFirmware(url+"/"+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
+                has_svf_firmware = true;
+            if(has_svf_firmware) {
+                QString bsdl_path = homedir;
+                QFile file(svf_filename);
+                file.open(QIODevice::ReadOnly);
+                int maxerr = 10;
+                int err = 1;
+                while (maxerr-- > 0 && err != 0)
+                    err = flash_svf(file.handle(), bsdl_filename.toUtf8());
+                file.close();
+            }
+        }
         xcFD = -1;
         xc_local_port = false;
         if(xcport == "no connection")
@@ -342,32 +369,6 @@ MainWindow::MainWindow(QWidget *parent)
             }
             if(ahp_xc_is_detected())
             {
-                /*ui->Download->setEnabled(false);
-                if(ui->Download->isChecked()) {
-                    QString product;
-                    if(ahp_xc_has_crosscorrelator())
-                        product.append("x");
-                    else
-                        product.append("a");
-                    product.append("c");
-                    product.append(QString::number(ahp_xc_get_nlines()));
-                    if(DownloadFirmware(url+product, svf_filename, settings))
-                        has_svf_firmware = true;
-                    if(has_svf_firmware) {
-                        if(DownloadFirmware(url, bsdl_filename, settings))
-                            has_svf_firmware = true;
-                        QString bsdl_path = homedir;
-                        QFile file(svf_filename);
-                        file.open(QIODevice::ReadOnly);
-                        int maxerr = 10;
-                        int err = 1;
-                        while (maxerr-- > 0 && err != 0)
-                            err = flash_svf(file.handle(), bsdl_path.toStdString().c_str());
-                        file.close();
-                        if (err) goto err_exit;
-                    }
-                }*/
-
                 motorFD = -1;
                 if(motorport == "no connection")
                 {
@@ -539,7 +540,6 @@ MainWindow::MainWindow(QWidget *parent)
                 setMode(Counter);
             } else {
 err_exit:
-                //ui->Download->setEnabled(true);
                 ahp_xc_disconnect();
                 return;
             }
@@ -585,11 +585,6 @@ err_exit:
     {
         (void)freq;
     });
-    /*connect(ui->Download, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
-            [ = ](bool checked)
-    {
-        settings->setValue("Download", checked);
-    });*/
     connect(getGraph(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
     {
     });
