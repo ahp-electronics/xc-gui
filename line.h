@@ -40,7 +40,7 @@
 #include <ctime>
 #include "graph.h"
 #include "types.h"
-#include "baseline.h"
+#include "polytope.h"
 #include "elemental.h"
 #include "series.h"
 
@@ -150,7 +150,7 @@ class Line : public QWidget
         {
             *stop = 1;
         }
-        inline void addBaseline(Baseline* b)
+        inline void addPolytope(Polytope* b)
         {
             nodes.append(b);
         }
@@ -404,7 +404,7 @@ class Line : public QWidget
         Mode mode { Counter };
         QSettings *settings { nullptr };
         QList<Line*> *parents { nullptr };
-        QList<Baseline*> nodes { nullptr };
+        QList<Polytope*> nodes { nullptr };
         Series* spectrum { nullptr };
         Series* counts { nullptr };
         QChar dir_separator { '/' };

@@ -59,7 +59,7 @@
 #include <QMessageBox>
 #include "graph.h"
 #include "line.h"
-#include "baseline.h"
+#include "polytope.h"
 #include "types.h"
 #define NUM_CONTEXTS 4
 
@@ -69,7 +69,7 @@ QT_BEGIN_NAMESPACE
 namespace Ui
 {
 class Graph;
-class Baseline;
+class Polytope;
 class Line;
 class MainWindow;
 }
@@ -85,7 +85,7 @@ class MainWindow : public QMainWindow
         double percent;
         void resizeEvent(QResizeEvent* event);
         QList<Line*> Lines;
-        QList<Baseline*> Baselines;
+        QList<Polytope*> Polytopes;
         inline ahp_xc_packet* getPacket()
         {
             return (packet == nullptr) ? createPacket() : packet;
@@ -119,7 +119,7 @@ class MainWindow : public QMainWindow
             packet = ahp_xc_alloc_packet();
             for(Line* line : Lines)
                 line->setPacket (packet);
-            for(Baseline* line : Baselines)
+            for(Polytope* line : Polytopes)
                 line->setPacket (packet);
             return packet;
         }
@@ -179,9 +179,9 @@ class MainWindow : public QMainWindow
                 {
                     Lines[i]->setMode(mode);
                 }
-                for(int i = 0; i < Baselines.count(); i++)
+                for(int i = 0; i < Polytopes.count(); i++)
                 {
-                    Baselines[i]->setMode(mode);
+                    Polytopes[i]->setMode(mode);
                 }
                 for(int x = 0; x < Lines.count(); x++) {
                     Lines[x]->setActive(false);

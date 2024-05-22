@@ -27,6 +27,7 @@
 #include "QMutex"
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include <libusb.h>
 #include <urjtag.h>
 
 const double graph_ratio = 0.75;
@@ -37,6 +38,32 @@ double coverage_delegate(double x, double y)
     (void)x;
     (void)y;
     return 1.0;
+}
+
+static int32_t reset_by_vid_pid(int vid, int pid)
+{
+    int rc = 0;
+    struct libusb_device_handle *handle;
+
+    libusb_init(nullptr);
+
+    handle = libusb_open_device_with_vid_pid(nullptr, vid, pid);
+
+    if(!handle){
+        return 1;
+    }
+
+    if(libusb_reset_device(handle)){
+        printf("Reset failed, you may need to replug your device.\n");
+        rc = 1;
+    }
+    libusb_attach_kernel_driver(handle, 0);
+
+    libusb_close(handle);
+
+    libusb_exit(nullptr);
+
+    return rc;
 }
 
 static int32_t flash_svf(int32_t fd, const char *bsdl_path)
@@ -231,7 +258,7 @@ MainWindow::MainWindow(QWidget *parent)
         TimeRange = ui->Range->value();
         for(Line* line : Lines)
             line->setTimeRange(TimeRange);
-        for(Baseline* line : Baselines)
+        for(Polytope* line : Polytopes)
                 line->setTimeRange(TimeRange);
 
     });
@@ -257,11 +284,11 @@ MainWindow::MainWindow(QWidget *parent)
         stopThreads();
         for(Line * line : Lines)
             line->setActive(false);
-        for(Baseline * line : Baselines)
+        for(Polytope * line : Polytopes)
         {
             getGraph()->removeSeries(line->getSpectrum()->getMagnitude());
             getHistogram()->removeSeries(line->getCounts()->getHistogram());
-            line->~Baseline();
+            line->~Polytope();
         }
         for(Line * line : Lines)
         {
@@ -271,7 +298,7 @@ MainWindow::MainWindow(QWidget *parent)
             getHistogram()->removeSeries(line->getCounts()->getHistogram());
             line->~Line();
         }
-        Baselines.clear();
+        Polytopes.clear();
         Lines.clear();
         ui->Lines->clear();
         freePacket();
@@ -312,7 +339,7 @@ MainWindow::MainWindow(QWidget *parent)
         getHistogram()->clearSeries();
         connected = false;
     });
-    connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
+    connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this,
             [ = ](bool checked)
     {
         (void)checked;
@@ -324,6 +351,9 @@ MainWindow::MainWindow(QWidget *parent)
         settings->beginGroup("Connection");
 
         if(ui->firmware->currentIndex() > 0) {
+            ui->firmware->setEnabled(false);
+            ui->Connect->setEnabled(false);
+            ui->XCPort->setEnabled(false);
             if(DownloadFirmware(url+"/"+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
                 has_svf_firmware = true;
             if(has_svf_firmware) {
@@ -334,7 +364,14 @@ MainWindow::MainWindow(QWidget *parent)
                 int err = 1;
                 while (maxerr-- > 0 && err != 0)
                     err = flash_svf(file.handle(), bsdl_filename.toUtf8());
+                if(!err)
+                    reset_by_vid_pid(0x0403, 0x6014);
                 file.close();
+                ui->firmware->setEnabled(true);
+                ui->Connect->setEnabled(true);
+                ui->XCPort->setEnabled(true);
+                if(err) return;
+                ui->firmware->setCurrentIndex(0);
             }
         }
         xcFD = -1;
@@ -459,7 +496,7 @@ MainWindow::MainWindow(QWidget *parent)
                         switch(m) {
                         case Autocorrelator:
                             getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
-                            getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
+                            //getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
                             //getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogramMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                             break;
                         case CrosscorrelatorII:
@@ -490,13 +527,13 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 for(unsigned int idx = 0; idx < ahp_xc_get_nbaselines(); idx++)
                 {
-                    QString name = "Baseline " + QString::number(idx);
+                    QString name = "Polytope " + QString::number(idx);
                     fprintf(f_stdout, "Adding %s\n", name.toStdString().c_str());
-                    Baselines.append(new Baseline(name, idx, Lines, settings));
-                    Baselines[idx]->setTimeRange(TimeRange);
+                    Polytopes.append(new Polytope(name, idx, Lines, settings));
+                    Polytopes[idx]->setTimeRange(TimeRange);
                     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                     {
-                        Baselines[idx]->addCount(J2000_starttime, packet);
+                        Polytopes[idx]->addCount(J2000_starttime, packet);
                     });
                     connect(getGraph(), static_cast<void (Graph::*)(Mode)>(&Graph::modeChanging), this, [=] (Mode m) {
                         switch(m) {
@@ -504,15 +541,15 @@ MainWindow::MainWindow(QWidget *parent)
                             break;
                         case CrosscorrelatorII:
                         case CrosscorrelatorIQ:
-                            getGraph()->addSeries(Baselines[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                            getGraph()->addSeries(Baselines[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
-                            //getHistogram()->addSeries(Baselines[idx]->getSpectrum()->getHistogramMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                            getGraph()->addSeries(Polytopes[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
+                            //getGraph()->addSeries(Polytopes[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Polytopes[idx]->getSpectrum()->getHistogramMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                             break;
                         case Counter:
-                            getGraph()->addSeries(Baselines[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
-                            getGraph()->addSeries(Baselines[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
-                            //getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
-                            //getHistogram()->addSeries(Baselines[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                            getGraph()->addSeries(Polytopes[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                            getGraph()->addSeries(Polytopes[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             break;
                         case HolographII:
                         case HolographIQ:
@@ -520,9 +557,9 @@ MainWindow::MainWindow(QWidget *parent)
                         default: break;
                         }
                     });
-                    Baselines[idx]->setGraph(getGraph());
-                    Baselines[idx]->sethistogram(getHistogram());
-                    Baselines[idx]->setStopPtr(&threadsStopped);
+                    Polytopes[idx]->setGraph(getGraph());
+                    Polytopes[idx]->sethistogram(getHistogram());
+                    Polytopes[idx]->setStopPtr(&threadsStopped);
                 }
 
                 createPacket();
@@ -614,7 +651,7 @@ err_exit:
         {
             case CrosscorrelatorII:
             case CrosscorrelatorIQ:
-                for(Baseline *line : Baselines)
+                for(Polytope *line : Polytopes)
                 {
                     if(line->scanActive())
                     {
@@ -848,8 +885,8 @@ void MainWindow::runClicked(bool checked)
         if(getMode() == Autocorrelator)
             emit scanFinished(false);
     }
-    for(int x = 0; x < Lines.count(); x++)
-        Lines[x]->runClicked(ui->Run->text() == "Stop");
+    //for(int x = 0; x < Lines.count(); x++)
+        //Lines[x]->runClicked(ui->Run->text() == "Stop");
 }
 
 void MainWindow::resetTimestamp()
@@ -868,8 +905,8 @@ void MainWindow::updateOrder()
 
     if(max_order >= 2) {
         int order = fmax(2, fmin(max_order, Order));
-        for(int x = 0; x < Baselines.count(); x++)
-            Baselines[x]->setCorrelationOrder(order);
+        for(int x = 0; x < Polytopes.count(); x++)
+            Polytopes[x]->setCorrelationOrder(order);
         while(!lock_vlbi());
         ahp_xc_set_correlation_order(order);
         vlbi_set_correlation_order(getVLBIContext(), order);

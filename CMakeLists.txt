@@ -81,8 +81,8 @@ else(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.h
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.ui
-        ${CMAKE_CURRENT_SOURCE_DIR}/baseline.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/baseline.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/polytope.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/polytope.h
         ${CMAKE_CURRENT_SOURCE_DIR}/line.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/line.h
         ${CMAKE_CURRENT_SOURCE_DIR}/line.ui
