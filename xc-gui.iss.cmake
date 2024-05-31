@@ -4,7 +4,7 @@
 [Setup]
 AppId={{38D7ECEF-D2FE-464C-A8BB-2271CCC6EE3E}
 AppName={#MyAppName}
-AppVersion=@XC_GUI_VERSION@
+AppVersion=@AHP_XC_GUI_VERSION@
 DefaultDirName={autopf}\AHP\{#MyAppName}
 DefaultGroupName=AHP
 UninstallDisplayIcon={app}\{#TargetName}.exe
