@@ -453,6 +453,7 @@ MainWindow::MainWindow(QWidget *parent)
                     context[i] = vlbi_init();
                 }
                 connected = true;
+                updateOrder();
                 settings->setValue("xc_connection", xcport);
                 QString header = ahp_xc_get_header();
                 QString devices = settings->value("devices", "").toString();
@@ -919,6 +920,7 @@ void MainWindow::updateOrder()
     } else {
         enable_vlbi = false;
         ui->Order->setRange(2, 2);
+        ahp_xc_set_correlation_order(2);
     }
 }
 
