@@ -46,6 +46,8 @@ public:
     {
         stack_index = 0;
         stack_index_histogram = 0;
+        stack_index_histogram_magnitude = 0;
+        stack_index_histogram_phase = 0;
     }
 
     inline void clear()
@@ -56,13 +58,19 @@ public:
         getPhase()->clear();
         getPhaseStack()->clear();
         getHistogram()->clear();
-        getStack()->clear();
         getHistogramStack()->clear();
+        getMagnitudeHistogram()->clear();
+        getMagnitudeHistogramStack()->clear();
+        getPhaseHistogram()->clear();
+        getPhaseHistogramStack()->clear();
+        getStack()->clear();
         getDark()->clear();
         getElemental()->clear();
         getRaw()->clear();
         stack_index = 0;
         stack_index_histogram = 0;
+        stack_index_histogram_magnitude = 0;
+        stack_index_histogram_phase = 0;
     }
     inline QLineSeries *getSeries()
     {

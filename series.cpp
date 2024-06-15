@@ -78,9 +78,15 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
     } else y = M_PI * 2;
     if(mag > -1.0)
         getMagnitude()->append(x, mag * y);
+    else if(getMagnitude()->count() > 0)
+        getMagnitude()->append(x, getMagnitude()->at(getMagnitude()->count()-1).y());
     if(phi > -1.0)
         getPhase()->append(x, phi * y / M_PI / 2);
+    else if(getPhase()->count() > 0)
+        getPhase()->append(x, getPhase()->at(getPhase()->count()-1).y());
     smoothBuffer(getSeries(), 0, getSeries()->count());
+    smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
+    smoothBuffer(getPhase(), 0, getSeries()->count());
 }
 
 void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size, int *stack_index, QMap<double, double> *stack, QScatterSeries *histogram)
@@ -88,9 +94,8 @@ void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogra
     int size = 1;
     double mn = DBL_MIN;
     double mx = DBL_MAX;
+    getElemental()->setStreamSize(series->count()+1);
     if(getElemental()->lock()) {
-        getElemental()->clear();
-        getElemental()->setStreamSize(series->count());
         for(int x = 0; x < series->count(); x++)
             stream->buf[x] = series->at(x).y();
         size = fmin(stream->len, histogram_size);

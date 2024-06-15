@@ -215,7 +215,7 @@ void Elemental::dft(int depth)
 
 void Elemental::clear()
 {
-    setStreamSize(0);
+    setStreamSize(1);
 }
 
 double Elemental::min(off_t offset, size_t len)

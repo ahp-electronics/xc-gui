@@ -206,6 +206,7 @@ void Polytope::addCount(double starttime, ahp_xc_packet *packet)
                     mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude;
                     phi = (double)packet->crosscorrelations[Index].correlations[0].phase;
                 }
+                getCounts()->getElemental()->setStreamSize(getCounts()->getSeries()->count()+1);
                 getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, -1.0, mag, phi);
                 getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100, getCounts()->getHistogramStackIndexMagnitude(), getCounts()->getHistogramStackMagnitude(), getCounts()->getHistogramMagnitude());
                 getCounts()->buildHistogram(getCounts()->getPhase(), getCounts()->getElemental()->getStream()->phase, 100, getCounts()->getHistogramStackIndexPhase(), getCounts()->getHistogramStackPhase(), getCounts()->getHistogramPhase());
@@ -439,19 +440,24 @@ void Polytope::stackCorrelations()
     if(spectrum != nullptr && npackets > 0)
     {
         setSpectrumSize(npackets);
+        getSpectrum()->getElemental()->set(0);
         for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
         {
-            int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime()-1;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            if(lag < npackets && lag >= 0)
-            {
-                getSpectrum()->getElemental()->getMagnitude()[z] = (double)correlation.magnitude * M_PI * 2;
-                getSpectrum()->getElemental()->getPhase()[z] = (double)correlation.phase;
-                for(int y = z; y < npackets; y++)
+            for(int o = 0; o < getCorrelationOrder(); o++) {
+                int lag = correlation.lags[o] / ahp_xc_get_packettime()-1;
+                if(lag < npackets && lag >= 0)
                 {
-                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[z];
-                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[z];
+                    if(getSpectrum()->getElemental()->getMagnitude()[lag] == 0) getSpectrum()->getElemental()->getMagnitude()[lag] = 1.0;
+                    getSpectrum()->getElemental()->getMagnitude()[lag] *= (double)correlation.magnitude * M_PI * 2 / getCorrelationOrder();
+                    getSpectrum()->getElemental()->getPhase()[lag] += (double)correlation.phase;
+                    fmod(getSpectrum()->getElemental()->getPhase()[lag], M_PI * 2);
+                    for(int y = lag; y < npackets; y++)
+                    {
+                        getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
+                        getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
+                    }
                 }
             }
         }

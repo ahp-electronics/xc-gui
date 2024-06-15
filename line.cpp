@@ -124,7 +124,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 0);
         flags |= checked << 0;
-        ahp_xc_set_leds(line, flags);
+        ahp_xc_set_leds(getLineIndex(), flags);
         saveSetting(ui->flag0->text(), checked);
     });
     connect(ui->flag1, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
@@ -132,7 +132,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 1);
         flags |= checked << 1;
-        ahp_xc_set_leds(line, flags);
+        ahp_xc_set_leds(getLineIndex(), flags);
         saveSetting(ui->flag1->text(), checked);
     });
     connect(ui->flag2, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
@@ -140,7 +140,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 2);
         flags |= checked << 2;
-        ahp_xc_set_leds(line, flags);
+        ahp_xc_set_leds(getLineIndex(), flags);
         saveSetting(ui->flag2->text(), checked);
     });
     connect(ui->flag3, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
@@ -148,15 +148,23 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 3);
         flags |= !checked << 3;
-        ahp_xc_set_leds(line, flags);
+        ahp_xc_set_leds(getLineIndex(), flags);
         saveSetting(ui->flag3->text(), checked);
+    });
+    connect(ui->flag4, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
+    {
+        flags = ahp_xc_get_leds(getLineIndex());
+        flags &= ~(1 << 4);
+        flags |= !checked << 4;
+        ahp_xc_set_leds(getLineIndex(), flags);
+        saveSetting(ui->flag4->text(), checked);
     });
     connect(ui->flag5, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         tests = ahp_xc_get_test_flags(getLineIndex());
         tests &= ~(1 << 3);
         tests |= checked << 3;
-        ahp_xc_set_test_flags(line, tests);
+        ahp_xc_set_test_flags(getLineIndex(), tests);
         saveSetting(ui->flag5->text(), checked);
     });
     connect(ui->loadRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, [ = ](bool checked)
@@ -349,7 +357,7 @@ void Line::Initialize()
     ui->MinValue->setValue(readInt("MinValue", ui->MinValue->minimum()));
     ui->iDFT->setChecked(readBool("iDFT", false));
     ui->flag3->setEnabled(!ahp_xc_has_cumulative_only());
-    ahp_xc_set_leds(line, flags);
+    ahp_xc_set_leds(getLineIndex(), flags);
     setFlag(0, readBool(ui->flag0->text(), false));
     setFlag(1, readBool(ui->flag1->text(), false));
     setFlag(2, readBool(ui->flag2->text(), false));
@@ -1062,11 +1070,12 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     if(spectrum != nullptr && npackets > 0)
     {
         setSpectrumSize(npackets);
+        getSpectrum()->getElemental()->set(0);
         for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
         {
-            int lag = spectrum[z].correlations[0].lag / ahp_xc_get_packettime()-1;
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
+            int lag = correlation.lag / ahp_xc_get_packettime()-1;
             if(lag < npackets && lag >= 0)
             {
                 getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude * M_PI * 2;
@@ -1083,7 +1092,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         if(Align())
             getSpectrum()->getElemental()->run();
         else
-            getSpectrum()->getElemental()->finish(false, getStartLag(), getLagStep());
+            plot(false, getStartLag(), getLagStep());
     }
     resetPercentPtr();
     resetStopPtr();
