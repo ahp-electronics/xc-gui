@@ -155,7 +155,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     {
         flags = ahp_xc_get_leds(getLineIndex());
         flags &= ~(1 << 4);
-        flags |= !checked << 4;
+        flags |= checked << 4;
         ahp_xc_set_leds(getLineIndex(), flags);
         saveSetting(ui->flag4->text(), checked);
     });
