@@ -450,14 +450,9 @@ void Polytope::stackCorrelations()
                 if(lag < npackets && lag >= 0)
                 {
                     if(getSpectrum()->getElemental()->getMagnitude()[lag] == 0) getSpectrum()->getElemental()->getMagnitude()[lag] = 1.0;
-                    getSpectrum()->getElemental()->getMagnitude()[lag] *= (double)correlation.magnitude * M_PI * 2 / getCorrelationOrder();
-                    getSpectrum()->getElemental()->getPhase()[lag] += (double)correlation.phase;
-                    fmod(getSpectrum()->getElemental()->getPhase()[lag], M_PI * 2);
-                    for(int y = lag; y < npackets; y++)
-                    {
-                        getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
-                        getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
-                    }
+                    getSpectrum()->getElemental()->getMagnitude()[lag] *= (double)pow(correlation.magnitude * M_PI * 2, 1.0/getCorrelationOrder());
+                    getSpectrum()->getElemental()->getPhase()[lag] = fmod(getSpectrum()->getElemental()->getPhase()[lag] + (double)correlation.phase, M_PI * 2);
+
                 }
             }
         }

@@ -507,8 +507,8 @@ MainWindow::MainWindow(QWidget *parent)
                             getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
                             getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                             //getGraph()->addSeries(Lines[l]->getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                             break;
                         case HolographII:
                         case HolographIQ:
@@ -549,8 +549,8 @@ MainWindow::MainWindow(QWidget *parent)
                         case Counter:
                             getGraph()->addSeries(Polytopes[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             //getGraph()->addSeries(Polytopes[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
-                            getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
-                            getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
+                            //getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             break;
                         case HolographII:
                         case HolographIQ:
@@ -696,8 +696,6 @@ err_exit:
                     }
                 }
                 free(spectrum);
-                if(!threadsStopped)
-                    ui->Run->click();
                 break;
             default:
                 if(!ahp_xc_get_packet(getPacket())) {
@@ -884,7 +882,7 @@ void MainWindow::runClicked(bool checked)
         }
         nlines = 0;
         if(getMode() == Autocorrelator)
-            emit scanFinished(false);
+            emit scanFinished(true);
     }
     //for(int x = 0; x < Lines.count(); x++)
         //Lines[x]->runClicked(ui->Run->text() == "Stop");
