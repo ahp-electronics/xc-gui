@@ -467,7 +467,7 @@ void Polytope::stackCorrelations()
         if(align)
             getSpectrum()->getElemental()->run();
         else
-            getSpectrum()->getElemental()->finish(false, -getStartLag(), getScanStep());
+            getSpectrum()->getElemental()->finish(false, getStartLag(), getLagStep());
         free(spectrum);
     }
     for(Line* line : getLines()) {

@@ -1092,7 +1092,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         if(Align())
             getSpectrum()->getElemental()->run();
         else
-            plot(false, getStartLag(), getLagStep());
+            getSpectrum()->getElemental()->finish(false, getStartLag(), getLagStep());
     }
     resetPercentPtr();
     resetStopPtr();
@@ -1102,8 +1102,6 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
 void Line::plot(bool success, double o, double s)
 {
     double timespan = s;
-    if(success)
-        timespan = s;
     double offset = o;
     if(!idft()) {
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getMagnitudeStack(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);

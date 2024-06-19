@@ -696,6 +696,13 @@ err_exit:
                     }
                 }
                 free(spectrum);
+                if(ui->Run->text() == "Stop") {
+                    for(int x = 0; x < Lines.count(); x++)
+                        Lines[x]->runClicked(false);
+                    QThread::msleep(250);
+                    for(int x = 0; x < Lines.count(); x++)
+                        Lines[x]->runClicked(false);
+                }
                 break;
             default:
                 if(!ahp_xc_get_packet(getPacket())) {
@@ -882,10 +889,15 @@ void MainWindow::runClicked(bool checked)
         }
         nlines = 0;
         if(getMode() == Autocorrelator)
-            emit scanFinished(true);
+            emit scanFinished(false);
     }
-    //for(int x = 0; x < Lines.count(); x++)
-        //Lines[x]->runClicked(ui->Run->text() == "Stop");
+    if(ui->Run->text() == "Stop") {
+        for(int x = 0; x < Lines.count(); x++)
+            Lines[x]->runClicked(false);
+        QThread::msleep(250);
+        for(int x = 0; x < Lines.count(); x++)
+            Lines[x]->runClicked(false);
+    }
 }
 
 void MainWindow::resetTimestamp()
