@@ -87,6 +87,9 @@ class Line : public QWidget
         bool showCounts();
         bool showAutocorrelations();
         bool showCrosscorrelations();
+        bool showCountHistogram();
+        bool showCorrelationsHistogram();
+        bool showPhase();
         void Initialize();
 
         QString getName()
@@ -456,6 +459,7 @@ class Line : public QWidget
         void SavePlot();
 
     signals:
+        void updatedPhasePlotting(bool);
         void scanActiveStateChanging(Line*);
         void scanActiveStateChanged(Line*);
         void activeStateChanging(Line*);

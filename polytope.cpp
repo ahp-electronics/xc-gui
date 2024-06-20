@@ -178,9 +178,13 @@ void Polytope::addCount(double starttime, ahp_xc_packet *packet)
         {
             int index = ahp_xc_get_crosscorrelation_index(indexes.toVector().toStdVector().data(), indexes.count());
             active = index == Index;
-            for(int x = 0; x < getCorrelationOrder(); x++)
+            bool showhistogram = true;
+            for(int x = 0; x < getCorrelationOrder(); x++) {
                 if(!getLine(x)->showCrosscorrelations())
                     active &= false;
+                if(!getLine(x)->showCorrelationsHistogram())
+                    showhistogram &= false;
+            }
             if(active) {
                 double mag = -1.0;
                 double phi = -1.0;
@@ -208,8 +212,9 @@ void Polytope::addCount(double starttime, ahp_xc_packet *packet)
                 }
                 getCounts()->getElemental()->setStreamSize(getCounts()->getSeries()->count()+1);
                 getCounts()->addCount(packet->timestamp + starttime - getTimeRange(), packet->timestamp + starttime, -1.0, mag, phi);
-                getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100, getCounts()->getHistogramStackIndexMagnitude(), getCounts()->getHistogramStackMagnitude(), getCounts()->getHistogramMagnitude());
-                getCounts()->buildHistogram(getCounts()->getPhase(), getCounts()->getElemental()->getStream()->phase, 100, getCounts()->getHistogramStackIndexPhase(), getCounts()->getHistogramStackPhase(), getCounts()->getHistogramPhase());
+                if(showhistogram) {
+                    getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, 100, getCounts()->getHistogramStackIndexMagnitude(), getCounts()->getHistogramStackMagnitude(), getCounts()->getHistogramMagnitude());
+                }
             }
             else
             {

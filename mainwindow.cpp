@@ -497,7 +497,6 @@ MainWindow::MainWindow(QWidget *parent)
                         switch(m) {
                         case Autocorrelator:
                             getGraph()->addSeries(Lines[l]->getSpectrum()->getMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
-                            getGraph()->addSeries(Lines[l]->getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(l+1));
                             getHistogram()->addSeries(Lines[l]->getSpectrum()->getHistogramMagnitude(), QString::number(Autocorrelator) + "0#" + QString::number(l+1));
                             break;
                         case CrosscorrelatorII:
@@ -506,7 +505,6 @@ MainWindow::MainWindow(QWidget *parent)
                         case Counter:
                             getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
                             getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
-                            getGraph()->addSeries(Lines[l]->getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(l+1));
                             getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
                             getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                             break;
@@ -543,12 +541,10 @@ MainWindow::MainWindow(QWidget *parent)
                         case CrosscorrelatorII:
                         case CrosscorrelatorIQ:
                             getGraph()->addSeries(Polytopes[idx]->getSpectrum()->getMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
-                            getGraph()->addSeries(Polytopes[idx]->getSpectrum()->getPhase(), QString::number(CrosscorrelatorII) + "1#" + QString::number(idx+1));
                             getHistogram()->addSeries(Polytopes[idx]->getSpectrum()->getHistogramMagnitude(), QString::number(CrosscorrelatorII) + "0#" + QString::number(idx+1));
                             break;
                         case Counter:
                             getGraph()->addSeries(Polytopes[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
-                            getGraph()->addSeries(Polytopes[idx]->getCounts()->getPhase(), QString::number(Counter) + "4#" + QString::number(idx+1));
                             getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
                             getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             break;
