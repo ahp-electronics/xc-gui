@@ -329,6 +329,23 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         emit scanActiveStateChanging(this);
         emit scanActiveStateChanged(this);
     });
+    connect(ui->counter_histogram, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
+        saveSetting("counter_histogram", ui->counter_histogram->isChecked());
+    });
+    connect(ui->correlators_histogram, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
+        saveSetting("correlators_histogram", ui->correlators_histogram->isChecked());
+    });
+    connect(ui->show_phase, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
+        if(ui->show_phase->isChecked()) {
+            getGraph()->addSeries(getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(getLineIndex()+1));
+            getGraph()->addSeries(getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(getLineIndex()+1));
+        } else {
+            getGraph()->removeSeries(getSpectrum()->getPhase());
+            getGraph()->removeSeries(getCounts()->getPhase());
+        }
+        emit updatedPhasePlotting(ui->show_phase->isChecked());
+        saveSetting("show_phase", ui->show_phase->isChecked());
+    });
     connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
     connect(this, static_cast<void (Line::*)()>(&Line::loadPositionChart), this, &Line::LoadPositionChart);
     connect(this, static_cast<void (Line::*)()>(&Line::unloadPositionChart), this, &Line::UnloadPositionChart);
@@ -510,12 +527,11 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
                         mag,
                         phi
             );
-            if(showCounts()) {
+            if(showCountHistogram()) {
                 getCounts()->buildHistogram(getCounts()->getSeries(), getCounts()->getElemental()->getStream(), getResolution(), getCounts()->getHistogramStackIndex(), getCounts()->getHistogramStack(), getCounts()->getHistogram());
             }
-            if(showAutocorrelations()) {
+            if(showCorrelationsHistogram()) {
                 getCounts()->buildHistogram(getCounts()->getMagnitude(), getCounts()->getElemental()->getStream()->magnitude, getResolution(), getCounts()->getHistogramStackIndexMagnitude(), getCounts()->getHistogramStackMagnitude(), getCounts()->getHistogramMagnitude());
-                getCounts()->buildHistogram(getCounts()->getPhase(), getCounts()->getElemental()->getStream()->phase, getResolution(), getCounts()->getHistogramStackIndexPhase(), getCounts()->getHistogramStackPhase(), getCounts()->getHistogramPhase());
             }
         }
         else
@@ -706,6 +722,21 @@ bool Line::showCounts()
 bool Line::showAutocorrelations()
 {
     return ui->Autocorrelations->isChecked();
+}
+
+bool Line::showCountHistogram()
+{
+    return showCounts()&&ui->counter_histogram->isChecked();
+}
+
+bool Line::showCorrelationsHistogram()
+{
+    return ui->correlators_histogram->isChecked();
+}
+
+bool Line::showPhase()
+{
+    return ui->show_phase->isChecked();
 }
 
 bool Line::showCrosscorrelations()
