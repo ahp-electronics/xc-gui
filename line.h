@@ -333,7 +333,6 @@ class Line : public QWidget
         void setBufferSizes();
         void runClicked(bool checked = false);
         void resetTimestamp();
-        inline bool isForkMount() { return fork; }
         void lock()
         {
             while(!mutex.tryLock());

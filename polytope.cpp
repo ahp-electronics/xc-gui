@@ -451,7 +451,7 @@ void Polytope::stackCorrelations()
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             for(int o = 0; o < getCorrelationOrder(); o++) {
-                int lag = correlation.lags[o] / ahp_xc_get_packettime()-1;
+                int lag = correlation.lags[o] * ahp_xc_get_sampletime();
                 if(lag < npackets && lag >= 0)
                 {
                     if(getSpectrum()->getElemental()->getMagnitude()[lag] == 0) getSpectrum()->getElemental()->getMagnitude()[lag] = 1.0;

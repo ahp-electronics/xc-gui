@@ -297,13 +297,16 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         if(ahp_gt_is_connected()) {
             ahp_gt_select_device(MountMotorIndex);
             if(!ahp_gt_detect_device()) {
+                fork = false;
+                if((ahp_gt_get_mount_flags() & isForkMount) != 0) {
+                    fork = true;
+                }
                 switch (ahp_gt_get_mount_type()) {
                 case isMF:
                 case isDOB:
                     fork = true;
                     break;
                 default:
-                    fork = false;
                     break;
                 }
             }
@@ -418,7 +421,7 @@ void Line::updateLocation()
                 x /= M_PI * 2;
                 x /= 1000.0;
                 getLocation()->xyz.x = x;
-            } else
+            } else if(xyz_locations.count() > 0)
                 getLocation()->xyz.x = xyz_locations[current_location].xyz.x;
             if(ahp_gt_is_axis_moving(1)) {
                 double y = ahp_gt_get_position(1, nullptr);
@@ -426,7 +429,7 @@ void Line::updateLocation()
                 y /= M_PI * 2;
                 y /= 1000.0;
                 getLocation()->xyz.y = y;
-            } else
+            } else if(xyz_locations.count() > 0)
                 getLocation()->xyz.y = xyz_locations[current_location].xyz.y;
         }
     } else
@@ -452,8 +455,8 @@ void Line::setLocation(int value)
                 if(ahp_gt_is_connected()) {
                     if(ahp_gt_is_detected(getRailIndex())) {
                         ahp_gt_select_device(getRailIndex());
-                        ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(0), 800.0);
-                        ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(1), 800.0);
+                        ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(0), M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(1), M_PI * 2 * 800.0 / SIDEREAL_DAY);
                     }
                 }
             }
@@ -601,11 +604,11 @@ void Line::startSlewing(double ra_rate, double dec_rate) {
             ahp_gt_set_address(getMountIndex());
             if(ra_rate != 0.0) {
                 ahp_gt_stop_motion(0, 1);
-                ahp_gt_start_motion(0, ra_rate);
+                ahp_gt_start_motion(0, ra_rate * M_PI * 2 / SIDEREAL_DAY);
             }
             if(dec_rate != 0.0) {
                 ahp_gt_stop_motion(1, 1);
-                ahp_gt_start_motion(1, dec_rate);
+                ahp_gt_start_motion(1, dec_rate * M_PI * 2 / SIDEREAL_DAY);
             }
             Line::motor_unlock();
         }
@@ -866,6 +869,8 @@ void Line::LoadPositionChart()
             xyz_locations.clear();
             for(QString location : locations) {
                 QStringList xyz = location.split(",");
+                if(xyz.count() < 2)
+                    xyz = location.split(";");
                 if(xyz.length() > 1) {
                     double x = atof(xyz[0].toStdString().c_str());
                     double y = atof(xyz[1].toStdString().c_str());
@@ -1106,7 +1111,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
         {
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            int lag = correlation.lag / ahp_xc_get_packettime()-1;
+            int lag = correlation.lag * ahp_xc_get_sampletime();
             if(lag < npackets && lag >= 0)
             {
                 getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude * M_PI * 2;
