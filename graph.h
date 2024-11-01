@@ -67,6 +67,7 @@ class Graph : public QWidget
 
         void resizeEvent(QResizeEvent *event) override;
         void paint();
+        void paint3d();
 
         bool haveSetting(QString setting);
         void removeSetting(QString setting);

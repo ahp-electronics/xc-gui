@@ -1141,7 +1141,8 @@ void Line::plot(bool success, double o, double s)
     double offset = o;
     if(!idft()) {
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getMagnitudeStack(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
-        getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        if(this->showPhase())
+            getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     } else
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(),getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100, getSpectrum()->getHistogramStackIndexMagnitude(), getSpectrum()->getHistogramStackMagnitude(), getSpectrum()->getHistogramMagnitude());

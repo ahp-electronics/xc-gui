@@ -492,6 +492,14 @@ void Graph::createModel(QString model)
     dsp_buffer_set(stream->buf, stream->len, 0xff);
 }
 
+void Graph::paint3d()
+{
+    if(mode != HolographIQ && mode != HolographII)
+    {
+    }
+    update(rect());
+}
+
 void Graph::paint()
 {
     if(mode == HolographIQ || mode == HolographII)

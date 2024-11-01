@@ -497,7 +497,7 @@ void Polytope::plot(bool success, double o, double s)
         getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, x_offset, 1.0, y_offset);
     getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100, getSpectrum()->getHistogramStackIndexMagnitude(), getSpectrum()->getHistogramStackMagnitude(), getSpectrum()->getHistogramMagnitude());
     getSpectrum()->buildHistogram(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getStream()->phase, 100, getSpectrum()->getHistogramStackIndexPhase(), getSpectrum()->getHistogramStackPhase(), getSpectrum()->getHistogramPhase());
-    getGraph()->paint();
+    getGraph()->paint3d();
     gethistogram()->paint();
 }
 
