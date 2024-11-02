@@ -27,6 +27,7 @@
 #include "ui_inputs.h"
 #include <cfloat>
 #include <QTextFormat>
+#include <Qt3DExtras/Qt3DWindow>
 #include "ahp_xc.h"
 #include "mainwindow.h"
 
@@ -38,6 +39,12 @@ Graph::Graph(QSettings *s, QWidget *parent, QString n) :
     setAccessibleName("Graph");
     chart = new QChart();
     name = n;
+    Qt3DExtras::Qt3DWindow *view3d = new Qt3DExtras::Qt3DWindow();
+    view3d->defaultFrameGraph()->setClearColor(QColor(QRgb(0x4d4d4f)));
+    scene3d = QWidget::createWindowContainer(view, this);
+    QSize screenSize = view->screen()->size();
+    scene3d->setVisible(false);
+
     chart->setVisible(true);
     chart->createDefaultAxes();
     chart->legend()->hide();

@@ -279,6 +279,7 @@ class Graph : public QWidget
         }
 
     private:
+        QWidget scene3d;
         QMap<QString, lineAxis *> *Values;
         QLogValueAxis *logaxis_x;
         QLogValueAxis *logaxis_y;
