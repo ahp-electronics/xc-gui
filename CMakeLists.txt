@@ -30,7 +30,7 @@ set(AHP_XC_GUI_VERSION "${AHP_XC_GUI_VERSION_MAJOR}.${AHP_XC_GUI_VERSION_MINOR}.
 #endif()
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 
-find_package(Qt5 COMPONENTS Widgets Network SerialPort Charts Network REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Network SerialPort Charts Network 3DCore 3DExtras REQUIRED)
 find_package(Threads REQUIRED)
 find_package(AHPXC REQUIRED)
 find_package(AHPGT REQUIRED)
@@ -111,7 +111,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
-target_link_libraries(ahp-xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(ahp-xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network Qt5::Core Qt5::3DExtras)
 target_link_libraries(ahp-xc-gui PRIVATE ${URJTAG_LIBRARIES})
 target_link_libraries(ahp-xc-gui PRIVATE ${USB_LIBRARIES})
 target_link_libraries(ahp-xc-gui PRIVATE ${USB1_LIBRARIES})
