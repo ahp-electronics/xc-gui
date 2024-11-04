@@ -1,4 +1,4 @@
-# XC Quantum correlators test application
+# XC Intensity correlators test application
 
 Driver library: https://github.com/ahp-electronics/libahp-xc
 
