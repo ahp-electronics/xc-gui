@@ -362,7 +362,6 @@ void Line::Initialize()
     ui->RailMotorIndex->setValue(readInt("RailMotorIndex", getLineIndex() * 2 + 2));
 
     ui->Active->setChecked(readBool("scan", false));
-    ui->z_location->setValue(readDouble("location_z", 0.0) * 1000);
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
@@ -431,6 +430,14 @@ void Line::updateLocation()
                 getLocation()->xyz.y = y;
             } else if(xyz_locations.count() > 0)
                 getLocation()->xyz.y = xyz_locations[current_location].xyz.y;
+            if(ahp_gt_is_axis_moving(2)) {
+                double z = ahp_gt_get_position(2, nullptr);
+                z *= ahp_gt_get_totalsteps(2);
+                z /= M_PI * 2;
+                z /= 1000.0;
+                getLocation()->xyz.z = z;
+            } else if(xyz_locations.count() > 0)
+                getLocation()->xyz.z = xyz_locations[current_location].xyz.z;
         }
     } else
         dsp_buffer_copy(xyz_locations[current_location].coordinates, getLocation()->coordinates, 3);
@@ -446,17 +453,20 @@ void Line::setLocation(int value)
             bool update_location = false;
             update_location |= (targetLocation()->xyz.x != xyz_locations[current_location].xyz.x);
             update_location |= (targetLocation()->xyz.y != xyz_locations[current_location].xyz.y);
+            update_location |= (targetLocation()->xyz.z != xyz_locations[current_location].xyz.z);
             update_location |= (targetLocation()->xyz.x == getLocation()->xyz.x);
             update_location |= (targetLocation()->xyz.y == getLocation()->xyz.y);
+            update_location |= (targetLocation()->xyz.z == getLocation()->xyz.z);
             targetLocation()->xyz.x = xyz_locations[current_location].xyz.x;
             targetLocation()->xyz.y = xyz_locations[current_location].xyz.y;
-            targetLocation()->xyz.z = (double)ui->z_location->value() / 1000.0;
+            targetLocation()->xyz.z = xyz_locations[current_location].xyz.z;
             if(update_location) {
                 if(ahp_gt_is_connected()) {
                     if(ahp_gt_is_detected(getRailIndex())) {
                         ahp_gt_select_device(getRailIndex());
                         ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(0), M_PI * 2 * 800.0 / SIDEREAL_DAY);
                         ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(1), M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(2, xyz_locations[current_location].xyz.z*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(2), M_PI * 2 * 800.0 / SIDEREAL_DAY);
                     }
                 }
             }
@@ -553,6 +563,7 @@ bool Line::isRailBusy()
             if(ahp_gt_is_detected(getRailIndex())) {
                 bool busy = ahp_gt_is_axis_moving(0);
                 busy |= ahp_gt_is_axis_moving(1);
+                busy |= ahp_gt_is_axis_moving(2);
                 return busy;
             }
         }
@@ -629,6 +640,7 @@ void Line::haltMotors() {
             ahp_gt_set_address(getRailIndex());
             ahp_gt_stop_motion(0, 1);
             ahp_gt_stop_motion(1, 1);
+            ahp_gt_stop_motion(2, 1);
             Line::motor_unlock();
         }
     }
@@ -871,12 +883,10 @@ void Line::LoadPositionChart()
                 QStringList xyz = location.split(",");
                 if(xyz.count() < 2)
                     xyz = location.split(";");
-                if(xyz.length() > 1) {
+                if(xyz.length() > 2) {
                     double x = atof(xyz[0].toStdString().c_str());
                     double y = atof(xyz[1].toStdString().c_str());
-                    double z = (double)ui->z_location->value() / 1000.0;
-                    if(xyz.length() > 2)
-                        z = atof(xyz[2].toStdString().c_str());
+                    double z = atof(xyz[2].toStdString().c_str());
                     dsp_location dsp_xyz;
                     dsp_xyz.xyz.x = x;
                     dsp_xyz.xyz.y = y;
