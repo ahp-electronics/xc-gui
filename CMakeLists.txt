@@ -37,7 +37,6 @@ find_package(AHPGT REQUIRED)
 find_package(VLBI REQUIRED)
 find_package(DSP REQUIRED)
 find_package(FFTW3 REQUIRED)
-find_package(M REQUIRED)
 find_package(URJTAG REQUIRED)
 
 include_directories(${CMAKE_INCLUDE_PATH})
@@ -105,7 +104,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
-target_link_libraries(ahp-xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${M_LIB} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network Qt5::Core Qt5::3DExtras)
+target_link_libraries(ahp-xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network Qt5::Core Qt5::3DExtras)
 target_link_libraries(ahp-xc-gui PRIVATE ${URJTAG_LIBRARIES})
 
 install(TARGETS ahp-xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
