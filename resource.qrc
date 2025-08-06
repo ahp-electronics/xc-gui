@@ -2,4 +2,14 @@
     <qresource prefix="/icons">
         <file>icon.ico</file>
     </qresource>
+    <qresource prefix="/data">
+        <file>xc32.json</file>
+        <file>xc24.json</file>
+        <file>xc22.json</file>
+        <file>xc20.json</file>
+        <file>xc18.json</file>
+        <file>xc16.json</file>
+        <file>xc14.json</file>
+        <file>xc12.json</file>
+    </qresource>
 </RCC>

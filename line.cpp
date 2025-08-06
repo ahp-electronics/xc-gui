@@ -414,25 +414,25 @@ void Line::updateLocation()
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getRailIndex())) {
             ahp_gt_select_device(getRailIndex());
-            if(ahp_gt_is_axis_moving(0)) {
-                double x = ahp_gt_get_position(0, nullptr);
-                x *= ahp_gt_get_totalsteps(0);
+            if(ahp_gt_is_axis_moving(RailX)) {
+                double x = ahp_gt_get_position(RailX, nullptr);
+                x *= ahp_gt_get_totalsteps(RailX);
                 x /= M_PI * 2;
                 x /= 1000.0;
                 getLocation()->xyz.x = x;
             } else if(xyz_locations.count() > 0)
                 getLocation()->xyz.x = xyz_locations[current_location].xyz.x;
-            if(ahp_gt_is_axis_moving(1)) {
-                double y = ahp_gt_get_position(1, nullptr);
-                y *= ahp_gt_get_totalsteps(1);
+            if(ahp_gt_is_axis_moving(RailY)) {
+                double y = ahp_gt_get_position(RailY, nullptr);
+                y *= ahp_gt_get_totalsteps(RailY);
                 y /= M_PI * 2;
                 y /= 1000.0;
                 getLocation()->xyz.y = y;
             } else if(xyz_locations.count() > 0)
                 getLocation()->xyz.y = xyz_locations[current_location].xyz.y;
-            if(ahp_gt_is_axis_moving(2)) {
-                double z = ahp_gt_get_position(2, nullptr);
-                z *= ahp_gt_get_totalsteps(2);
+            if(ahp_gt_is_axis_moving(RailZ)) {
+                double z = ahp_gt_get_position(RailZ, nullptr);
+                z *= ahp_gt_get_totalsteps(RailZ);
                 z /= M_PI * 2;
                 z /= 1000.0;
                 getLocation()->xyz.z = z;
@@ -464,9 +464,9 @@ void Line::setLocation(int value)
                 if(ahp_gt_is_connected()) {
                     if(ahp_gt_is_detected(getRailIndex())) {
                         ahp_gt_select_device(getRailIndex());
-                        ahp_gt_goto_absolute(0, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(0), M_PI * 2 * 800.0 / SIDEREAL_DAY);
-                        ahp_gt_goto_absolute(1, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(1), M_PI * 2 * 800.0 / SIDEREAL_DAY);
-                        ahp_gt_goto_absolute(2, xyz_locations[current_location].xyz.z*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(2), M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(RailX, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(RailX), M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(RailY, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(RailY), M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(RailZ, xyz_locations[current_location].xyz.z*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(RailZ), M_PI * 2 * 800.0 / SIDEREAL_DAY);
                     }
                 }
             }
@@ -561,9 +561,9 @@ bool Line::isRailBusy()
     {
         if(ahp_gt_is_connected()) {
             if(ahp_gt_is_detected(getRailIndex())) {
-                bool busy = ahp_gt_is_axis_moving(0);
-                busy |= ahp_gt_is_axis_moving(1);
-                busy |= ahp_gt_is_axis_moving(2);
+                bool busy = ahp_gt_is_axis_moving(RailX);
+                busy |= ahp_gt_is_axis_moving(RailY);
+                busy |= ahp_gt_is_axis_moving(RailZ);
                 return busy;
             }
         }
@@ -577,8 +577,8 @@ bool Line::isMountBusy()
     {
         if(ahp_gt_is_connected()) {
             if(ahp_gt_is_detected(getMountIndex())) {
-                bool busy = ahp_gt_is_axis_moving(0);
-                busy |= ahp_gt_is_axis_moving(1);
+                bool busy = ahp_gt_is_axis_moving(Ra);
+                busy |= ahp_gt_is_axis_moving(Dec);
                 return busy;
             }
         }
@@ -600,8 +600,8 @@ void Line::startTracking() {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getMountIndex())) {
             Line::motor_lock();
-            ahp_gt_set_address(getMountIndex());
-            ahp_gt_stop_motion(0, 1);
+            ahp_gt_select_device(getMountIndex());
+            ahp_gt_stop_motion(Ra, 1);
             ahp_gt_start_tracking(0);
             Line::motor_unlock();
         }
@@ -612,14 +612,14 @@ void Line::startSlewing(double ra_rate, double dec_rate) {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getMountIndex())) {
             Line::motor_lock();
-            ahp_gt_set_address(getMountIndex());
+            ahp_gt_select_device(getMountIndex());
             if(ra_rate != 0.0) {
-                ahp_gt_stop_motion(0, 1);
-                ahp_gt_start_motion(0, ra_rate * M_PI * 2 / SIDEREAL_DAY);
+                ahp_gt_stop_motion(Ra, 1);
+                ahp_gt_start_motion(Ra, ra_rate * M_PI * 2 / SIDEREAL_DAY);
             }
             if(dec_rate != 0.0) {
-                ahp_gt_stop_motion(1, 1);
-                ahp_gt_start_motion(1, dec_rate * M_PI * 2 / SIDEREAL_DAY);
+                ahp_gt_stop_motion(Dec, 1);
+                ahp_gt_start_motion(Dec, dec_rate * M_PI * 2 / SIDEREAL_DAY);
             }
             Line::motor_unlock();
         }
@@ -630,17 +630,17 @@ void Line::haltMotors() {
     if(ahp_gt_is_connected()) {
         if(ahp_gt_is_detected(getMountIndex())) {
             Line::motor_lock();
-            ahp_gt_set_address(getMountIndex());
-            ahp_gt_stop_motion(0, 1);
-            ahp_gt_stop_motion(1, 1);
+            ahp_gt_select_device(getMountIndex());
+            ahp_gt_stop_motion(Ra, 1);
+            ahp_gt_stop_motion(Dec, 1);
             Line::motor_unlock();
         }
         if(ahp_gt_is_detected(getRailIndex())) {
             Line::motor_lock();
-            ahp_gt_set_address(getRailIndex());
-            ahp_gt_stop_motion(0, 1);
-            ahp_gt_stop_motion(1, 1);
-            ahp_gt_stop_motion(2, 1);
+            ahp_gt_select_device(getRailIndex());
+            ahp_gt_stop_motion(RailX, 1);
+            ahp_gt_stop_motion(RailY, 1);
+            ahp_gt_stop_motion(RailZ, 1);
             Line::motor_unlock();
         }
     }

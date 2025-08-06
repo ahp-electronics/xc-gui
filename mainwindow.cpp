@@ -237,8 +237,12 @@ MainWindow::MainWindow(QWidget *parent)
             ui->MotorPort->addItem(portname);
     }
     QStringList firmwares = CheckFirmware(url+"xc*");
-    for (QString fw : firmwares)
-        ui->firmware->addItem(fw.replace("firmware/", "").replace("-firmware.bin", ""));
+    if(firmwares.count() > 0) {
+        ui->firmware->clear();
+        ui->firmware->addItem("current");
+        for (QString fw : firmwares)
+            ui->firmware->addItem(fw.replace("firmware/", "").replace("-firmware.bin", ""));
+    }
     if(ui->XCPort->itemText(0) != "no connection")
         ui->XCPort->addItem("no connection");
     if(ui->MotorPort->itemText(0) != "no connection")
@@ -356,6 +360,20 @@ MainWindow::MainWindow(QWidget *parent)
             ui->XCPort->setEnabled(false);
             if(DownloadFirmware(url+"/"+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
                 has_svf_firmware = true;
+            else {
+                QFile f(svf_filename);
+                QFile s(":/data/"+ui->firmware->currentText()+".json");
+                QJsonDocument doc = QJsonDocument::fromJson(s.readAll());
+                QJsonObject obj = doc.object();
+                QString base64 = obj["data"].toString();
+                if(base64.isNull() || base64.isEmpty()) {
+                    has_svf_firmware = false;
+                } else
+                    f.write(QByteArray::fromBase64(base64.toUtf8()));
+                s.close();
+                f.close();
+                has_svf_firmware = true;
+            }
             if(has_svf_firmware) {
                 QString bsdl_path = homedir;
                 QFile file(svf_filename);

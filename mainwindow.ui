@@ -299,6 +299,46 @@
       <string>current</string>
      </property>
     </item>
+    <item>
+     <property name="text">
+      <string>xc12</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc14</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc16</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc18</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc20</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc22</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc24</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc32</string>
+     </property>
+    </item>
    </widget>
    <widget class="QLabel" name="label_3">
     <property name="geometry">
