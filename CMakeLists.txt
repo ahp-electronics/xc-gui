@@ -100,6 +100,7 @@ else(ANDROID)
     endif(WIN32)
 endif(ANDROID)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/brew.sh.cmake ${CMAKE_CURRENT_BINARY_DIR}/brew.sh )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/icon.ico COPYONLY )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
