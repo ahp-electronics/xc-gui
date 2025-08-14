@@ -26,6 +26,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <limits>
 #include <cmath>
 #include <ctime>
 #include <cstring>
