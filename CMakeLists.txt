@@ -30,7 +30,7 @@ set(AHP_XC_GUI_VERSION "${AHP_XC_GUI_VERSION_MAJOR}.${AHP_XC_GUI_VERSION_MINOR}.
 #endif()
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 
-find_package(Qt5 COMPONENTS Widgets Network SerialPort Charts Network 3DCore 3DExtras REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Network SerialPort Charts Network REQUIRED)
 find_package(Threads REQUIRED)
 find_package(AHPXC REQUIRED)
 find_package(AHPGT REQUIRED)
@@ -38,6 +38,7 @@ find_package(VLBI REQUIRED)
 find_package(DSP REQUIRED)
 find_package(FFTW3 REQUIRED)
 find_package(URJTAG REQUIRED)
+find_package(USB1 REQUIRED)
 
 include_directories(${CMAKE_INCLUDE_PATH})
 include_directories(${URJTAG_INCLUDE_DIR})
@@ -46,6 +47,7 @@ include_directories(${VLBI_INCLUDE_DIR})
 include_directories(${AHP_GT_INCLUDE_DIR})
 include_directories(${AHP_XC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
+include_directories(${USB1_INCLUDE_DIR})
 
 if(ANDROID)
     add_library(ahp-xc-gui SHARED
@@ -105,7 +107,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
-target_link_libraries(ahp-xc-gui PRIVATE ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network Qt5::Core Qt5::3DExtras)
+target_link_libraries(ahp-xc-gui PRIVATE ${USB1_LIBRARIES}  ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 target_link_libraries(ahp-xc-gui PRIVATE ${URJTAG_LIBRARIES})
 
 install(TARGETS ahp-xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
