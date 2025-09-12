@@ -68,7 +68,7 @@ static int32_t reset_by_vid_pid(int vid, int pid)
 
 static int32_t flash_svf(int32_t fd, const char *bsdl_path)
 {
-    return program_jtag(fd, "FT2232", nullptr, bsdl_path, 12000000, 0);
+    return program_jtag(fd, "FT2232", bsdl_path, 12000000, 0);
 }
 
 static char *strrand(int len)
@@ -119,8 +119,9 @@ ck_end:
 bool MainWindow::DownloadFirmware(QString url, QString svf, QString bsdl, QSettings *settings, int timeout_ms)
 {
     QByteArray bin;
+    url+="&download=on";
     QNetworkAccessManager* manager = new QNetworkAccessManager();
-    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url+"&download=on")));
+    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url)));
     QTimer timer;
     timer.setSingleShot(true);
     QEventLoop loop;
@@ -354,43 +355,42 @@ MainWindow::MainWindow(QWidget *parent)
         motorport = ui->MotorPort->currentText();
         settings->beginGroup("Connection");
 
-        if(ui->firmware->currentIndex() > 0) {
-            ui->firmware->setEnabled(false);
-            ui->Connect->setEnabled(false);
-            ui->XCPort->setEnabled(false);
-            if(DownloadFirmware(url+"/"+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
-                has_svf_firmware = true;
-            else {
-                QFile f(svf_filename);
-                QFile s(":/data/"+ui->firmware->currentText()+".json");
-                QJsonDocument doc = QJsonDocument::fromJson(s.readAll());
-                QJsonObject obj = doc.object();
-                QString base64 = obj["data"].toString();
-                if(base64.isNull() || base64.isEmpty()) {
-                    has_svf_firmware = false;
-                } else
-                    f.write(QByteArray::fromBase64(base64.toUtf8()));
-                s.close();
-                f.close();
-                has_svf_firmware = true;
-            }
-            if(has_svf_firmware) {
-                QString bsdl_path = homedir;
-                QFile file(svf_filename);
-                file.open(QIODevice::ReadOnly);
-                int maxerr = 10;
-                int err = 1;
-                while (maxerr-- > 0 && err != 0)
-                    err = flash_svf(file.handle(), bsdl_filename.toUtf8());
-                if(!err)
-                    reset_by_vid_pid(0x0403, 0x6014);
-                file.close();
-                ui->firmware->setEnabled(true);
-                ui->Connect->setEnabled(true);
-                ui->XCPort->setEnabled(true);
-                if(err) return;
-                ui->firmware->setCurrentIndex(0);
-            }
+        ui->firmware->setEnabled(false);
+        ui->Connect->setEnabled(false);
+        ui->XCPort->setEnabled(false);
+        if(DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
+            has_svf_firmware = true;
+        else {
+            QFile f(svf_filename);
+            f.open(QIODevice::ReadWrite);
+            QFile s(":/data/"+ui->firmware->currentText()+".json");
+            s.open(QIODevice::ReadOnly);
+            QJsonDocument doc = QJsonDocument::fromJson(s.readAll());
+            QJsonObject obj = doc.object();
+            QString base64 = obj["data"].toString();
+            if(base64.isNull() || base64.isEmpty()) {
+                has_svf_firmware = false;
+            } else
+                f.write(QByteArray::fromBase64(base64.toUtf8()));
+            s.close();
+            f.close();
+            has_svf_firmware = true;
+        }
+        if(has_svf_firmware) {
+            QString bsdl_path = homedir;
+            QFile file(svf_filename);
+            file.open(QIODevice::ReadOnly);
+            int maxerr = 10;
+            int err = 1;
+            while (maxerr-- > 0 && err != 0)
+                err = flash_svf(file.handle(), nullptr);
+            if(!err)
+                reset_by_vid_pid(0x0403, 0x6014);
+            file.close();
+            ui->firmware->setEnabled(true);
+            ui->Connect->setEnabled(true);
+            ui->XCPort->setEnabled(true);
+            if(err) return;
         }
         xcFD = -1;
         xc_local_port = false;

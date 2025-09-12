@@ -296,11 +296,6 @@
     </property>
     <item>
      <property name="text">
-      <string>current</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
       <string>xc12</string>
      </property>
     </item>
@@ -360,7 +355,7 @@
      <x>0</x>
      <y>0</y>
      <width>1105</width>
-     <height>22</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>
