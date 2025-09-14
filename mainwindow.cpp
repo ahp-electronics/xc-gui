@@ -66,9 +66,10 @@ static int32_t reset_by_vid_pid(int vid, int pid)
     return rc;
 }
 
-static int32_t flash_svf(int32_t fd, const char *bsdl_path)
+static int32_t flash_svf(QString svf, QString bsdl)
 {
-    return program_jtag(fd, "FT2232", bsdl_path, 12000000, 0);
+    QString cmd = "echo 'cable FT2232\nbsdl"+bsdl+"\ndetect\nfrequency "+QString::number(12000000)+"\nsvf "+svf+"'|jtag";
+    return system(cmd.toStdString().c_str());
 }
 
 static char *strrand(int len)
@@ -363,30 +364,33 @@ MainWindow::MainWindow(QWidget *parent)
         else {
             QFile f(svf_filename);
             f.open(QIODevice::ReadWrite);
-            QFile s(":/data/"+ui->firmware->currentText()+".json");
-            s.open(QIODevice::ReadOnly);
-            QJsonDocument doc = QJsonDocument::fromJson(s.readAll());
-            QJsonObject obj = doc.object();
-            QString base64 = obj["data"].toString();
-            if(base64.isNull() || base64.isEmpty()) {
-                has_svf_firmware = false;
-            } else
-                f.write(QByteArray::fromBase64(base64.toUtf8()));
-            s.close();
-            f.close();
-            has_svf_firmware = true;
+            if(f.isOpen()) {
+                QFile s(":/data/"+ui->firmware->currentText()+".json");
+                s.open(QIODevice::ReadOnly);
+                if(s.isOpen()) {
+                    QJsonDocument doc = QJsonDocument::fromJson(s.readAll());
+                    QJsonObject obj = doc.object();
+                    QString base64 = obj["data"].toString();
+                    if(base64.isNull() || base64.isEmpty()) {
+                        has_svf_firmware = false;
+                    } else {
+                        has_svf_firmware = true;
+                        f.write(QByteArray::fromBase64(base64.toUtf8()));
+                    }
+                    s.close();
+                }
+                f.close();
+            }
         }
         if(has_svf_firmware) {
-            QString bsdl_path = homedir;
-            QFile file(svf_filename);
-            file.open(QIODevice::ReadOnly);
             int maxerr = 10;
             int err = 1;
             while (maxerr-- > 0 && err != 0)
-                err = flash_svf(file.handle(), nullptr);
-            if(!err)
+                err = flash_svf(svf_filename, bsdl_filename);
+            if(!err) {
                 reset_by_vid_pid(0x0403, 0x6014);
-            file.close();
+                ui->firmware->setCurrentIndex(0);
+            }
             ui->firmware->setEnabled(true);
             ui->Connect->setEnabled(true);
             ui->XCPort->setEnabled(true);
