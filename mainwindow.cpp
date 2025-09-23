@@ -68,7 +68,7 @@ static int32_t reset_by_vid_pid(int vid, int pid)
 
 static int32_t flash_svf(QString svf, QString bsdl)
 {
-    QString cmd = "echo 'cable FT2232\nbsdl"+bsdl+"\ndetect\nfrequency "+QString::number(12000000)+"\nsvf "+svf+"'|jtag";
+    QString cmd = "echo 'cable FT2232\nbsdl path "+bsdl+"\ndetect\nfrequency "+QString::number(12000000)+"\nsvf "+svf+"'|jtag";
     return system(cmd.toStdString().c_str());
 }
 
