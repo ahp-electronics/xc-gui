@@ -11,5 +11,11 @@
         <file>xc16.json</file>
         <file>xc14.json</file>
         <file>xc12.json</file>
+        <file>xc10.json</file>
+        <file>xc8.json</file>
+        <file>xc6.json</file>
+        <file>xc4.json</file>
+        <file>xc2.json</file>
+        <file>xc1.json</file>
     </qresource>
 </RCC>
