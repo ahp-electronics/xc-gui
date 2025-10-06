@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(AHP_XC_GUI_VERSION_MAJOR 1)
 set(AHP_XC_GUI_VERSION_MINOR 3)
-set(AHP_XC_GUI_VERSION_RELEASE 2)
+set(AHP_XC_GUI_VERSION_RELEASE 3)
 set(AHP_XC_GUI_VERSION "${AHP_XC_GUI_VERSION_MAJOR}.${AHP_XC_GUI_VERSION_MINOR}.${AHP_XC_GUI_VERSION_RELEASE}")
 
 # QtCreator supports the following variables for Android, which are identical to qmake Android variables.

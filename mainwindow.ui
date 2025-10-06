@@ -199,44 +199,6 @@
      <bool>true</bool>
     </property>
    </widget>
-   <widget class="QSlider" name="Voltage">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>340</x>
-      <y>50</y>
-      <width>141</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="maximum">
-     <number>255</number>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Horizontal</enum>
-    </property>
-    <property name="tickPosition">
-     <enum>QSlider::TicksBelow</enum>
-    </property>
-    <property name="tickInterval">
-     <number>16</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="voltageLabel">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>50</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Voltage:</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="Run">
     <property name="enabled">
      <bool>false</bool>
@@ -296,7 +258,32 @@
     </property>
     <item>
      <property name="text">
-      <string>current</string>
+      <string>xc1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc2</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc4</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc6</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc8</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>xc10</string>
      </property>
     </item>
     <item>
@@ -351,6 +338,19 @@
     </property>
     <property name="text">
      <string>Firmware:</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="extclock">
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>50</y>
+      <width>251</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>External 10MHz reference clock</string>
     </property>
    </widget>
   </widget>

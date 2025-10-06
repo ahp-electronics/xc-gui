@@ -207,6 +207,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 50, 50, "uiThread");
+    sendThread = new Thread(this, 1, 100, "sendThread");
     readThread = new Thread(this, 1, 1, "readThread");
     vlbiThread = new Thread(this, 500, 500, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
@@ -226,7 +227,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->XCPort->addItem(settings->value("xc_connection", "no connection").toString());
     ui->MotorPort->clear();
     ui->MotorPort->addItem(settings->value("motor_connection", "no connection").toString());
-    QList<QSerialPortInfo> devices = QSerialPortInfo::availablePorts();
     settings->endGroup();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (int i = 0; i < ports.length(); i++)
@@ -241,10 +241,10 @@ MainWindow::MainWindow(QWidget *parent)
     QStringList firmwares = CheckFirmware(url+"xc*");
     if(firmwares.count() > 0) {
         ui->firmware->clear();
-        ui->firmware->addItem("current");
         for (QString fw : firmwares)
             ui->firmware->addItem(fw.replace("firmware/", "").replace("-firmware.bin", ""));
     }
+    ui->firmware->setCurrentText(settings->value("firmware", "xc2").toString());
     if(ui->XCPort->itemText(0) != "no connection")
         ui->XCPort->addItem("no connection");
     if(ui->MotorPort->itemText(0) != "no connection")
@@ -268,18 +268,21 @@ MainWindow::MainWindow(QWidget *parent)
                 line->setTimeRange(TimeRange);
 
     });
+    connect(ui->extclock, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
+            [ = ](bool checked)
+            {
+                settings->setValue("extclock", checked);
+                ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags()&~CAP_EXT_CLK));
+                if(ui->extclock->isChecked())
+                    ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags()|CAP_EXT_CLK));
+            });
     connect(ui->Order, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [ = ](int value)
-    {
-        settings->setValue("Order", value);
-        Order = ui->Order->value();
-        updateOrder();
-    });
-    connect(ui->Voltage, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged),
-            [ = ](int value)
-    {
-        settings->setValue("Voltage", value);
-    });
+            {
+                settings->setValue("Order", value);
+                Order = ui->Order->value();
+                setOrder();
+            });
     connect(ui->Disconnect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked),
             [ = ](bool checked)
     {
@@ -336,7 +339,6 @@ MainWindow::MainWindow(QWidget *parent)
         settings->endGroup();
         ui->Connect->setEnabled(true);
         ui->Run->setEnabled(false);
-        ui->Voltage->setEnabled(false);
         ui->Disconnect->setEnabled(false);
         ui->Range->setEnabled(false);
         ui->Order->setEnabled(false);
@@ -344,6 +346,11 @@ MainWindow::MainWindow(QWidget *parent)
         getGraph()->clearSeries();
         getHistogram()->clearSeries();
         connected = false;
+    });
+    connect(ui->firmware, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            [ = ](int index)
+    {
+        settings->setValue("firmware", ui->firmware->currentText());
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this,
             [ = ](bool checked)
@@ -359,6 +366,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->firmware->setEnabled(false);
         ui->Connect->setEnabled(false);
         ui->XCPort->setEnabled(false);
+        has_svf_firmware = false;
         if(DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
             has_svf_firmware = true;
         else {
@@ -389,7 +397,6 @@ MainWindow::MainWindow(QWidget *parent)
                 err = flash_svf(svf_filename, bsdl_filename);
             if(!err) {
                 reset_by_vid_pid(0x0403, 0x6014);
-                ui->firmware->setCurrentIndex(0);
             }
             ui->firmware->setEnabled(true);
             ui->Connect->setEnabled(true);
@@ -417,13 +424,7 @@ MainWindow::MainWindow(QWidget *parent)
             else
             {
                 xc_local_port = true;
-                ahp_xc_connect((
-#ifndef WINDOWS
-    "/dev/"
-#else
-    "\\\\.\\"
-#endif
-                        +xcport).toUtf8());
+                ahp_xc_connect(xcport.toUtf8());
                 xcFD = ahp_xc_get_fd();
             }
             if(ahp_xc_is_detected())
@@ -475,7 +476,7 @@ MainWindow::MainWindow(QWidget *parent)
                     context[i] = vlbi_init();
                 }
                 connected = true;
-                updateOrder();
+                setOrder();
                 settings->setValue("xc_connection", xcport);
                 QString header = ahp_xc_get_header();
                 QString devices = settings->value("devices", "").toString();
@@ -509,7 +510,7 @@ MainWindow::MainWindow(QWidget *parent)
                     });
                     connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanged),
                             [ = ](Line* line) {
-                        updateOrder();
+                        setOrder();
                     });
                     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
                     {
@@ -586,16 +587,17 @@ MainWindow::MainWindow(QWidget *parent)
                 Order = settings->value("Order", 2).toInt();
                 ui->Order->setEnabled(true);
                 ui->Connect->setEnabled(false);
-                ui->Voltage->setEnabled(ahp_xc_has_leds());
                 ui->Run->setEnabled(true);
                 ui->Disconnect->setEnabled(true);
                 ui->Range->setValue(settings->value("Timerange", 0).toInt());
                 ui->Range->setEnabled(true);
                 ui->Mode->setEnabled(true);
-                ui->Voltage->setValue(settings->value("Voltage", 0).toInt());
+                if(xc_local_port)
+                    ahp_xc_set_baudrate(R_BASEX16);
                 setMode(Counter);
             } else {
 err_exit:
+                sleep(1);
                 ahp_xc_disconnect();
                 return;
             }
@@ -655,6 +657,31 @@ err_exit:
     });
     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
     {
+    });
+    connect(sendThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
+    {
+        if(threadsStopped)
+            goto end_unlock;
+        switch (getMode())
+        {
+            case HolographII:
+            case HolographIQ:
+                setRa(getRa());
+                setDec(getDec());
+            case CrosscorrelatorII:
+            case CrosscorrelatorIQ:
+                setOrder();
+                break;
+            case Autocorrelator:
+                break;
+            case Counter:
+                break;
+            default:
+                break;
+        }
+            setMotorHandle(motorFD);
+        end_unlock:
+            thread->unlock();
     });
     connect(readThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
     {
@@ -765,8 +792,6 @@ err_exit:
                 }
                 statusBar()->showMessage(line, 1000);
             }
-            ui->voltageLabel->setText("Voltage: " + QString::number(currentVoltage * 100 / 255) + " %");
-            ui->voltageLabel->update(ui->voltageLabel->rect());
         }
         emit repaint();
         thread->unlock();
@@ -816,7 +841,6 @@ err_exit:
     {
         MainWindow* main = (MainWindow*)thread->getParent();
         int fd = -1;
-        setVoltage(ui->Voltage->value());
         fd = main->getMotorFD();
         if(fd >= 0)
         {
@@ -847,6 +871,7 @@ void MainWindow::startThreads()
 {
     uiThread->start();
     readThread->start();
+    sendThread->start();
     motorThread->start();
 }
 
@@ -857,6 +882,7 @@ void MainWindow::stopThreads()
     for(int l = 0; l < Lines.count(); l++)
         Lines[l]->Stop();
     uiThread->stop();
+    sendThread->stop();
     readThread->stop();
     motorThread->stop();
 }
@@ -869,6 +895,7 @@ void MainWindow::runClicked(bool checked)
     {
         ui->Run->setText("Stop");
         resetTimestamp();
+        ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() & ~(CAP_ENABLE)));
         if(getMode() != Autocorrelator && getMode() != CrosscorrelatorII && getMode() != CrosscorrelatorIQ)
             ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags() | CAP_ENABLE));
         if(getMode() == HolographIQ || getMode() == HolographII) {
@@ -924,7 +951,7 @@ void MainWindow::resetTimestamp()
     lastpackettime = J2000_starttime;
 }
 
-void MainWindow::updateOrder()
+void MainWindow::setOrder()
 {
     int max_order = 0;
     for(int x = 0; x < Lines.count(); x++) {
@@ -964,10 +991,12 @@ MainWindow::~MainWindow()
 {
     uiThread->stop();
     vlbiThread->stop();
+    sendThread->stop();
     readThread->stop();
     motorThread->stop();
     uiThread->wait();
     vlbiThread->wait();
+    sendThread->wait();
     readThread->wait();
     motorThread->wait();
     if(connected)

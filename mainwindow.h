@@ -191,13 +191,14 @@ class MainWindow : public QMainWindow
                 startThreads();
             }
         }
-        void updateOrder();
+        void setOrder();
         void runClicked(bool checked);
         void setVoltage(int level);
         void resetTimestamp();
         void VlbiThread(Thread * thread);
         QDateTime start;
         QQueue <ahp_xc_packet*> packetFifo;
+        Thread *sendThread;
         Thread *readThread;
         Thread *uiThread;
         Thread *vlbiThread;
@@ -312,6 +313,7 @@ signals:
         QList<double> position_multipliers;
         QList<int> gt_addresses;
 
+        void sendThreadCallback(Thread* sender);
         void readThreadCallback(Thread* sender);
         void uiThreadCallback(Thread* sender);
         void vlbiThreadCallback(Thread* sender);
