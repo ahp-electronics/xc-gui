@@ -464,9 +464,9 @@ void Line::setLocation(int value)
                 if(ahp_gt_is_connected()) {
                     if(ahp_gt_is_detected(getRailIndex())) {
                         ahp_gt_select_device(getRailIndex());
-                        ahp_gt_goto_absolute(RailX, xyz_locations[current_location].xyz.x*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(RailX), M_PI * 2 * 800.0 / SIDEREAL_DAY);
-                        ahp_gt_goto_absolute(RailY, xyz_locations[current_location].xyz.y*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(RailY), M_PI * 2 * 800.0 / SIDEREAL_DAY);
-                        ahp_gt_goto_absolute(RailZ, xyz_locations[current_location].xyz.z*1000.0*2.0*M_PI/ahp_gt_get_totalsteps(RailZ), M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(RailX, xyz_locations[current_location].xyz.x*2.0*M_PI/ahp_gt_get_totalsteps(RailX)/1000, M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(RailY, xyz_locations[current_location].xyz.y*2.0*M_PI/ahp_gt_get_totalsteps(RailY)/1000, M_PI * 2 * 800.0 / SIDEREAL_DAY);
+                        ahp_gt_goto_absolute(RailZ, xyz_locations[current_location].xyz.z*2.0*M_PI/ahp_gt_get_totalsteps(RailZ)/1000, M_PI * 2 * 800.0 / SIDEREAL_DAY);
                     }
                 }
             }

@@ -619,10 +619,10 @@ void Graph::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
     view->setGeometry(0, 0, width(), height());
     correlator->setGeometry(0, 0, width(), height());
-    int y_offset = 40;
-    infos->setGeometry(correlator->width() - infos->width() - 10, y_offset, infos->width(), infos->height());
-    int num_blocks = 4;
-    int size = (correlator->width() - infos->width() - 20 - num_blocks * 5) / num_blocks;
+    int y_offset = 20;
+    infos->setGeometry(5, y_offset, infos->width(), infos->height());
+    y_offset += infos->height() + 5;
+    int size = 256;
     int n = 0;
     coverageView->setGeometry(size * n + 5 + 5 * n, y_offset + 30, size, size);
     coverageLabel->setGeometry(coverageView->x(), y_offset, size, 30);
