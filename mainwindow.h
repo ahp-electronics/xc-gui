@@ -191,6 +191,7 @@ class MainWindow : public QMainWindow
                 startThreads();
             }
         }
+        inline int getOrder() { return ahp_xc_get_correlation_order(); }
         void setOrder();
         void runClicked(bool checked);
         void setVoltage(int level);

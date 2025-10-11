@@ -207,7 +207,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     ui->setupUi(this);
     uiThread = new Thread(this, 50, 50, "uiThread");
-    sendThread = new Thread(this, 1, 100, "sendThread");
+    sendThread = new Thread(this, 1, 1000, "sendThread");
     readThread = new Thread(this, 1, 1, "readThread");
     vlbiThread = new Thread(this, 500, 500, "vlbiThread");
     motorThread = new Thread(this, 500, 500, "motorThread");
@@ -233,7 +233,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         QString portname =
             ports[i].portName();
-        if(portname != ui->XCPort->itemText(0))
+        if(portname != ui->XCPort->itemText(0) && ports[i].vendorIdentifier() == 0x403 && ports[i].productIdentifier() == 0x6014)
             ui->XCPort->addItem(portname);
         if(portname != ui->MotorPort->itemText(0))
             ui->MotorPort->addItem(portname);
@@ -311,8 +311,6 @@ MainWindow::MainWindow(QWidget *parent)
         Lines.clear();
         ui->Lines->clear();
         freePacket();
-        if(xc_local_port)
-            ahp_xc_set_baudrate(R_BASE);
         ahp_xc_set_capture_flags(CAP_NONE);
         ahp_xc_disconnect();
         if(xc_socket.isOpen())
@@ -347,8 +345,14 @@ MainWindow::MainWindow(QWidget *parent)
         getHistogram()->clearSeries();
         connected = false;
     });
+    connect(ui->Baudrate, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+    [ = ](int index)
+    {
+        ahp_xc_set_baudrate((baud_rate)index);
+        settings->setValue("firmware", index);
+    });
     connect(ui->firmware, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-            [ = ](int index)
+    [ = ](int index)
     {
         settings->setValue("firmware", ui->firmware->currentText());
     });
@@ -592,8 +596,6 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->Range->setValue(settings->value("Timerange", 0).toInt());
                 ui->Range->setEnabled(true);
                 ui->Mode->setEnabled(true);
-                if(xc_local_port)
-                    ahp_xc_set_baudrate(R_BASEX16);
                 setMode(Counter);
             } else {
 err_exit:
@@ -961,6 +963,7 @@ void MainWindow::setOrder()
 
     if(max_order >= 2) {
         int order = fmax(2, fmin(max_order, Order));
+        if(getOrder() != order) return;
         for(int x = 0; x < Polytopes.count(); x++)
             Polytopes[x]->setCorrelationOrder(order);
         while(!lock_vlbi());

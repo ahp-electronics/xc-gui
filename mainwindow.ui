@@ -345,13 +345,48 @@
      <rect>
       <x>230</x>
       <y>50</y>
-      <width>251</width>
+      <width>121</width>
       <height>24</height>
      </rect>
     </property>
     <property name="text">
-     <string>External 10MHz reference clock</string>
+     <string>External clock</string>
     </property>
+   </widget>
+   <widget class="QComboBox" name="Baudrate">
+    <property name="geometry">
+     <rect>
+      <x>365</x>
+      <y>50</y>
+      <width>111</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Baudrate x1</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Baudrate x2</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Baudrate x4</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Baudrate x8</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Baudrate x16</string>
+     </property>
+    </item>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
