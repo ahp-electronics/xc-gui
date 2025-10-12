@@ -7,3 +7,4 @@ export CFLAGS := $(shell dpkg-buildflags --get CFLAGS)
 export CXXFLAGS := $(shell dpkg-buildflags --get CXXFLAGS)
 export LDFLAGS := $(shell dpkg-buildflags --get LDFLAGS)
 export DEB_DH_MAKESHLIBS_ARG=--ignore-missing-info
+export DEB_DH_SHLIBDEPS_ARGS_ALL=--dpkg-shlibdeps-params=--ignore-missing-info
