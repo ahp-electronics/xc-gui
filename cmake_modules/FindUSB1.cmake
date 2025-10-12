@@ -35,20 +35,16 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #=============================================================================
 
-find_path(USB1_INCLUDE_DIRS
+find_path(USB1_INCLUDE_DIR
   NAMES
     libusb.h
   PATH_SUFFIXES
     libusb-1.0
-  HINTS
-    ${USB1_INCLUDE_DIRS}
 )
 
-find_library(USB1_LIBRARIES
+find_library(USB1_LIBRARY
   NAMES
     usb-1.0
-  HINTS
-    ${USB1_LIBRARY_DIRS}
 )
 
 set(USB1_INCLUDE_DIRS ${USB1_INCLUDE_DIR})
