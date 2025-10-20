@@ -50,7 +50,7 @@ include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${USB1_INCLUDE_DIR})
 
 if(ANDROID)
-    add_library(ahp-xc-gui SHARED
+    add_library(xc-gui SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.h
@@ -71,7 +71,7 @@ if(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/threads.h
     )
 else(ANDROID)
-    add_executable(ahp-xc-gui
+    add_executable(xc-gui
         ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/mainwindow.h
@@ -94,11 +94,11 @@ else(ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/app.rc
     )
     if(WIN32)
-        target_link_libraries(ahp-xc-gui PRIVATE comctl32)
+        target_link_libraries(xc-gui PRIVATE comctl32)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--subsystem,windows")
         set(CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -Wl,--subsystem,windows -static-libstdc++ -static-libgcc")
-        set_target_properties(ahp-xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
+        set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
     endif(WIN32)
 endif(ANDROID)
 
@@ -107,9 +107,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
-target_link_libraries(ahp-xc-gui PRIVATE ${USB1_LIBRARIES}  ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
-target_link_libraries(ahp-xc-gui PRIVATE ${URJTAG_LIBRARIES})
+target_link_libraries(xc-gui PRIVATE ${USB1_LIBRARIES}  ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${URJTAG_LIBRARIES})
 
-install(TARGETS ahp-xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ahp-xc-gui.png DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ahp-xc-gui.desktop DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
