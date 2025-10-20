@@ -44,7 +44,7 @@ void Series::setName(QString name)
 
 void Series::addCount(double min_x, double x, double y, double mag, double phi)
 {
-    if(getSeries()->count() > 0)
+    if(getSeries()->count() >= 0)
     {
         for(int d = getSeries()->count() - 1; d >= 0; d--)
         {
@@ -54,7 +54,7 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
             }
         }
     }
-    if(getMagnitude()->count() > 0)
+    if(getMagnitude()->count() >= 0)
     {
         for(int d = getMagnitude()->count() - 1; d >= 0; d--)
         {
@@ -63,7 +63,7 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
             }
         }
     }
-    if(getPhase()->count() > 0)
+    if(getPhase()->count() >= 0)
     {
         for(int d = getPhase()->count() - 1; d >= 0; d--)
         {

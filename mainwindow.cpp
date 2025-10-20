@@ -69,7 +69,11 @@ static int32_t reset_by_vid_pid(int vid, int pid)
 static int32_t flash_svf(QString svf, QString bsdl)
 {
     QString cmd = "echo 'cable FT2232\nbsdl path "+bsdl+"\ndetect\nfrequency "+QString::number(12000000)+"\nsvf "+svf+"'|jtag";
-    return system(cmd.toStdString().c_str());
+    int err = system(cmd.toStdString().c_str());
+    if(!err)
+        err = reset_by_vid_pid(0x0403, 0x6014);
+    sleep(1);
+    return err;
 }
 
 static char *strrand(int len)
@@ -395,13 +399,8 @@ MainWindow::MainWindow(QWidget *parent)
             }
         }
         if(has_svf_firmware) {
-            int maxerr = 10;
             int err = 1;
-            while (maxerr-- > 0 && err != 0)
-                err = flash_svf(svf_filename, bsdl_filename);
-            if(!err) {
-                reset_by_vid_pid(0x0403, 0x6014);
-            }
+            err = flash_svf(svf_filename, bsdl_filename);
             ui->firmware->setEnabled(true);
             ui->Connect->setEnabled(true);
             ui->XCPort->setEnabled(true);
@@ -516,7 +515,7 @@ MainWindow::MainWindow(QWidget *parent)
                             [ = ](Line* line) {
                         setOrder();
                     });
-                    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+                    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), this, [ = ](ahp_xc_packet *packet)
                     {
                         Lines[l]->addCount(J2000_starttime, packet);
                     });
@@ -651,13 +650,10 @@ err_exit:
     connect(getHistogram(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
     {
     });
-    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
+    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), [ = ]()
     {
-        getHistogram()->paint();
-        getGraph()->paint();
-        update(rect());
     });
-    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), [ = ](ahp_xc_packet *packet)
+    connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), this, [ = ](ahp_xc_packet *packet)
     {
     });
     connect(sendThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
@@ -798,7 +794,7 @@ err_exit:
         emit repaint();
         thread->unlock();
     });
-    connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), [ = ] (Thread * thread)
+    connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ] (Thread * thread)
     {
         if(getMode() == HolographIQ || getMode() == HolographII)
         {
