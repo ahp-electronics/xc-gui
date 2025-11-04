@@ -441,7 +441,7 @@ void Polytope::stackCorrelations()
         line->resetStopPtr();
         line->setLocation();
     }
-    npackets = ahp_xc_scan_crosscorrelations(requests.toVector().data(), requests.length(), &spectrum, stop, percent);
+    npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.length(), &spectrum, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
         setSpectrumSize(npackets);

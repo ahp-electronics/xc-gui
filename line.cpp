@@ -296,7 +296,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         MountMotorIndex = value;
         if(ahp_gt_is_connected()) {
             ahp_gt_select_device(MountMotorIndex);
-            if(!ahp_gt_detect_device()) {
+            if(ahp_gt_is_detected(Ra)) {
                 fork = false;
                 if((ahp_gt_get_mount_flags() & isForkMount) != 0) {
                     fork = true;
@@ -318,7 +318,9 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         RailMotorIndex = value;
         if(ahp_gt_is_connected()) {
             ahp_gt_select_device(RailMotorIndex);
-            ahp_gt_detect_device();
+            ahp_gt_read_values(RailX);
+            ahp_gt_read_values(RailY);
+            ahp_gt_read_values(RailZ);
         }
         saveSetting("RailMotorIndex", value);
     });

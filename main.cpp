@@ -34,14 +34,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
     int argc = 0;
     char **argv = {NULL};
-    QApplication a(argc, argv);
 #else
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
 #endif
+    QApplication a(argc, argv);
     dsp_set_app_name((char*)"xc-gui");
-    dsp_set_debug_level(5);
+    dsp_set_debug_level(10);
     MainWindow w;
     w.setWindowTitle("XC Gui - Version " XC_GUI_VERSION " Engine " + QString::number(ahp_xc_get_version(), 16));
     QFont font = w.font();

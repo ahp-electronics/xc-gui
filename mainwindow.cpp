@@ -66,14 +66,12 @@ static int32_t reset_by_vid_pid(int vid, int pid)
     return rc;
 }
 
-static int32_t flash_svf(QString svf, QString bsdl)
+static void flash_svf(QString svf, QString bsdl)
 {
     QString cmd = "echo 'cable FT2232\nbsdl path "+bsdl+"\ndetect\nfrequency "+QString::number(12000000)+"\nsvf "+svf+"'|jtag";
-    int err = system(cmd.toStdString().c_str());
-    if(!err)
-        err = reset_by_vid_pid(0x0403, 0x6014);
+    system(cmd.toStdString().c_str());
     sleep(1);
-    return err;
+    reset_by_vid_pid(0x0403, 0x6014);
 }
 
 static char *strrand(int len)
@@ -378,9 +376,11 @@ MainWindow::MainWindow(QWidget *parent)
         if(DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, settings))
             has_svf_firmware = true;
         else {
-            QFile f(svf_filename);
-            f.open(QIODevice::ReadWrite);
-            if(f.isOpen()) {
+            QFile svf_file(svf_filename);
+            svf_file.open(QIODevice::ReadWrite);
+            QFile bsdl_file(bsdl_filename);
+            bsdl_file.open(QIODevice::ReadWrite);
+            if(svf_file.isOpen() && bsdl_file.isOpen()) {
                 QFile s(":/data/"+ui->firmware->currentText()+".json");
                 s.open(QIODevice::ReadOnly);
                 if(s.isOpen()) {
@@ -391,20 +391,26 @@ MainWindow::MainWindow(QWidget *parent)
                         has_svf_firmware = false;
                     } else {
                         has_svf_firmware = true;
-                        f.write(QByteArray::fromBase64(base64.toUtf8()));
+                        svf_file.write(QByteArray::fromBase64(base64.toUtf8()));
+                    }
+                    base64 = obj["image"].toString();
+                    if(base64.isNull() || base64.isEmpty()) {
+                        has_bsdl = false;
+                    } else {
+                        has_bsdl = true;
+                        bsdl_file.write(QByteArray::fromBase64(base64.toUtf8()));
                     }
                     s.close();
                 }
-                f.close();
+                svf_file.close();
+                bsdl_file.close();
             }
         }
         if(has_svf_firmware) {
-            int err = 1;
-            err = flash_svf(svf_filename, bsdl_filename);
+            flash_svf(svf_filename, bsdl_filename);
             ui->firmware->setEnabled(true);
             ui->Connect->setEnabled(true);
             ui->XCPort->setEnabled(true);
-            if(err) return;
         }
         xcFD = -1;
         xc_local_port = false;
@@ -725,7 +731,8 @@ err_exit:
                         line->resetPercentPtr();
                     }
                 }
-                npackets = ahp_xc_scan_autocorrelations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
+                ahp_xc_set_correlation_order(1);
+                npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)
