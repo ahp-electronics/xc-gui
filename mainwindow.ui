@@ -258,6 +258,16 @@
     </property>
     <item>
      <property name="text">
+      <string>Current</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Erase</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
       <string>xc1</string>
      </property>
     </item>

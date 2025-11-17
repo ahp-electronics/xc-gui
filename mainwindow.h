@@ -256,6 +256,8 @@ class MainWindow : public QMainWindow
         }
 
         QString homedir;
+        QString erase_bsdl_filename;
+        QString erase_svf_filename;
         QString bsdl_filename;
         QString svf_filename;
         QString dfu_filename;
@@ -273,8 +275,9 @@ signals:
         bool enable_vlbi {false};
         bool has_svf_firmware {false};
         bool has_bsdl {false};
+        bool svf_from_resources(QString json_filename, QString svf_filename, QString bsdl_filename);
         QStringList CheckFirmware(QString url, int timeout_ms = 30000);
-        bool DownloadFirmware(QString url, QString svf, QString bsdl, QSettings *settings, int timeout_ms = 30000);
+        bool DownloadFirmware(QString url, QString svf, QString bsdl, int timeout_ms = 30000);
         QString base64;
         int currentVoltage {0};
         FILE *f_stdout;

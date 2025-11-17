@@ -1,4 +1,5 @@
 IDI_ICON1               ICON        DISCARDABLE            "icon.ico"
+IDI_DATA1               TEXT        DISCARDABLE            "Erase.json"
 IDI_DATA1               TEXT        DISCARDABLE            "xc1.json"
 IDI_DATA1               TEXT        DISCARDABLE            "xc2.json"
 IDI_DATA1               TEXT        DISCARDABLE            "xc4.json"

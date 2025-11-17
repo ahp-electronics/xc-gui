@@ -17,5 +17,6 @@
         <file>xc4.json</file>
         <file>xc2.json</file>
         <file>xc1.json</file>
+        <file>Erase.json</file>
     </qresource>
 </RCC>

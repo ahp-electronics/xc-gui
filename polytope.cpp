@@ -441,7 +441,7 @@ void Polytope::stackCorrelations()
         line->resetStopPtr();
         line->setLocation();
     }
-    npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.length(), &spectrum, stop, percent);
+    npackets = ahp_xc_scan_crosscorrelations(requests.toVector().data(), requests.length(), &spectrum, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
         setSpectrumSize(npackets);
@@ -451,7 +451,7 @@ void Polytope::stackCorrelations()
             ahp_xc_correlation correlation;
             memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
             for(int o = 0; o < getCorrelationOrder(); o++) {
-                int lag = correlation.lags[o] * ahp_xc_get_sampletime();
+                int lag = correlation.lag * ahp_xc_get_sampletime();
                 if(lag < npackets && lag >= 0)
                 {
                     if(getSpectrum()->getElemental()->getMagnitude()[lag] == 0) getSpectrum()->getElemental()->getMagnitude()[lag] = 1.0;
