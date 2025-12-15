@@ -117,19 +117,15 @@ bool MainWindow::svf_from_resources(QString json, QString svf, QString bsdl)
         s.close();
         if(!QFile::exists(svf)) return false;
         if(!QFile::exists(bsdl)) return false;
-        return false;
+        return true;
     }
     return false;
 }
 
 static void flash_svf(QStringList svf_list)
 {
-    QString cmd = "echo 'cable FT2232\ndetect\nfrequency "+QString::number(12000000)+"\n";
     for(QString svf : svf_list)
-        cmd+="svf "+svf+ "\n";
-    cmd+="'|jtag";
-    system(cmd.toStdString().c_str());
-    sleep(1);
+        program_jtag(svf.toUtf8(), "FT2232", NULL, 12000000);
     reset_by_vid_pid(0x0403, 0x6014);
 }
 
@@ -280,8 +276,12 @@ MainWindow::MainWindow(QWidget *parent)
     settings->beginGroup("Connection");
     ui->XCPort->clear();
     ui->XCPort->addItem(settings->value("xc_connection", "no connection").toString());
+    ui->XCPort->addItem("localhost:5760");
+    ui->XCPort->setCurrentIndex(0);
     ui->MotorPort->clear();
     ui->MotorPort->addItem(settings->value("motor_connection", "no connection").toString());
+    ui->MotorPort->addItem("localhost:9600");
+    ui->MotorPort->setCurrentIndex(0);
     settings->endGroup();
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (int i = 0; i < ports.length(); i++)
@@ -290,24 +290,21 @@ MainWindow::MainWindow(QWidget *parent)
             ports[i].portName();
         if(portname != ui->XCPort->itemText(0) && ports[i].vendorIdentifier() == 0x403 && ports[i].productIdentifier() == 0x6014)
             ui->XCPort->addItem(portname);
-        if(portname != ui->MotorPort->itemText(0))
+        if(portname != ui->MotorPort->itemText(0) && ports[i].vendorIdentifier() == 0x1a86 && ports[i].productIdentifier() == 0x7523)
             ui->MotorPort->addItem(portname);
     }
+    settings->beginGroup("Firmware");
+    ui->firmware->addItem(settings->value("firmware", "Current").toString());
+    ui->firmware->addItem("Current");
     QStringList firmwares = CheckFirmware(url+"xc*");
     if(firmwares.count() > 0) {
         ui->firmware->clear();
         ui->firmware->addItem("Current");
-        ui->firmware->addItem("Erase");
         for (QString fw : firmwares)
             ui->firmware->addItem(fw.replace("firmware/", "").replace("-firmware.bin", ""));
     }
-    ui->firmware->setCurrentText(settings->value("firmware", "xc2").toString());
-    if(ui->XCPort->itemText(0) != "no connection")
-        ui->XCPort->addItem("no connection");
-    if(ui->MotorPort->itemText(0) != "no connection")
-        ui->MotorPort->addItem("no connection");
-    ui->XCPort->setCurrentIndex(0);
-    ui->MotorPort->setCurrentIndex(0);
+    ui->firmware->setCurrentIndex(0);
+    settings->endGroup();
     connect(ui->Run, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, &MainWindow::runClicked);
     connect(ui->Mode, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             [ = ](int index)
@@ -419,7 +416,7 @@ MainWindow::MainWindow(QWidget *parent)
         (void)checked;
         int port = 5760;
         QString address = "localhost";
-        QString xcport, motorport, controlport;
+        QString xcport, motorport;
         xcport = ui->XCPort->currentText();
         motorport = ui->MotorPort->currentText();
         settings->beginGroup("Connection");
@@ -429,18 +426,18 @@ MainWindow::MainWindow(QWidget *parent)
         ui->XCPort->setEnabled(false);
         if(ui->firmware->currentText() == "Current") goto skip_download;
         has_svf_firmware = false;
-        if (DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, 3000)){
+        if (DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, 10000)){
             has_svf_firmware = true;
         } else if(svf_from_resources(ui->firmware->currentText(), svf_filename, bsdl_filename)){
             has_svf_firmware = true;
         }
         if(has_svf_firmware) {
-            //svf_from_resources("Erase", erase_svf_filename, erase_svf_filename);
             flash_svf(QStringList({svf_filename}));
+            settings->setValue("firmware", ui->firmware->currentText());
             ui->firmware->setEnabled(true);
             ui->Connect->setEnabled(true);
             ui->XCPort->setEnabled(true);
-        }
+        } else goto err_exit;
         skip_download:
         xcFD = -1;
         xc_local_port = false;
@@ -762,7 +759,7 @@ err_exit:
                     }
                 }
                 ahp_xc_set_correlation_order(1);
-                npackets = ahp_xc_scan_autocorrelations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
+                npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)

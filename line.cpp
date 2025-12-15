@@ -296,14 +296,26 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         MountMotorIndex = value;
         if(ahp_gt_is_connected()) {
             ahp_gt_select_device(MountMotorIndex);
-            if(ahp_gt_is_detected(Ra)) {
+            if(ahp_gt_is_detected()) {
+                altaz = false;
                 fork = false;
+                if(ahp_gt_axis_is_detected(Ra)) {
+                    if((ahp_gt_get_features(Ra) & isAZEQ) != 0) {
+                        altaz |= true;
+                    }
+                }
+                if(ahp_gt_axis_is_detected(Dec)) {
+                    if((ahp_gt_get_features(Dec) & isAZEQ) != 0) {
+                        altaz |= true;
+                    }
+                }
                 if((ahp_gt_get_mount_flags() & isForkMount) != 0) {
                     fork = true;
                 }
                 switch (ahp_gt_get_mount_type()) {
-                case isMF:
                 case isDOB:
+                    altaz = true;
+                case isMF:
                     fork = true;
                     break;
                 default:
@@ -414,7 +426,7 @@ void Line::runClicked(bool checked)
 void Line::updateLocation()
 {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(getRailIndex())) {
+        if(ahp_gt_axis_is_detected(getRailIndex())) {
             ahp_gt_select_device(getRailIndex());
             if(ahp_gt_is_axis_moving(RailX)) {
                 double x = ahp_gt_get_position(RailX, nullptr);
@@ -464,7 +476,7 @@ void Line::setLocation(int value)
             targetLocation()->xyz.z = xyz_locations[current_location].xyz.z;
             if(update_location) {
                 if(ahp_gt_is_connected()) {
-                    if(ahp_gt_is_detected(getRailIndex())) {
+                    if(ahp_gt_axis_is_detected(getRailIndex())) {
                         ahp_gt_select_device(getRailIndex());
                         ahp_gt_goto_absolute(RailX, xyz_locations[current_location].xyz.x*2.0*M_PI/ahp_gt_get_totalsteps(RailX)/1000, M_PI * 2 * 800.0 / SIDEREAL_DAY);
                         ahp_gt_goto_absolute(RailY, xyz_locations[current_location].xyz.y*2.0*M_PI/ahp_gt_get_totalsteps(RailY)/1000, M_PI * 2 * 800.0 / SIDEREAL_DAY);
@@ -483,7 +495,7 @@ void Line::updateRa()
     if(stream != nullptr)
     {
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getMountIndex())) {
+            if(ahp_gt_axis_is_detected(getMountIndex())) {
                 double v = ahp_gt_get_position(0, nullptr);
                 v *= 12.0;
                 v /= M_PI;
@@ -498,7 +510,7 @@ void Line::updateDec()
     if(stream != nullptr)
     {
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getMountIndex())) {
+            if(ahp_gt_axis_is_detected(getMountIndex())) {
                 double v = ahp_gt_get_position(1, nullptr);
                 v *= 180.0;
                 v /= M_PI;
@@ -562,7 +574,7 @@ bool Line::isRailBusy()
     if(stream != nullptr)
     {
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getRailIndex())) {
+            if(ahp_gt_axis_is_detected(getRailIndex())) {
                 bool busy = ahp_gt_is_axis_moving(RailX);
                 busy |= ahp_gt_is_axis_moving(RailY);
                 busy |= ahp_gt_is_axis_moving(RailZ);
@@ -578,7 +590,7 @@ bool Line::isMountBusy()
     if(stream != nullptr)
     {
         if(ahp_gt_is_connected()) {
-            if(ahp_gt_is_detected(getMountIndex())) {
+            if(ahp_gt_axis_is_detected(getMountIndex())) {
                 bool busy = ahp_gt_is_axis_moving(Ra);
                 busy |= ahp_gt_is_axis_moving(Dec);
                 return busy;
@@ -590,7 +602,7 @@ bool Line::isMountBusy()
 
 void Line::gotoRaDec(double ra, double dec) {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(getMountIndex())) {
+        if(ahp_gt_axis_is_detected(getMountIndex())) {
             ahp_gt_select_device(getMountIndex());
             ahp_gt_set_location(Latitude, Longitude, Elevation);
             ahp_gt_goto_radec(ra, dec);
@@ -600,7 +612,7 @@ void Line::gotoRaDec(double ra, double dec) {
 
 void Line::startTracking() {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(getMountIndex())) {
+        if(ahp_gt_axis_is_detected(getMountIndex())) {
             Line::motor_lock();
             ahp_gt_select_device(getMountIndex());
             ahp_gt_stop_motion(Ra, 1);
@@ -612,7 +624,7 @@ void Line::startTracking() {
 
 void Line::startSlewing(double ra_rate, double dec_rate) {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(getMountIndex())) {
+        if(ahp_gt_axis_is_detected(getMountIndex())) {
             Line::motor_lock();
             ahp_gt_select_device(getMountIndex());
             if(ra_rate != 0.0) {
@@ -630,14 +642,14 @@ void Line::startSlewing(double ra_rate, double dec_rate) {
 
 void Line::haltMotors() {
     if(ahp_gt_is_connected()) {
-        if(ahp_gt_is_detected(getMountIndex())) {
+        if(ahp_gt_axis_is_detected(getMountIndex())) {
             Line::motor_lock();
             ahp_gt_select_device(getMountIndex());
             ahp_gt_stop_motion(Ra, 1);
             ahp_gt_stop_motion(Dec, 1);
             Line::motor_unlock();
         }
-        if(ahp_gt_is_detected(getRailIndex())) {
+        if(ahp_gt_axis_is_detected(getRailIndex())) {
             Line::motor_lock();
             ahp_gt_select_device(getRailIndex());
             ahp_gt_stop_motion(RailX, 1);

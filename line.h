@@ -452,6 +452,7 @@ class Line : public QWidget
         bool scanning { false };
         bool flipped { false };
         bool scalingDone { false };
+        bool altaz { false };
         bool fork { false };
         void getMinMax();
         void plot(bool success, double o, double s);
