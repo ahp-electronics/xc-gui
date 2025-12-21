@@ -102,6 +102,7 @@ else(ANDROID)
     endif(WIN32)
 endif(ANDROID)
 
+execute_process (COMMAND ./update_firmware.sh https://www.iliaplatone.com/firmware.php WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/99-libahp-xc.rules.cmake ${CMAKE_CURRENT_BINARY_DIR}/99-libahp-xc.rules )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/brew.sh.cmake ${CMAKE_CURRENT_BINARY_DIR}/brew.sh )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/icon.ico COPYONLY )

@@ -458,10 +458,19 @@ MainWindow::MainWindow(QWidget *parent)
                 ahp_xc_connect_fd(xcFD);
             }
             else
-            {
-                xc_local_port = true;
+            {/*
+                QSerialPort p;
+                p.setPortName(xcport);
+                p.setBaudRate(QSerialPort::Baud57600);
+                p.setDataBits(QSerialPort::Data8);
+                p.setParity(QSerialPort::NoParity);
+                p.setStopBits(QSerialPort::OneStop);
+                p.open(QIODevice::ReadWrite);
+                xcFD = (int)p.handle();
+                ahp_xc_connect_fd(xcFD);*/
                 ahp_xc_connect(xcport.toUtf8());
                 xcFD = ahp_xc_get_fd();
+
             }
             if(ahp_xc_is_detected())
             {
@@ -759,7 +768,7 @@ err_exit:
                     }
                 }
                 ahp_xc_set_correlation_order(1);
-                npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
+                npackets = ahp_xc_scan_autocorrelations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)
