@@ -424,21 +424,18 @@ MainWindow::MainWindow(QWidget *parent)
         ui->firmware->setEnabled(false);
         ui->Connect->setEnabled(false);
         ui->XCPort->setEnabled(false);
-        if(ui->firmware->currentText() == "Current") goto skip_download;
-        has_svf_firmware = false;
-        if (DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, 10000)){
-            has_svf_firmware = true;
-        } else if(svf_from_resources(ui->firmware->currentText(), svf_filename, bsdl_filename)){
-            has_svf_firmware = true;
+        if(ui->firmware->currentText() != "Current") {
+            has_svf_firmware = false;
+            if (DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, 10000)){
+                has_svf_firmware = true;
+            } else if(svf_from_resources(ui->firmware->currentText(), svf_filename, bsdl_filename)){
+                has_svf_firmware = true;
+            }
+            if(has_svf_firmware) {
+                flash_svf(QStringList({svf_filename}));
+                settings->setValue("firmware", ui->firmware->currentText());
+            } else goto err_exit;
         }
-        if(has_svf_firmware) {
-            flash_svf(QStringList({svf_filename}));
-            settings->setValue("firmware", ui->firmware->currentText());
-            ui->firmware->setEnabled(true);
-            ui->Connect->setEnabled(true);
-            ui->XCPort->setEnabled(true);
-        } else goto err_exit;
-        skip_download:
         xcFD = -1;
         xc_local_port = false;
         if(xcport == "no connection")
@@ -458,16 +455,7 @@ MainWindow::MainWindow(QWidget *parent)
                 ahp_xc_connect_fd(xcFD);
             }
             else
-            {/*
-                QSerialPort p;
-                p.setPortName(xcport);
-                p.setBaudRate(QSerialPort::Baud57600);
-                p.setDataBits(QSerialPort::Data8);
-                p.setParity(QSerialPort::NoParity);
-                p.setStopBits(QSerialPort::OneStop);
-                p.open(QIODevice::ReadWrite);
-                xcFD = (int)p.handle();
-                ahp_xc_connect_fd(xcFD);*/
+            {
                 ahp_xc_connect(xcport.toUtf8());
                 xcFD = ahp_xc_get_fd();
 
@@ -572,9 +560,9 @@ MainWindow::MainWindow(QWidget *parent)
                             break;
                         case Counter:
                             getGraph()->addSeries(Lines[l]->getCounts()->getSeries(), QString::number(Counter) + "0#" + QString::number(l+1));
-                            getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
-                            getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                            //getGraph()->addSeries(Lines[l]->getCounts()->getMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getCounts()->getHistogram(), QString::number(Counter) + "0#" + QString::number(l+1));
+                            //getHistogram()->addSeries(Lines[l]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "1#" + QString::number(l+1));
                             break;
                         case HolographII:
                         case HolographIQ:
@@ -640,6 +628,9 @@ MainWindow::MainWindow(QWidget *parent)
                 setMode(Counter);
             } else {
 err_exit:
+                ui->firmware->setEnabled(true);
+                ui->Connect->setEnabled(true);
+                ui->XCPort->setEnabled(true);
                 sleep(1);
                 ahp_xc_disconnect();
                 return;
@@ -694,6 +685,7 @@ err_exit:
     });
     connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), [ = ]()
     {
+        getGraph()->paint();
     });
     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), this, [ = ](ahp_xc_packet *packet)
     {
@@ -768,7 +760,7 @@ err_exit:
                     }
                 }
                 ahp_xc_set_correlation_order(1);
-                npackets = ahp_xc_scan_autocorrelations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
+                npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.count(), &spectrum, &threadsStopped, &percent);
                 if(npackets == 0)
                     break;
                 for(int x = 0; x < Lines.count(); x++)
@@ -804,6 +796,7 @@ err_exit:
                 break;
         }
     end_unlock:
+
         thread->unlock();
     });
     connect(uiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ] (Thread * thread)

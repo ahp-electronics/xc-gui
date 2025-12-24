@@ -49,6 +49,17 @@ include_directories(${AHP_XC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${USB1_INCLUDE_DIR})
 
+execute_process (COMMAND ./update_firmware.sh https://www.iliaplatone.com/firmware.php WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+file(GLOB ICONS ${CMAKE_CURRENT_SOURCE_DIR}/*.ico)
+file(COPY ${ICONS} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(GLOB JSONS ${CMAKE_CURRENT_SOURCE_DIR}/*.json)
+file(COPY ${JSONS} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/99-libahp-xc.rules.cmake ${CMAKE_CURRENT_BINARY_DIR}/99-libahp-xc.rules )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/brew.sh.cmake ${CMAKE_CURRENT_BINARY_DIR}/brew.sh )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/icon.ico COPYONLY )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
+
 if(ANDROID)
     add_library(xc-gui SHARED
         ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
@@ -101,13 +112,6 @@ else(ANDROID)
         set_target_properties(xc-gui PROPERTIES WIN32_EXECUTABLE TRUE)
     endif(WIN32)
 endif(ANDROID)
-
-execute_process (COMMAND ./update_firmware.sh https://www.iliaplatone.com/firmware.php WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/99-libahp-xc.rules.cmake ${CMAKE_CURRENT_BINARY_DIR}/99-libahp-xc.rules )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/brew.sh.cmake ${CMAKE_CURRENT_BINARY_DIR}/brew.sh )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/icon.ico ${CMAKE_CURRENT_BINARY_DIR}/icon.ico COPYONLY )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xc-gui.iss.cmake ${CMAKE_CURRENT_BINARY_DIR}/xc-gui.iss )
 
 target_link_libraries(xc-gui PRIVATE ${USB1_LIBRARIES}  ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 target_link_libraries(xc-gui PRIVATE ${URJTAG_LIBRARIES})
