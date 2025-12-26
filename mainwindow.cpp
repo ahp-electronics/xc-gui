@@ -122,10 +122,9 @@ bool MainWindow::svf_from_resources(QString json, QString svf, QString bsdl)
     return false;
 }
 
-static void flash_svf(QStringList svf_list)
+static void flash_svf(QString svf)
 {
-    for(QString svf : svf_list)
-        program_jtag(svf.toUtf8(), "FT2232", NULL, 12000000);
+    program_jtag(svf.toUtf8(), "FT2232", NULL, 12000000);
     reset_by_vid_pid(0x0403, 0x6014);
 }
 
@@ -432,9 +431,11 @@ MainWindow::MainWindow(QWidget *parent)
                 has_svf_firmware = true;
             }
             if(has_svf_firmware) {
-                flash_svf(QStringList({svf_filename}));
+                flash_svf(svf_filename);
                 settings->setValue("firmware", ui->firmware->currentText());
             } else goto err_exit;
+            ui->firmware->setCurrentIndex(0);
+            goto err_exit;
         }
         xcFD = -1;
         xc_local_port = false;
