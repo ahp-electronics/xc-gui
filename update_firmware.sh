@@ -1,11 +1,13 @@
 #!/bin/bash
 url=$1
-curl --dns-servers 8.8.8.8 "${url}?product=xc*" | jq .data | tr -d '"' | base64 -d | tr -s ',' '\n' | cut -d '/' -f 2 | cut -d '-' -f 1 | while read line; do curl --dns-servers 8.8.8.8 "${url}?product=$line&download=on" -o $line.json; done
+curl --resolve "iliaplatone.com:443:192.71.211.119" "${url}?product=xc*" | jq .data | tr -d '"' | base64 -d | tr -s ',' '\n' | cut -d '/' -f 2 | cut -d '-' -f 1 | while read line; do curl --resolve "iliaplatone.com:443:192.71.211.119" "${url}?product=$line&download=on" -o $line.json; done
 i=1
-echo "IDI_ICON1               ICON        DISCARDABLE            \"icon.ico\"" > app.rc
+echo "IDI_ICON1               ICON        DISCARDABLE            \"icon.ico\"
+
 echo "<RCC>
     <qresource prefix=\"/icons\">
         <file>icon.ico</file>
+        <file>check.ico</file>
     </qresource>
     <qresource prefix=\"/data\">" > resource.qrc
 for file in *.json; do echo "<file>"$file"</file>" >> resource.qrc;
