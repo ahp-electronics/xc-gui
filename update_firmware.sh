@@ -7,7 +7,6 @@ echo "IDI_ICON1               ICON        DISCARDABLE            \"icon.ico\"" >
 echo "<RCC>
     <qresource prefix=\"/icons\">
         <file>icon.ico</file>
-        <file>check.ico</file>
     </qresource>
     <qresource prefix=\"/data\">" > resource.qrc
 for file in *.json; do echo "<file>"$file"</file>" >> resource.qrc;
