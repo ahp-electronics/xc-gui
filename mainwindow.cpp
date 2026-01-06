@@ -684,8 +684,10 @@ err_exit:
     connect(getHistogram(), static_cast<void (Graph::*)()>(&Graph::Refresh), this, [ = ]()
     {
     });
-    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), [ = ]()
+    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
     {
+        for(Line *line : Lines)
+            line->paint();
         getGraph()->paint();
     });
     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), this, [ = ](ahp_xc_packet *packet)
