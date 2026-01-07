@@ -49,7 +49,6 @@ include_directories(${AHP_XC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${USB1_INCLUDE_DIR})
 
-execute_process (COMMAND ./update_firmware.sh https://www.iliaplatone.com/firmware.php WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 file(GLOB ICONS ${CMAKE_CURRENT_SOURCE_DIR}/*.ico)
 file(COPY ${ICONS} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(GLOB JSONS ${CMAKE_CURRENT_SOURCE_DIR}/*.json)

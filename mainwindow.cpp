@@ -434,8 +434,6 @@ MainWindow::MainWindow(QWidget *parent)
                 flash_svf(svf_filename);
                 settings->setValue("firmware", ui->firmware->currentText());
             } else goto err_exit;
-            ui->firmware->setCurrentIndex(0);
-            goto err_exit;
         }
         xcFD = -1;
         xc_local_port = false;
