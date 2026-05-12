@@ -89,6 +89,7 @@ class Line : public QWidget
         bool showCrosscorrelations();
         bool showCountHistogram();
         bool showCorrelationsHistogram();
+        bool showMagnitude();
         bool showPhase();
         void Initialize();
 

@@ -336,11 +336,6 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         }
         saveSetting("RailMotorIndex", value);
     });
-    connect(ui->LoPass, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        _smooth = Resolution * value / 25;
-        saveSetting("LoPass", value);
-    });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         saveSetting("scan", ui->Active->isChecked());
         emit scanActiveStateChanging(this);
@@ -379,7 +374,6 @@ void Line::Initialize()
     ui->MinScore->setValue(readInt("MinScore", 50));
     ui->Decimals->setValue(readInt("Decimals", 0));
     ui->MaxDots->setValue(readInt("MaxDots", 10));
-    ui->LoPass->setValue(readInt("LoPass", 0));
     ui->SampleSize->setValue(readInt("SampleSize", 5));
     ui->Resolution->setRange(1000000000.0 * ahp_xc_get_sampletime(), ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime());
     ui->Resolution->setValue(readInt("Resolution", 100));
@@ -763,6 +757,11 @@ bool Line::showCorrelationsHistogram()
     return ui->correlators_histogram->isChecked();
 }
 
+bool Line::showMagnitude()
+{
+    return ui->show_magnitude->isChecked();
+}
+
 bool Line::showPhase()
 {
     return ui->show_phase->isChecked();
@@ -1079,7 +1078,7 @@ void Line::TakeDark(Line *sender)
 }
 
 void Line::smoothBuffer(QXYSeries* buf, QList<double> *raw, int offset, int len)
-{/*
+{
     if(smooth() == 0)
         return;
     if(raw->count() < offset+len)
@@ -1103,7 +1102,7 @@ void Line::smoothBuffer(QXYSeries* buf, QList<double> *raw, int offset, int len)
     for(x = raw->count()-1; x >= raw->count()-offset/2; x--)
         buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), buf->at(raw->count()-offset/2-1).y());
     for(x = offset/2; x >= 0; x--)
-        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), buf->at(offset/2).y());*/
+        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), buf->at(offset/2).y());
 }
 
 void Line::smoothBuffer(double* buf, int len)
@@ -1131,14 +1130,15 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
     {
         setSpectrumSize(npackets);
         getSpectrum()->getElemental()->set(0);
-        for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
+        for (int x = 0; x < npackets; x++)
         {
             ahp_xc_correlation correlation;
-            memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            int lag = correlation.lag * ahp_xc_get_sampletime();
+            memcpy(&correlation, &spectrum[x].correlations[0], sizeof(ahp_xc_correlation));
+            int lag = correlation.lag / channel_step;
             if(lag < npackets && lag >= 0)
             {
-                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude * M_PI * 2;
+                double side = correlation.real + correlation.imaginary;
+                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude;
                 getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
                 for(int y = lag; y < npackets; y++)
                 {
@@ -1164,7 +1164,8 @@ void Line::plot(bool success, double o, double s)
     double timespan = s;
     double offset = o;
     if(!idft()) {
-        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getMagnitudeStack(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+        if(this->showMagnitude())
+            getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getMagnitudeStack(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
         if(this->showPhase())
             getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
     } else
