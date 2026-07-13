@@ -263,12 +263,16 @@ class MainWindow : public QMainWindow
         QString dfu_filename;
         QString stdout_filename;
         int fd_stdout;
+        void SaveValues();
+        void ReadValues();
 
 signals:
         void newPacket(ahp_xc_packet*);
         void repaint();
         void scanStarted();
         void scanFinished(bool complete);
+        void saveValues();
+        void readValues();
 
     private:
         int lastlog_pos { 0 };
@@ -277,7 +281,7 @@ signals:
         bool has_bsdl {false};
         bool svf_from_resources(QString json_filename, QString svf_filename, QString bsdl_filename);
         QStringList CheckFirmware(QString url, int timeout_ms = 30000);
-        bool DownloadFirmware(QString url, QString svf, QString bsdl, int timeout_ms = 30000);
+        bool DownloadFirmware(QString url, QString svf, QString bsdl);
         QString base64;
         int currentVoltage {0};
         FILE *f_stdout;

@@ -25,8 +25,21 @@
 
 #include "mainwindow.h"
 #include <config.h>
+#include <signal.h>
 
 #include <QApplication>
+
+void signal_handler(int signal)
+{
+    switch(signal) {
+    case SIGSEGV:
+        break;
+    case SIGABRT:
+        break;
+    default:
+        break;
+    }
+}
 
 #ifdef _WIN32
 #include <windows.h>
@@ -38,6 +51,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main(int argc, char *argv[])
 {
 #endif
+    signal(SIGSEGV, signal_handler);
+    signal(SIGABRT, signal_handler);
     QApplication a(argc, argv);
     dsp_set_app_name((char*)"xc-gui");
     dsp_set_debug_level(10);

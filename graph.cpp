@@ -413,9 +413,11 @@ void Graph::setupAxes(double base_x, double base_y, QString title_x, QString tit
             axis_x->setTitleText(title_x);
         axis_x->setLabelFormat(format_x);
         axis_x->setMinorTickCount(ticks_x);
-        chart->addAxis(axis_x, Qt::AlignBottom);
+        if(!chart->axes().contains(axis_x))
+            chart->addAxis(axis_x, Qt::AlignBottom);
         for(QAbstractSeries* s : chart->series())
-            s->attachAxis(axis_x);
+            if(!s->attachedAxes().contains(axis_x))
+                s->attachAxis(axis_x);
     } else {
         chart->removeAxis(axis_x);
         if(!title_x.isEmpty())
@@ -423,9 +425,11 @@ void Graph::setupAxes(double base_x, double base_y, QString title_x, QString tit
         logaxis_x->setLabelFormat(format_x);
         logaxis_x->setMinorTickCount(ticks_x);
         logaxis_x->setBase(base_x);
-        chart->addAxis(logaxis_x, Qt::AlignBottom);
+        if(!chart->axes().contains(logaxis_x))
+            chart->addAxis(logaxis_x, Qt::AlignBottom);
         for(QAbstractSeries* s : chart->series())
-            s->attachAxis(logaxis_x);
+            if(!s->attachedAxes().contains(logaxis_x))
+                s->attachAxis(logaxis_x);
     }
     if(base_y < 2) {
         chart->removeAxis(logaxis_y);
@@ -433,9 +437,11 @@ void Graph::setupAxes(double base_x, double base_y, QString title_x, QString tit
             axis_y->setTitleText(title_y);
         axis_y->setLabelFormat(format_y);
         axis_y->setMinorTickCount(ticks_y);
-        chart->addAxis(axis_y, Qt::AlignLeft);
+        if(!chart->axes().contains(axis_y))
+            chart->addAxis(axis_y, Qt::AlignBottom);
         for(QAbstractSeries* s : chart->series())
-            s->attachAxis(axis_y);
+            if(!s->attachedAxes().contains(axis_y))
+                s->attachAxis(axis_y);
     } else {
         chart->removeAxis(axis_y);
         if(!title_y.isEmpty())
@@ -443,9 +449,11 @@ void Graph::setupAxes(double base_x, double base_y, QString title_x, QString tit
         logaxis_y->setLabelFormat(format_y);
         logaxis_y->setMinorTickCount(ticks_y);
         logaxis_y->setBase(base_y);
-        chart->addAxis(logaxis_y, Qt::AlignLeft);
+        if(!chart->axes().contains(logaxis_y))
+            chart->addAxis(logaxis_y, Qt::AlignBottom);
         for(QAbstractSeries* s : chart->series())
-            s->attachAxis(logaxis_y);
+            if(!s->attachedAxes().contains(logaxis_y))
+                s->attachAxis(logaxis_y);
     }
 }
 

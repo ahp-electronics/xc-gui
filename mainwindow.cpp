@@ -29,6 +29,7 @@
 #include "./ui_mainwindow.h"
 #include <libusb.h>
 #include <urjtag.h>
+#include <curl/curl.h>
 
 const double graph_ratio = 0.75;
 
@@ -161,23 +162,77 @@ ck_end:
     return QStringList();
 }
 
-bool MainWindow::DownloadFirmware(QString url, QString svf, QString bsdl, int timeout_ms)
+typedef struct {
+    char *memory;
+    size_t size;
+} mem;
+
+static size_t write_cb(char *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t realsize = size * nmemb;
+    mem *chunk = (mem *)userp;
+
+    char *ptr = (char*)realloc(chunk->memory, chunk->size + realsize + 1);
+    if(!ptr) {
+        return 0;
+    }
+
+    chunk->memory = ptr;
+    memcpy(&(chunk->memory[chunk->size]), contents, realsize);
+    chunk->size += realsize;
+    chunk->memory[chunk->size] = 0;
+
+    return realsize;
+}
+
+int curl_dl(const char* url, char *buf)
+{
+    CURL *curl;
+    CURLcode result;
+
+    mem chunk;
+
+    result = curl_global_init(CURL_GLOBAL_ALL);
+    if(result != CURLE_OK)
+        return (int)result;
+
+    chunk.memory = (char*)malloc(1);
+    chunk.size = 0;
+
+    curl = curl_easy_init();
+    if(curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+        result = curl_easy_perform(curl);
+
+        if(result == CURLE_OK) {
+            buf = chunk.memory;
+        }
+
+        curl_easy_cleanup(curl);
+    }
+
+    /* we are done with libcurl, so clean it up */
+    curl_global_cleanup();
+
+    return (int)result;
+}
+
+bool MainWindow::DownloadFirmware(QString url, QString svf, QString bsdl)
 {
     QByteArray bin;
+    char* json = nullptr;
     url+="&download=on";
-    QNetworkAccessManager* manager = new QNetworkAccessManager();
-    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(url)));
-    QTimer timer;
-    timer.setSingleShot(true);
-    QEventLoop loop;
-    QObject::connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
-    QObject::connect(response, SIGNAL(finished()), &loop, SLOT(quit()));
-    timer.start(timeout_ms);
-    loop.exec();
-    if(response->error() == QNetworkReply::NetworkError::NoError) {
+    if(!curl_dl(url.toUtf8(), json)) {
         if(QFile::exists(svf)) unlink(svf.toStdString().c_str());
         if(QFile::exists(bsdl)) unlink(bsdl.toStdString().c_str());
-        QJsonDocument doc = QJsonDocument::fromJson(response->readAll());
+        QJsonDocument doc = QJsonDocument::fromJson(json);
         QJsonObject obj = doc.object();
         QString base64;
         base64 = obj["data"].toString();
@@ -204,11 +259,36 @@ bool MainWindow::DownloadFirmware(QString url, QString svf, QString bsdl, int ti
         }
     }
 dl_end:
-    response->deleteLater();
-    response->manager()->deleteLater();
+    if(json != nullptr)
+        free(json);
     if(!QFile::exists(svf)) return false;
     if(!QFile::exists(bsdl)) return false;
     return true;
+}
+
+void MainWindow::SaveValues()
+{
+    settings->setValue("XCPort", ui->XCPort->currentText());
+    settings->setValue("MotorPort", ui->MotorPort->currentText());
+    settings->setValue("firmware", ui->firmware->currentText());
+    settings->setValue("extclock", ui->extclock->isChecked());
+    settings->setValue("Baudrate", ui->Baudrate->currentIndex());
+    settings->setValue("Mode", ui->Mode->currentIndex());
+    settings->setValue("Range", ui->Range->value());
+    settings->setValue("Order", ui->Order->value());
+    emit saveValues();
+}
+
+void MainWindow::ReadValues()
+{
+    ui->XCPort->setCurrentText(settings->value("XCPort", "no connection").toString());
+    ui->MotorPort->setCurrentText(settings->value("MotorPort", "no connection").toString());
+    ui->firmware->setCurrentText(settings->value("firmware", "").toString());
+    ui->extclock->setChecked(settings->value("extclock", false).toBool());
+    ui->Baudrate->setCurrentIndex(settings->value("Baudrate", 0).toInt());
+    ui->Mode->setCurrentIndex(settings->value("Mode", 0).toInt());
+    ui->Order->setValue(settings->value("Order", 2).toInt());
+    emit readValues();
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -309,11 +389,12 @@ MainWindow::MainWindow(QWidget *parent)
             [ = ](int index)
     {
         setMode((Mode)index);
+        SaveValues();
     });
     connect(ui->Range, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [ = ](int value)
     {
-        settings->setValue("Timerange", value);
+        SaveValues();
         TimeRange = ui->Range->value();
         for(Line* line : Lines)
             line->setTimeRange(TimeRange);
@@ -324,7 +405,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->extclock, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked),
             [ = ](bool checked)
             {
-                settings->setValue("extclock", checked);
+                SaveValues();
                 ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags()&~CAP_EXT_CLK));
                 if(ui->extclock->isChecked())
                     ahp_xc_set_capture_flags((xc_capture_flags)(ahp_xc_get_capture_flags()|CAP_EXT_CLK));
@@ -332,7 +413,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->Order, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
             [ = ](int value)
             {
-                settings->setValue("Order", value);
+                SaveValues();
                 Order = ui->Order->value();
                 setOrder();
             });
@@ -394,6 +475,9 @@ MainWindow::MainWindow(QWidget *parent)
         ui->Range->setEnabled(false);
         ui->Order->setEnabled(false);
         ui->Mode->setEnabled(false);
+        ui->firmware->setEnabled(true);
+        ui->XCPort->setEnabled(true);
+        ui->MotorPort->setEnabled(true);
         getGraph()->clearSeries();
         getHistogram()->clearSeries();
         connected = false;
@@ -402,12 +486,12 @@ MainWindow::MainWindow(QWidget *parent)
     [ = ](int index)
     {
         ahp_xc_set_baudrate((baud_rate)index);
-        settings->setValue("firmware", index);
+        SaveValues();
     });
     connect(ui->firmware, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
     [ = ](int index)
     {
-        settings->setValue("firmware", ui->firmware->currentText());
+        SaveValues();
     });
     connect(ui->Connect, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this,
             [ = ](bool checked)
@@ -425,7 +509,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->XCPort->setEnabled(false);
         if(ui->firmware->currentText() != "Current") {
             has_svf_firmware = false;
-            if (DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename, 10000)){
+            if (DownloadFirmware(url+ui->firmware->currentText(), svf_filename, bsdl_filename)){
                 has_svf_firmware = true;
             } else if(svf_from_resources(ui->firmware->currentText(), svf_filename, bsdl_filename)){
                 has_svf_firmware = true;
@@ -435,6 +519,7 @@ MainWindow::MainWindow(QWidget *parent)
                 settings->setValue("firmware", ui->firmware->currentText());
             } else goto err_exit;
         }
+        ui->firmware->setCurrentIndex(0);
         xcFD = -1;
         xc_local_port = false;
         if(xcport == "no connection")
@@ -501,6 +586,13 @@ MainWindow::MainWindow(QWidget *parent)
                         motorFD = ahp_gt_get_fd();
                     }
                 }
+                if(!ahp_xc_has_crosscorrelator()) {
+                    ui->Mode->removeItem(5);
+                    ui->Mode->removeItem(4);
+                    ui->Mode->removeItem(3);
+                    ui->Mode->removeItem(2);
+                }
+                SaveValues();
                 ahp_xc_max_threads(QThread::idealThreadCount());
                 vlbi_max_threads(QThread::idealThreadCount());
 
@@ -508,7 +600,6 @@ MainWindow::MainWindow(QWidget *parent)
                     context[i] = vlbi_init();
                 }
                 connected = true;
-                setOrder();
                 settings->setValue("xc_connection", xcport);
                 QString header = ahp_xc_get_header();
                 QString devices = settings->value("devices", "").toString();
@@ -521,6 +612,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
                 settings->endGroup();
                 settings->beginGroup(header);
+
                 for(unsigned int l = 0; l < ahp_xc_get_nlines(); l++)
                 {
                     QString name = "Line " + QString::number(l + 1);
@@ -533,8 +625,14 @@ MainWindow::MainWindow(QWidget *parent)
                     connect(this, static_cast<void (MainWindow::*)(bool)>(&MainWindow::scanFinished), [ = ] (bool complete) {
                         Lines[l]->enableControls(true);
                     });
+                    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::saveValues), [ = ] () {
+                        Lines[l]->SaveValues();
+                    });
+                    connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::readValues), [ = ] () {
+                        Lines[l]->ReadValues();
+                    });
                     connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanging),
-                            [ = ](Line* line) {
+                    [ = ](Line* line) {
                         if(line->scanActive())
                             line->addToVLBIContext();
                         else
@@ -542,6 +640,20 @@ MainWindow::MainWindow(QWidget *parent)
                     });
                     connect(Lines[l], static_cast<void (Line::*)(Line*)>(&Line::scanActiveStateChanged),
                             [ = ](Line* line) {
+                    });
+                    connect(Lines[l], static_cast<void (Line::*)(bool)>(&Line::crossCorrelationEnabled), [=](bool enabled) {
+                        int max_order = 0;
+                        for(int x = 0; x < Lines.count(); x++) {
+                            if(Lines[x]->scanActive() || Lines[x]->showCrosscorrelations())
+                                max_order ++;
+                        }
+
+                        if(max_order >= 2) {
+                            ui->Order->blockSignals(true);
+                            ui->Order->setRange(2, max_order);
+                            ui->Order->setValue(max_order);
+                            ui->Order->blockSignals(false);
+                        }
                         setOrder();
                     });
                     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), this, [ = ](ahp_xc_packet *packet)
@@ -607,7 +719,6 @@ MainWindow::MainWindow(QWidget *parent)
                         case Counter:
                             getGraph()->addSeries(Polytopes[idx]->getCounts()->getMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             getGraph()->addSeries(Polytopes[idx]->getCounts()->getPhase(), QString::number(Counter) + "3#" + QString::number(idx+1));
-                            getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogram(), QString::number(Counter) + "2#" + QString::number(idx+1));
                             getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogramMagnitude(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             getHistogram()->addSeries(Polytopes[idx]->getCounts()->getHistogramPhase(), QString::number(Counter) + "3#" + QString::number(idx+1));
                             break;
@@ -633,6 +744,7 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->Range->setEnabled(true);
                 ui->Mode->setEnabled(true);
                 setMode(Counter);
+                ReadValues();
             } else {
 err_exit:
                 ui->firmware->setEnabled(true);
@@ -692,9 +804,6 @@ err_exit:
     });
     connect(this, static_cast<void (MainWindow::*)()>(&MainWindow::repaint), this, [ = ]()
     {
-        for(Line *line : Lines)
-            line->paint();
-        getGraph()->paint();
     });
     connect(this, static_cast<void (MainWindow::*)(ahp_xc_packet*)>(&MainWindow::newPacket), this, [ = ](ahp_xc_packet *packet)
     {
@@ -732,6 +841,7 @@ err_exit:
         QList<ahp_xc_scan_request> requests;
         ahp_xc_sample *spectrum = nullptr;
         int npackets;
+        getGraph()->setupAxes(1,1,"","","%.03f","%.03f",10, 10);
         if(threadsStopped)
             goto end_unlock;
         switch (getMode())
@@ -836,7 +946,9 @@ err_exit:
                 statusBar()->showMessage(line, 1000);
             }
         }
-        emit repaint();
+        for(Line *line : Lines)
+            line->paint();
+        getGraph()->paint();
         thread->unlock();
     });
     connect(vlbiThread, static_cast<void (Thread::*)(Thread*)>(&Thread::threadLoop), this, [ = ] (Thread * thread)
@@ -897,6 +1009,7 @@ err_exit:
         thread->unlock();
     });
     resize(1280, 720);
+    ReadValues();
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
@@ -996,25 +1109,14 @@ void MainWindow::resetTimestamp()
 
 void MainWindow::setOrder()
 {
-    int max_order = 0;
-    for(int x = 0; x < Lines.count(); x++) {
-        if(Lines[x]->scanActive() || Lines[x]->showCrosscorrelations())
-            max_order ++;
-    }
-
-    if(max_order >= 2) {
-        int order = fmax(2, fmin(max_order, Order));
-        if(getOrder() != order) return;
+    int order = fmax(2, fmin(ui->Order->maximum(), order));
+    if(order >= 2) {
         for(int x = 0; x < Polytopes.count(); x++)
             Polytopes[x]->setCorrelationOrder(order);
         while(!lock_vlbi());
         ahp_xc_set_correlation_order(order);
         vlbi_set_correlation_order(getVLBIContext(), order);
         unlock_vlbi();
-        ui->Order->blockSignals(true);
-        ui->Order->setRange(2, max_order);
-        ui->Order->setValue(order);
-        ui->Order->blockSignals(false);
         enable_vlbi = true;
     } else {
         enable_vlbi = false;

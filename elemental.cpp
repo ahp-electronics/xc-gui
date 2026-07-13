@@ -200,7 +200,6 @@ void Elemental::setImaginary(double * buf, int len)
 void Elemental::idft()
 {
     while(!lock()) QThread::msleep(100);
-    dsp_fourier_2complex_t(stream);
     dsp_fourier_idft(stream);
     unlock();
 }

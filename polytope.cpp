@@ -177,7 +177,7 @@ void Polytope::addCount(double starttime, ahp_xc_packet *packet)
         if(isActive())
         {
             int index = ahp_xc_get_crosscorrelation_index(indexes.toVector().toStdVector().data(), indexes.count());
-            active = index == Index;
+            active = Index == index;
             bool showhistogram = true;
             for(int x = 0; x < getCorrelationOrder(); x++) {
                 if(!getLine(x)->showCrosscorrelations())
@@ -205,9 +205,11 @@ void Polytope::addCount(double starttime, ahp_xc_packet *packet)
                     if(ci < 0) phi += M_PI;
                     cr *= mag;
                     ci *= mag;
-                    mag = sqrt(pow(cr, 2)+pow(ci, 2));
+                    double side = cr + ci;
+                    mag = sqrt(pow(cr, 2)+pow(ci, 2)) / ahp_xc_get_packettime() / side;
                 } else {
-                    mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude;
+                    double side = (double)packet->crosscorrelations[Index].correlations[0].real + (double)packet->crosscorrelations[Index].correlations[0].imaginary;
+                    mag = (double)packet->crosscorrelations[Index].correlations[0].magnitude / ahp_xc_get_packettime() / side;
                     phi = (double)packet->crosscorrelations[Index].correlations[0].phase;
                 }
                 getCounts()->getElemental()->setStreamSize(getCounts()->getSeries()->count()+1);
@@ -386,7 +388,7 @@ void Polytope::SavePlot()
     if(!isActive())
         return;
     QString filename = QFileDialog::getSaveFileName(this, "DialogTitle", "filename.csv",
-                       "CSV files (.csv);;Zip files (.zip, *.7z)", 0, 0); // getting the filename (full path)
+                       "CSV files (.csv);Zip files (.zip, *.7z)", 0); // getting the filename (full path)
     QFile data(filename);
     if(data.open(QFile::WriteOnly | QFile::Truncate))
     {
@@ -444,20 +446,32 @@ void Polytope::stackCorrelations()
     npackets = ahp_xc_scan_correlations(requests.toVector().data(), requests.length(), &spectrum, stop, percent);
     if(spectrum != nullptr && npackets > 0)
     {
+        int y;
         setSpectrumSize(npackets);
         getSpectrum()->getElemental()->set(0);
-        for (int x = 0, z = 0; z < npackets && x < npackets; x++, z++)
+        for (int x = 0; x < npackets; x++)
         {
             ahp_xc_correlation correlation;
-            memcpy(&correlation, &spectrum[z].correlations[0], sizeof(ahp_xc_correlation));
-            for(int o = 0; o < getCorrelationOrder(); o++) {
-                int lag = correlation.lag * ahp_xc_get_sampletime();
-                if(lag < npackets && lag >= 0)
+            memcpy(&correlation, &spectrum[x].correlations[0], sizeof(ahp_xc_correlation));
+            int lag = x;
+            if(lag < npackets / 2 && lag >= 0)
+            {
+                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / ahp_xc_get_packettime();
+                getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
+                for(int y = lag; y >= 0; y--)
                 {
-                    if(getSpectrum()->getElemental()->getMagnitude()[lag] == 0) getSpectrum()->getElemental()->getMagnitude()[lag] = 1.0;
-                    getSpectrum()->getElemental()->getMagnitude()[lag] *= (double)pow(correlation.magnitude * M_PI * 2, 1.0/getCorrelationOrder());
-                    getSpectrum()->getElemental()->getPhase()[lag] = fmod(getSpectrum()->getElemental()->getPhase()[lag] + (double)correlation.phase, M_PI * 2);
-
+                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
+                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
+                }
+            }
+            if(lag < npackets && lag >= npackets / 2)
+            {
+                getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude / ahp_xc_get_packettime();
+                getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
+                for(int y = lag; y >= 0; y++)
+                {
+                    getSpectrum()->getElemental()->getMagnitude()[y] = getSpectrum()->getElemental()->getMagnitude()[lag];
+                    getSpectrum()->getElemental()->getPhase()[y] = getSpectrum()->getElemental()->getPhase()[lag];
                 }
             }
         }

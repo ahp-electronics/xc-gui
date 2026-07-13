@@ -78,7 +78,7 @@
       <x>10</x>
       <y>80</y>
       <width>821</width>
-      <height>191</height>
+      <height>220</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -259,11 +259,6 @@
     <item>
      <property name="text">
       <string>Current</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Erase</string>
      </property>
     </item>
     <item>

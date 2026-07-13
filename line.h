@@ -382,6 +382,8 @@ class Line : public QWidget
         inline void setPacket(ahp_xc_packet* p) { packet = p; }
         void UnloadPositionChart();
         void LoadPositionChart();
+        void SaveValues();
+        void ReadValues();
     private:
         QWidget *parent;
         ahp_xc_packet* packet;
@@ -393,6 +395,7 @@ class Line : public QWidget
         double Frequency { LIGHTSPEED };
         void stretch(QLineSeries* series);
 
+        QString darkstring = { "" };
         fftw_plan plan { 0 };
         QList<int> Motors;
         Ui::Line *ui { nullptr };
@@ -460,6 +463,7 @@ class Line : public QWidget
         void SavePlot();
 
     signals:
+        void crossCorrelationEnabled(bool);
         void updatedPhasePlotting(bool);
         void scanActiveStateChanging(Line*);
         void scanActiveStateChanged(Line*);

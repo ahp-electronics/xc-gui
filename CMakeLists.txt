@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8...4.0)
+cmake_minimum_required(VERSION 3.0...4.0)
 
 project(xc-gui LANGUAGES C CXX)
 
@@ -39,6 +39,7 @@ find_package(DSP REQUIRED)
 find_package(FFTW3 REQUIRED)
 find_package(URJTAG REQUIRED)
 find_package(USB1 REQUIRED)
+find_package(CURL REQUIRED)
 
 include_directories(${CMAKE_INCLUDE_PATH})
 include_directories(${URJTAG_INCLUDE_DIR})
@@ -48,6 +49,7 @@ include_directories(${AHP_GT_INCLUDE_DIR})
 include_directories(${AHP_XC_INCLUDE_DIR})
 include_directories(${FFTW3_INCLUDE_DIR})
 include_directories(${USB1_INCLUDE_DIR})
+include_directories(${CURL_INCLUDE_DIRS})
 
 file(GLOB ICONS ${CMAKE_CURRENT_SOURCE_DIR}/*.ico)
 file(COPY ${ICONS} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -112,7 +114,7 @@ else(ANDROID)
     endif(WIN32)
 endif(ANDROID)
 
-target_link_libraries(xc-gui PRIVATE ${USB1_LIBRARIES}  ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
+target_link_libraries(xc-gui PRIVATE ${CURL_LIBRARIES} ${USB1_LIBRARIES} ${DSP_LIBRARIES} ${VLBI_LIBRARIES} ${AHP_GT_LIBRARIES} ${AHP_XC_LIBRARIES} ${FFTW3_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} Qt5::Widgets Qt5::Charts Qt5::SerialPort Qt5::Network)
 target_link_libraries(xc-gui PRIVATE ${URJTAG_LIBRARIES})
 
 install(TARGETS xc-gui RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1398</width>
+    <width>1271</width>
     <height>189</height>
    </rect>
   </property>
@@ -103,29 +103,6 @@
      <string>BCM Output</string>
     </property>
    </widget>
-  </widget>
-  <widget class="QPlainTextEdit" name="Notes">
-   <property name="geometry">
-    <rect>
-     <x>1270</x>
-     <y>20</y>
-     <width>121</width>
-     <height>161</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>1270</x>
-     <y>0</y>
-     <width>67</width>
-     <height>17</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Notes</string>
-   </property>
   </widget>
   <widget class="QGroupBox" name="Elemental">
    <property name="enabled">
@@ -319,19 +296,6 @@
    <property name="title">
     <string>Controls</string>
    </property>
-   <widget class="QCheckBox" name="Counts">
-    <property name="geometry">
-     <rect>
-      <x>340</x>
-      <y>30</y>
-      <width>111</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Counts</string>
-    </property>
-   </widget>
    <widget class="QCheckBox" name="Autocorrelations">
     <property name="enabled">
      <bool>true</bool>
@@ -339,7 +303,7 @@
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>50</y>
+      <y>60</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -404,7 +368,7 @@
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>70</y>
+      <y>80</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -514,7 +478,7 @@
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>90</y>
+      <y>100</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -527,7 +491,7 @@
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>150</y>
+      <y>160</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -627,7 +591,7 @@
      </rect>
     </property>
     <property name="minimum">
-     <number>1</number>
+     <number>0</number>
     </property>
     <property name="maximum">
      <number>256</number>
@@ -643,10 +607,13 @@
      </rect>
     </property>
     <property name="minimum">
-     <number>1</number>
+     <number>0</number>
     </property>
     <property name="maximum">
      <number>256</number>
+    </property>
+    <property name="value">
+     <number>2</number>
     </property>
    </widget>
    <widget class="QPushButton" name="Save">
@@ -662,41 +629,6 @@
      <string>Save</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="Duration">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>30</y>
-      <width>81</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>1</number>
-    </property>
-    <property name="maximum">
-     <number>86400</number>
-    </property>
-    <property name="singleStep">
-     <number>1</number>
-    </property>
-    <property name="value">
-     <number>240</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_21">
-    <property name="geometry">
-     <rect>
-      <x>170</x>
-      <y>30</y>
-      <width>61</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Time(s)</string>
-    </property>
-   </widget>
    <widget class="QCheckBox" name="RadixX">
     <property name="enabled">
      <bool>true</bool>
@@ -704,7 +636,7 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>120</y>
+      <y>70</y>
       <width>141</width>
       <height>20</height>
      </rect>
@@ -720,7 +652,7 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>140</y>
+      <y>90</y>
       <width>141</width>
       <height>21</height>
      </rect>
@@ -755,41 +687,6 @@
      <string>Clear rail positions</string>
     </property>
    </widget>
-   <widget class="QSpinBox" name="MinValue">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>60</y>
-      <width>81</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <number>0</number>
-    </property>
-    <property name="maximum">
-     <number>1000</number>
-    </property>
-    <property name="singleStep">
-     <number>1</number>
-    </property>
-    <property name="value">
-     <number>0</number>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_22">
-    <property name="geometry">
-     <rect>
-      <x>170</x>
-      <y>60</y>
-      <width>51</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Mean</string>
-    </property>
-   </widget>
    <widget class="QCheckBox" name="counter_histogram">
     <property name="enabled">
      <bool>true</bool>
@@ -797,7 +694,7 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>80</y>
+      <y>30</y>
       <width>141</width>
       <height>20</height>
      </rect>
@@ -813,7 +710,7 @@
     <property name="geometry">
      <rect>
       <x>170</x>
-      <y>100</y>
+      <y>50</y>
       <width>141</width>
       <height>20</height>
      </rect>
@@ -826,7 +723,7 @@
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>110</y>
+      <y>120</y>
       <width>111</width>
       <height>16</height>
      </rect>
@@ -834,18 +731,63 @@
     <property name="text">
      <string>Phase</string>
     </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
    </widget>
    <widget class="QCheckBox" name="show_magnitude">
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>130</y>
+      <y>140</y>
       <width>111</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
      <string>Magnitude</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="Counts">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>340</x>
+      <y>40</y>
+      <width>111</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Counts</string>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="Notes">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>130</y>
+      <width>141</width>
+      <height>41</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>110</y>
+      <width>67</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Notes</string>
     </property>
    </widget>
   </widget>

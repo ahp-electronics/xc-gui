@@ -110,6 +110,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     int min_lag = 1.0 * 1000000000.0 * ahp_xc_get_sampletime();
     int max_lag = ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime();
     ui->EndChannel->setRange(min_lag, max_lag);
+    ui->EndChannel->setValue(min_lag * Resolution);
     ui->StartChannel->setRange(min_lag, max_lag - 2);
     ui->AutoChannel->setRange(min_lag, max_lag);
     ui->CrossChannel->setRange(min_lag, max_lag);
@@ -125,7 +126,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags &= ~(1 << 0);
         flags |= checked << 0;
         ahp_xc_set_leds(getLineIndex(), flags);
-        saveSetting(ui->flag0->text(), checked);
+        SaveValues();
     });
     connect(ui->flag1, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -133,7 +134,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags &= ~(1 << 1);
         flags |= checked << 1;
         ahp_xc_set_leds(getLineIndex(), flags);
-        saveSetting(ui->flag1->text(), checked);
+        SaveValues();
     });
     connect(ui->flag2, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -141,7 +142,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags &= ~(1 << 2);
         flags |= checked << 2;
         ahp_xc_set_leds(getLineIndex(), flags);
-        saveSetting(ui->flag2->text(), checked);
+        SaveValues();
     });
     connect(ui->flag3, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -149,7 +150,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags &= ~(1 << 3);
         flags |= !checked << 3;
         ahp_xc_set_leds(getLineIndex(), flags);
-        saveSetting(ui->flag3->text(), checked);
+        SaveValues();
     });
     connect(ui->flag4, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -157,7 +158,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         flags &= ~(1 << 4);
         flags |= checked << 4;
         ahp_xc_set_leds(getLineIndex(), flags);
-        saveSetting(ui->flag4->text(), checked);
+        SaveValues();
     });
     connect(ui->flag5, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
@@ -165,7 +166,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         tests &= ~(1 << 3);
         tests |= checked << 3;
         ahp_xc_set_test_flags(getLineIndex(), tests);
-        saveSetting(ui->flag5->text(), checked);
+        SaveValues();
     });
     connect(ui->loadRail, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), this, [ = ](bool checked)
     {
@@ -185,11 +186,11 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     });
     connect(ui->iDFT, static_cast<void (QCheckBox::*)(int)>(&QCheckBox::stateChanged), [ = ](int state)
     {
-        saveSetting("iDFT", ui->iDFT->isChecked());
+        SaveValues();
     });
     connect(ui->ElementalAlign, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
-        saveSetting("ElementalAlign", ui->ElementalAlign->isChecked());
+        SaveValues();
         ui->MaxDots->setEnabled(ui->ElementalAlign->isChecked());
         ui->Decimals->setEnabled(ui->ElementalAlign->isChecked());
         ui->MinScore->setEnabled(ui->ElementalAlign->isChecked());
@@ -198,43 +199,39 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
     connect(ui->Resolution, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         Resolution = value;
-        saveSetting("Resolution", Resolution);
+        SaveValues();
     });
     connect(ui->AutoChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         AutoChannel = value;
         ahp_xc_set_channel_auto(getLineIndex(), fmin(ahp_xc_get_delaysize(), fmax(AutoChannel*0.000000001/ahp_xc_get_sampletime(), 0)), 1, 1);
-        saveSetting("AutoChannel", AutoChannel);
+        SaveValues();
     });
     connect(ui->CrossChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         CrossChannel = value;
         ahp_xc_set_channel_cross(getLineIndex(), fmin(ahp_xc_get_delaysize(), fmax(CrossChannel*0.000000001/ahp_xc_get_sampletime(), 0)), 1, 1);
-        saveSetting("CrossChannel", CrossChannel);
+        SaveValues();
     });
     connect(ui->Decimals, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getSpectrum()->getElemental()->setDecimals(value);
-        saveSetting("Decimals", ui->Decimals->value());
+        SaveValues();
     });
     connect(ui->MinScore, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getSpectrum()->getElemental()->setMinScore(value);
-        saveSetting("MinScore", ui->MinScore->value());
+        SaveValues();
     });
     connect(ui->MaxDots, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getSpectrum()->getElemental()->setMaxDots(value);
-        saveSetting("MaxDots", ui->MaxDots->value());
+        SaveValues();
     });
     connect(ui->SampleSize, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
         getSpectrum()->getElemental()->setSampleSize(value);
-        saveSetting("SampleSize", ui->SampleSize->value());
-    });
-    connect(ui->MinValue, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
-    {
-        saveSetting("MinValue", ui->MinValue->value());
+        SaveValues();
     });
     connect(ui->StartChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -245,7 +242,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         lag_start = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->StartChannel->value());
         setMaxFrequency(ahp_xc_get_frequency() * 1000000000.0 / lag_start);
         setBufferSizes();
-        saveSetting("StartChannel", ui->StartChannel->value());
+        SaveValues();
     });
     connect(ui->EndChannel, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -256,7 +253,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         lag_end = fmin(ahp_xc_get_delaysize() * 1000000000.0 * ahp_xc_get_sampletime(), (double)ui->EndChannel->value());
         setMinFrequency(ahp_xc_get_frequency() * 1000000000.0 / lag_end);
         setBufferSizes();
-        saveSetting("EndChannel", ui->EndChannel->value());
+        SaveValues();
     });
     connect(ui->Clear, static_cast<void (QPushButton::*)(bool)>(&QPushButton::clicked), [ = ](bool checked)
     {
@@ -270,26 +267,22 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
         radix_y = checked;
         getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%.03lf");
         gethistogram()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%.03lf");
-        saveSetting("RadixY", radix_y);
+        SaveValues();
     });
     connect(ui->RadixX, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
         radix_x = checked;
         getGraph()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%03lf");
         gethistogram()->setupAxes(radix_x ? 10.0 : 1.0, radix_y ? 10.0 : 1.0, "", "", "%d", "%.03lf");
-        saveSetting("RadixX", ui->Counts->isChecked());
-    });
-    connect(ui->Counts, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
-    {
-        saveSetting(ui->Counts->text(), ui->Counts->isChecked());
     });
     connect(ui->Autocorrelations, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
-        saveSetting(ui->Autocorrelations->text(), ui->Autocorrelations->isChecked());
+        SaveValues();
     });
     connect(ui->Crosscorrelations, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked)
     {
-        saveSetting(ui->Crosscorrelations->text(), ui->Crosscorrelations->isChecked());
+        emit crossCorrelationEnabled(checked);
+        SaveValues();
     });
     connect(ui->MountMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -323,7 +316,7 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
                 }
             }
         }
-        saveSetting("MountMotorIndex", value);
+        SaveValues();
     });
     connect(ui->RailMotorIndex, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [ = ](int value)
     {
@@ -334,18 +327,19 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
             ahp_gt_read_values(RailY);
             ahp_gt_read_values(RailZ);
         }
-        saveSetting("RailMotorIndex", value);
+        SaveValues();
     });
     connect(ui->Active, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
-        saveSetting("scan", ui->Active->isChecked());
+        SaveValues();
         emit scanActiveStateChanging(this);
         emit scanActiveStateChanged(this);
+        emit crossCorrelationEnabled(checked);
     });
     connect(ui->counter_histogram, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
-        saveSetting("counter_histogram", ui->counter_histogram->isChecked());
+        SaveValues();
     });
     connect(ui->correlators_histogram, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
-        saveSetting("correlators_histogram", ui->correlators_histogram->isChecked());
+        SaveValues();
     });
     connect(ui->show_phase, static_cast<void (QCheckBox::*)(bool)>(&QCheckBox::clicked), [ = ](bool checked) {
         if(ui->show_phase->isChecked()) {
@@ -356,12 +350,13 @@ Line::Line(QString ln, int n, QSettings *s, QWidget *pw, QList<Line*> *p) :
             getGraph()->removeSeries(getCounts()->getPhase());
         }
         emit updatedPhasePlotting(ui->show_phase->isChecked());
-        saveSetting("show_phase", ui->show_phase->isChecked());
+        SaveValues();
     });
     connect(this, static_cast<void (Line::*)()>(&Line::savePlot), this, &Line::SavePlot);
     connect(this, static_cast<void (Line::*)()>(&Line::loadPositionChart), this, &Line::LoadPositionChart);
     connect(this, static_cast<void (Line::*)()>(&Line::unloadPositionChart), this, &Line::UnloadPositionChart);
     Initialize();
+    ReadValues();
 }
 
 void Line::Initialize()
@@ -381,7 +376,6 @@ void Line::Initialize()
     ui->CrossChannel->setValue(readInt("CrossChannel", ui->CrossChannel->maximum()));
     ui->EndChannel->setValue(readInt("EndChannel", ahp_xc_get_frequency()));
     ui->StartChannel->setValue(readInt("StartChannel", ui->StartChannel->minimum()));
-    ui->MinValue->setValue(readInt("MinValue", ui->MinValue->minimum()));
     ui->iDFT->setChecked(readBool("iDFT", false));
     ui->flag3->setEnabled(!ahp_xc_has_cumulative_only());
     ahp_xc_set_leds(getLineIndex(), flags);
@@ -391,7 +385,6 @@ void Line::Initialize()
     setFlag(3, readBool(ui->flag3->text(), false));
     setFlag(4, readBool(ui->flag4->text(), false));
     setFlag(5, readBool(ui->flag5->text(), false));
-    ui->Counts->setChecked(readBool(ui->Counts->text(), false));
     ui->Autocorrelations->setChecked(readBool(ui->Autocorrelations->text(), false));
     ui->Crosscorrelations->setChecked(readBool(ui->Crosscorrelations->text(), false));
     GetDark();
@@ -514,13 +507,10 @@ void Line::updateDec()
     }
 }
 
-void Line::addCount(double starttime, ahp_xc_packet *packet)
+void Line::addCount(double starttime, ahp_xc_packet *p)
 {
-    double now = getTime();
-    if((now - starttime) > ui->Duration->value())
-        return;
-    if(packet == nullptr)
-        packet = getPacket();
+    if(p == nullptr)
+        p = getPacket();
     setLocation();
     switch(getMode()) {
         default: break;
@@ -533,12 +523,11 @@ void Line::addCount(double starttime, ahp_xc_packet *packet)
             double mag = -1.0;
             double phi = -1.0;
             double counts = -1.0;
-            getCounts()->setCache(smooth());
             if(showCounts()) {
                 counts = (double)packet->counts[getLineIndex()] / ahp_xc_get_packettime();
             }
             if(showAutocorrelations()) {
-                mag = (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude,
+                mag = (double)packet->autocorrelations[getLineIndex()].correlations[0].magnitude / ahp_xc_get_packettime(),
                 phi = (double)packet->autocorrelations[getLineIndex()].correlations[0].phase;
             }
             getCounts()->addCount(
@@ -654,6 +643,61 @@ void Line::haltMotors() {
     }
 }
 
+void Line::SaveValues()
+{
+    settings->setValue("flag0", ui->flag0->isChecked());
+    settings->setValue("flag1", ui->flag1->isChecked());
+    settings->setValue("flag2", ui->flag2->isChecked());
+    settings->setValue("flag3", ui->flag3->isChecked());
+    settings->setValue("flag4", ui->flag4->isChecked());
+    settings->setValue("flag5", ui->flag5->isChecked());
+    settings->setValue("StartChannel", ui->StartChannel->value());
+    settings->setValue("EndChannel", ui->EndChannel->value());
+    settings->setValue("Resolution", ui->Resolution->value());
+    settings->setValue("AutoChannel", ui->AutoChannel->value());
+    settings->setValue("CrossChannel", ui->CrossChannel->value());
+    settings->setValue("counter_histogram", ui->counter_histogram->isChecked());
+    settings->setValue("correlators_histogram", ui->correlators_histogram->isChecked());
+    settings->setValue("RadixX", ui->RadixX->isChecked());
+    settings->setValue("RadixY", ui->RadixY->isChecked());
+    settings->setValue("MountMotorIndex", ui->MountMotorIndex->value());
+    settings->setValue("RailMotorIndex", ui->RailMotorIndex->value());
+    settings->setValue("ElementalAlign", ui->ElementalAlign->isChecked());
+    settings->setValue("MaxDots", ui->MaxDots->value());
+    settings->setValue("Decimals", ui->Decimals->value());
+    settings->setValue("MinScore", ui->MinScore->value());
+    settings->setValue("SampleSize", ui->SampleSize->value());
+    settings->setValue("darkstring", darkstring);
+}
+
+void Line::ReadValues()
+{
+    ui->flag0->setChecked(settings->value("flag0", false).toBool());
+    ui->flag1->setChecked(settings->value("flag1", false).toBool());
+    ui->flag2->setChecked(settings->value("flag2", false).toBool());
+    ui->flag3->setChecked(settings->value("flag3", false).toBool());
+    ui->flag4->setChecked(settings->value("flag4", false).toBool());
+    ui->flag5->setChecked(settings->value("flag5", false).toBool());
+    ui->StartChannel->setValue(settings->value("StartChannel", 5).toInt());
+    ui->EndChannel->setValue(settings->value("EndChannel", 50000).toInt());
+    ui->Resolution->setValue(settings->value("Resolution", 100).toInt());
+    ui->AutoChannel->setValue(settings->value("AutoChannel", 5).toInt());
+    ui->CrossChannel->setValue(settings->value("CrossChannel", 5).toInt());
+    ui->counter_histogram->setChecked(settings->value("counter_histogram", false).toBool());
+    ui->correlators_histogram->setChecked(settings->value("correlators_histogram", false).toBool());
+    ui->RadixX->setChecked(settings->value("RadixX", false).toBool());
+    ui->RadixY->setChecked(settings->value("RadixY", false).toBool());
+    ui->MountMotorIndex->setValue(settings->value("MountMotorIndex", 1).toInt());
+    ui->RailMotorIndex->setValue(settings->value("RailMotorIndex", 2).toInt());
+    ui->ElementalAlign->setChecked(settings->value("ElementalAlign", false).toBool());
+    ui->MaxDots->setValue(settings->value("MaxDots", 0).toInt());
+    ui->Decimals->setValue(settings->value("Decimals", 0).toInt());
+    ui->MinScore->setValue(settings->value("MinScore", 0).toInt());
+    ui->SampleSize->setValue(settings->value("SampleSize", 0).toInt());
+    darkstring = QString(QByteArray::fromBase64(settings->value("darkstring", "").toByteArray()));
+}
+
+
 bool Line::haveSetting(QString setting)
 {
     return settings->contains(QString(name + "_" + setting).replace(' ', ""));
@@ -706,6 +750,7 @@ void Line::setFlag(int flag, bool value)
         default:
             break;
     }
+    SaveValues();
 }
 
 void Line::resetTimestamp()
@@ -749,7 +794,7 @@ bool Line::showAutocorrelations()
 
 bool Line::showCountHistogram()
 {
-    return showCounts()&&ui->counter_histogram->isChecked();
+    return ui->counter_histogram->isChecked();
 }
 
 bool Line::showCorrelationsHistogram()
@@ -792,10 +837,14 @@ void Line::setMode(Mode m)
         ui->Resolution->setEnabled(false);
         ui->Active->setEnabled(true);
         ui->iDFT->setEnabled(false);
+        ui->show_magnitude->setEnabled(false);
+        ui->show_phase->setEnabled(false);
         ui->AutoChannel->setEnabled(false);
         ui->CrossChannel->setEnabled(false);
         ui->StartChannel->setEnabled(false);
         ui->EndChannel->setEnabled(false);
+        getGraph()->removeSeries(getSpectrum()->getPhase());
+        getGraph()->removeSeries(getCounts()->getPhase());
         break;
     case Counter:
         ui->Counts->setEnabled(true);
@@ -803,11 +852,15 @@ void Line::setMode(Mode m)
         ui->Crosscorrelations->setEnabled(true);
         ui->Resolution->setEnabled(true);
         ui->Active->setEnabled(false);
-        ui->iDFT->setEnabled(true);
+        ui->iDFT->setEnabled(false);
+        ui->show_magnitude->setEnabled(false);
+        ui->show_phase->setEnabled(false);
         ui->AutoChannel->setEnabled(true);
         ui->CrossChannel->setEnabled(true);
         ui->StartChannel->setEnabled(false);
         ui->EndChannel->setEnabled(false);
+        getGraph()->removeSeries(getSpectrum()->getPhase());
+        getGraph()->removeSeries(getCounts()->getPhase());
         break;
     default:
         ui->Counts->setEnabled(false);
@@ -816,14 +869,24 @@ void Line::setMode(Mode m)
         ui->Resolution->setEnabled(true);
         ui->Active->setEnabled(true);
         ui->iDFT->setEnabled(true);
+        ui->show_magnitude->setEnabled(true);
+        ui->show_phase->setEnabled(true);
         ui->AutoChannel->setEnabled(false);
         ui->CrossChannel->setEnabled(false);
         ui->StartChannel->setEnabled(true);
         ui->EndChannel->setEnabled(true);
+        if(ui->show_phase->isChecked()) {
+            getGraph()->addSeries(getSpectrum()->getPhase(), QString::number(Autocorrelator) + "1#" + QString::number(getLineIndex()+1));
+            getGraph()->addSeries(getCounts()->getPhase(), QString::number(Counter) + "2#" + QString::number(getLineIndex()+1));
+        } else {
+            getGraph()->removeSeries(getSpectrum()->getPhase());
+            getGraph()->removeSeries(getCounts()->getPhase());
+        }
         break;
     }
     emit scanActiveStateChanging(this);
     emit scanActiveStateChanged(this);
+    emit crossCorrelationEnabled(true);
     ui->Elemental->setEnabled(m != Counter && mode != HolographII && mode != HolographIQ);
 }
 
@@ -883,12 +946,12 @@ void Line::UnloadPositionChart()
 void Line::LoadPositionChart()
 {
     QString filename = QFileDialog::getOpenFileName(this, "Load rail position file", ".",
-                       "CSV files (*.csv)", 0, 0);
+                       "CSV files (*.csv)", 0);
     QFile data(filename);
     if(data.open(QFile::ReadOnly))
     {
         QString csv = data.readAll();
-        saveSetting("location_chart", csv);
+        SaveValues();
         QStringList locations = csv.split("\n");
         if(locations.length() > 0) {
             xyz_locations.clear();
@@ -1013,7 +1076,7 @@ void Line::motor_unlock()
 void Line::setActive(bool a)
 {
     if(getMode() == Counter) {
-        running = a && (showCounts() || showAutocorrelations());
+        running = a && (showAutocorrelations());
     } else running = a;
     emit activeStateChanged(this);
 }
@@ -1056,17 +1119,15 @@ void Line::TakeDark(Line *sender)
     if(sender->DarkTaken())
     {
         getDark()->clear();
+        darkstring = "";
         for(int x = 0; x < getSpectrum()->count(); x++)
         {
             getDark()->insert(getSpectrum()->getSeries()->at(x).x(), getSpectrum()->getSeries()->at(x).y());
-            QString darkstring = readString("Dark", "");
-            if(!darkstring.isEmpty())
-                saveSetting("Dark", darkstring + ";");
-            darkstring = readString("Dark", "");
-            saveSetting("Dark", darkstring + QString::number(getSpectrum()->getSeries()->at(x).x()) + "," + QString::number(getSpectrum()->getSeries()->at(
-                            x).y()));
+            darkstring = QString::number(getSpectrum()->getSeries()->at(x).x()) + ";" + QString::number(getSpectrum()->getSeries()->at(x).y()) + '\n';
         }
+        darkstring = QString(QByteArray(darkstring.toStdString().c_str()).toBase64());
         getSpectrum()->setName(name + " magnitude (residuals)");
+        SaveValues();
     }
     else
     {
@@ -1137,7 +1198,6 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
             int lag = correlation.lag / channel_step;
             if(lag < npackets && lag >= 0)
             {
-                double side = correlation.real + correlation.imaginary;
                 getSpectrum()->getElemental()->getMagnitude()[lag] = (double)correlation.magnitude;
                 getSpectrum()->getElemental()->getPhase()[lag] = (double)correlation.phase;
                 for(int y = lag; y < npackets; y++)
@@ -1147,6 +1207,7 @@ void Line::stackCorrelations(ahp_xc_sample *spectrum)
                 }
             }
         }
+        getSpectrum()->getElemental()->setBuffer(getSpectrum()->getElemental()->getPhase(), npackets);
         if(idft())
             getSpectrum()->getElemental()->idft();
         if(Align())
@@ -1164,14 +1225,17 @@ void Line::plot(bool success, double o, double s)
     double timespan = s;
     double offset = o;
     if(!idft()) {
-        if(this->showMagnitude())
+        if(this->showMagnitude()) {
             getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getMagnitudeStack(), getSpectrum()->getElemental()->getMagnitude(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
-        if(this->showPhase())
+            getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100, getSpectrum()->getHistogramStackIndexMagnitude(), getSpectrum()->getHistogramStackMagnitude(), getSpectrum()->getHistogramMagnitude());
+        }
+        if(this->showPhase()) {
             getSpectrum()->stackBuffer(getSpectrum()->getPhase(), getSpectrum()->getPhaseStack(), getSpectrum()->getElemental()->getPhase(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
-    } else
-        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(),getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
-    getSpectrum()->buildHistogram(getSpectrum()->getMagnitude(), getSpectrum()->getElemental()->getStream()->magnitude, 100, getSpectrum()->getHistogramStackIndexMagnitude(), getSpectrum()->getHistogramStackMagnitude(), getSpectrum()->getHistogramMagnitude());
-    getSpectrum()->buildHistogram(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getStream()->phase, 100, getSpectrum()->getHistogramStackIndexPhase(), getSpectrum()->getHistogramStackPhase(), getSpectrum()->getHistogramPhase());
+            getSpectrum()->buildHistogram(getSpectrum()->getPhase(), getSpectrum()->getElemental()->getStream()->phase, 100, getSpectrum()->getHistogramStackIndexPhase(), getSpectrum()->getHistogramStackPhase(), getSpectrum()->getHistogramPhase());
+        }
+    } else {
+        getSpectrum()->stackBuffer(getSpectrum()->getMagnitude(), getSpectrum()->getStack(), getSpectrum()->getElemental()->getBuffer(), 0, getSpectrum()->getElemental()->getStreamSize(), timespan, offset, 1.0, 0.0);
+    }
     getGraph()->paint();
     gethistogram()->paint();
 }

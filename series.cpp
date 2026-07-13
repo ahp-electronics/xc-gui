@@ -77,16 +77,13 @@ void Series::addCount(double min_x, double x, double y, double mag, double phi)
         getSeries()->append(x, y);
     } else y = M_PI * 2;
     if(mag > -1.0)
-        getMagnitude()->append(x, mag * y);
+        getMagnitude()->append(x, mag);
     else if(getMagnitude()->count() > 0)
         getMagnitude()->append(x, getMagnitude()->at(getMagnitude()->count()-1).y());
     if(phi > -1.0)
-        getPhase()->append(x, phi * y / M_PI / 2);
+        getPhase()->append(x, phi);
     else if(getPhase()->count() > 0)
         getPhase()->append(x, getPhase()->at(getPhase()->count()-1).y());
-    smoothBuffer(getSeries(), 0, getSeries()->count());
-    smoothBuffer(getMagnitude(), 0, getMagnitude()->count());
-    smoothBuffer(getPhase(), 0, getSeries()->count());
 }
 
 void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogram_size, int *stack_index, QMap<double, double> *stack, QScatterSeries *histogram)
@@ -113,32 +110,6 @@ void Series::buildHistogram(QXYSeries *series, dsp_stream_p stream, int histogra
     }
 }
 
-void Series::smoothBuffer(QXYSeries *buf, int offset, int len)
-{
-    if(raw->count() < offset+len)
-        return;
-    if(raw->count() < getCache())
-        return;
-    if(buf->count() < offset+len)
-        return;
-    if(buf->count() < getCache())
-        return;
-    offset = fmax(offset, getCache());
-    int x = 0;
-    for(x = offset/2; x < len-offset/2; x++) {
-        double val = 0.0;
-        for(int y = -offset/2; y < offset/2; y++) {
-            val += raw->at(x+y);
-        }
-        val /= getCache();
-        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), val);
-    }
-    for(x = raw->count()-1; x >= raw->count()-offset/2; x--)
-        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), buf->at(raw->count()-offset/2-1).y());
-    for(x = offset/2; x >= 0; x--)
-        buf->replace(buf->at(x).x(), buf->at(x).y(), buf->at(x).x(), buf->at(offset/2).y());
-}
-
 void Series::stackHistogram(double x, double y, int* stack_index, QMap<double, double> *stack, QScatterSeries *series)
 {
     x /= *stack_index;
@@ -157,7 +128,6 @@ void Series::stackBuffer(QXYSeries *series, QMap<double, double> *stack, double 
     {
         stackValue(series, stack, x * x_scale + x_offset, buf[x] * y_scale + y_offset);
     }
-    smoothBuffer(series, 0, series->count());
 }
 
 void Series::stackValue(QXYSeries *buf, QMap<double, double>* stack, double x, double y)

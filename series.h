@@ -13,7 +13,6 @@ class Series : public QObject
 {
     Q_OBJECT
 private:
-    void smoothBuffer(QXYSeries *buf, int offset, int len);
     void stackValue(QXYSeries *buf, QMap<double, double>* stack, double x, double y);
     void stackHistogram(double x, double y, int *stack_index, QMap<double, double> *stack, QScatterSeries *series);
     void stretch(Series* series);
@@ -22,7 +21,6 @@ private:
     int stack_index_histogram_magnitude { 0 };
     int stack_index_histogram_phase { 0 };
     int stack_index { 0 };
-    int cache { 0 };
     QList<double> *raw;
     QLineSeries *series;
     QLineSeries *magnitude;
@@ -147,14 +145,6 @@ public:
     inline QList<double> *getRaw()
     {
         return raw;
-    }
-    inline int getCache()
-    {
-        return cache;
-    }
-    inline void setCache(int len)
-    {
-        cache = len;
     }
     int *getHistogramStackIndex()
     {
